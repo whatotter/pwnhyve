@@ -14,12 +14,14 @@ note: actually, it can be anything with the same gpio as the pi zero and has usb
 ### battery
 - [pisugar 2 portable](https://www.tindie.com/products/pisugar/pisugar-2-battery-for-raspberry-pi-zero/)
 - [waveshare ups hat](https://www.waveshare.com/ups-hat-c.htm)
+
 note: you could also use a mini usb battery pack, but i'd rather use a built in battery, or [you could plug it into your phone](https://www.amazon.com/Cable-Matters-Micro-Braided-Jacket/dp/B0746NHSCZ) and it would still power the pi (depends on your phone obviously)
 ### display
 - [waveshare 1.3inch oled](https://www.waveshare.com/wiki/1.3inch_OLED_HAT) (i plan to add support to more displays in the future)
 ### usb stems for quick insertion
 - [pi zero stem 1](https://zerostem.io/)
 - [pi zero stem 2 w/o battery support (maybe)](https://www.amazon.com/risingsaplings-Connector-Expansion-Breakout-Raspberry/dp/B0924TM6NJ)
+
 note: you could use a tiny micro-usb cable with sync+charge support, but charge isnt required since your powering it off of a battery (i hope)
 
 ## why battery?
