@@ -1,0 +1,162 @@
+<!DOCTYPE HTML>
+
+<html lang="en">
+
+<head>
+    <title>Artemis | Login</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        function post_content(s, json) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", s, false); // false for synchronous request
+            xmlHttp.send(json);
+            return xmlHttp.responseText;
+        }
+
+        function get_content(s, getpost) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open(getpost, s, false); // false for synchronous request
+            xmlHttp.send(null);
+            return xmlHttp.responseText;
+        }
+
+        String.prototype.formatUnicorn = String.prototype.formatUnicorn ||
+            function () {
+                "use strict";
+                var str = this.toString();
+                if (arguments.length) {
+                    var t = typeof arguments[0];
+                    var key;
+                    var args = ("string" === t || "number" === t) ?
+                        Array.prototype.slice.call(arguments)
+                        : arguments[0];
+
+                    for (key in args) {
+                        str = str.replace(new RegExp("\\{" + key + "\\}", "gi"), args[key]);
+                    }
+                }
+
+                return str;
+            };
+
+        function login(password_id, span_id) {
+            var password = document.getElementById(password_id).value;
+            var span = document.getElementById(span_id);
+
+            json = '{"password":"{0}"}'.formatUnicorn(btoa(password));
+
+            var resp = post_content("/api/login", json);
+
+            if (resp != "1") {
+                console.log("invalid");
+                alert("invalid password")
+                return resp;
+            }
+            
+            location.reload()
+            location.href = "/"
+        }
+    </script>
+    <!-- google apis go here -->
+    <style>
+        body {
+            font-family: Arial, Arial, Helvetica, sans-serif;
+            margin: 0;
+        }
+
+        /* classes go here */
+
+        .styled_button {
+            color: white;
+            background-color: rgb(32, 35, 36);
+            text-align: center;
+            padding: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition-duration: 0.4s;
+            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+            margin: 24px;
+            margin-left: 30%;
+            margin-top: 10%;
+            font-size: 18px;
+            width: 25%;
+            height: 50%;
+            border: none;
+        }
+
+
+        .styled_button:hover {
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            background-color: #333;
+        }
+
+        .styled_button:active {
+            box-shadow: 0 5px #666;
+            transform: translateY(2px);
+        }
+
+        .header {
+            padding: 120px;
+            text-align: center;
+            background-color: rgb(0, 69, 150);
+            color: white;
+            min-width: 100%;
+            z-index: 12;
+        }
+
+        .header h1 {
+            font-size: 40px;
+        }
+
+        .center_div {
+            width: 100px;
+            height: 100px;
+            margin: auto;
+            margin-top: 12.5%
+        }
+
+        input[type=password] {
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 4px;
+            width: 75%;
+            border-radius: 4px;
+            outline: none;
+            background-color: transparent;
+            color: white;
+            transition: ease-in-out;
+            transition-duration: 100ms;
+            margin-top: 0;
+        }
+
+        input[type=password]:active, input[type=password]:hover {
+            border: 1px solid #777;
+        }
+
+        h1,h2,h3,h4,h5,h6 {
+            color: white;
+        }
+
+        /* end of classes */
+    </style>
+</head>
+
+<body style="background-color: rgb(24, 26, 27); height:100%; width:100%">
+    <div style="width: 25%; height: 50%; border: 2px solid; border-color:#290c6e; border-radius: 12px; box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19); "
+        class="center_div">
+        <div style="padding: 40px; width: 100%; height:100%">
+            <h3>Artemis | Login</h3>
+            
+            <div style="margin-left: 10%; margin-top: 7.5%; margin-bottom: 0;">
+                <h4>password:</h4>
+                <input type="password" id="pwrd_input">
+            </div>
+
+            <div>
+                <button onclick="login('pwrd_input')" id="login_button" class="styled_button" >Login</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
