@@ -376,7 +376,7 @@ def pwnagotchiHTML(deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:
 
     deauthed = {} 
 
-    whitelist = ["50:d4:f7:53:29:d3"]
+    whitelist = []
 
     if prettyDebug: uStatus("whitelist: {}".format(', '.join(whitelist)))
 
