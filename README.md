@@ -9,6 +9,7 @@ a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell p
 
 # BILL OF MATERIALS
 - a raspberry pi zero w (can also be a 2)
+
 note: actually, it can be anything with the same gpio as the pi zero and has usb gadget support, but dont blame me if it doesnt work on your radxa
 ## optionals, only get one of each
 ### battery
