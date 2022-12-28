@@ -1,5 +1,8 @@
 # artemis
+![rsz_hero2](https://github.com/nototter/artemis/blob/main/github/images/artemis.png?raw=true)
 a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell payload generation, 802.11 deauthing, bettercap support, and (crude) duckyscript support, all in the size of a flipper zero (or raspberry pi depending on your setup)
+
+also has nyan cat built in
 
 # NOTICE
 - **still in heavy development, expect rage notes in random areas of code**
