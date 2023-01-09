@@ -15,6 +15,10 @@ class example1:
         # you can have this in an external file, aslong as main file gets it in dictionary format
         # this is for your command help n stuff
         "hello": "123456789abcdefghijkl",
+
+        "icons": {
+            "hello": "./core/icons/zzz.bmp"
+        }
     }
 
     font = ImageFont.truetype('core/fonts/Font.ttf', 18)

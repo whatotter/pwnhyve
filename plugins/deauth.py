@@ -86,7 +86,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
     deauthed = {} 
 
-    whitelist = []
+    whitelist = ["50:d4:f7:53:29:d3"]
 
     if prettyDebug: uStatus("whitelist: {}".format(', '.join(whitelist)))
 
@@ -219,7 +219,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
                         try:
                             remove("/root/bettercap-wifi-handshakes.pcap") # idk if bettercap overwrites the pcap file, but just in case
                         except FileNotFoundError:
-                            pass # doesnt exist no mo
+                            pass # doesnt exist no more
                         """
 
                         deauthed[ap] = [True, targetClient]
@@ -376,7 +376,7 @@ def pwnagotchiHTML(deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:
 
     deauthed = {} 
 
-    whitelist = []
+    whitelist = ["50:d4:f7:53:29:d3"]
 
     if prettyDebug: uStatus("whitelist: {}".format(', '.join(whitelist)))
 
@@ -543,5 +543,9 @@ def functions():
     put your executable functions here and your configuration
     """
     return {
-        "pwnagotchi": "dfhuigosaio9by tdfhudfhudfhudfhudfhurdfhuedfhusdfhuodfhudfhudfhudfhudfhudfhudfhudfhudfhudfhudofhudfhuodfhuodofhudfhu"
+        "pwnagotchi": "dfhuigosaio9by tdfhudfhudfhudfhudfhurdfhuedfhusdfhuodfhudfhudfhudfhudfhudfhudfhudfhudfhudfhudofhudfhuodfhuodofhudfhu",
+        
+        "icons":{
+            "pwnagotchi": "./core/icons/wifi.bmp"
+        }
     }

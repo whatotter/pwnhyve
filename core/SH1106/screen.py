@@ -1,5 +1,6 @@
 from PIL import Image, ImageFont
 from time import sleep
+from core.utils import getChunk
 
 #GPIO define
 RST_PIN        = 25
@@ -212,8 +213,8 @@ def fullClear(display):
     display.rectangle((0, 0, 200, 100), fill=1)
     return True
 
-def menu(draw, disp, image, choices, GPIO, gpioPins,
- cleanScroll=True, onlyPrefix=False, selectionBackgroundWidth=200, font=None, flipped=False):
+def menu(draw, disp, image, choices, GPIO, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
+ cleanScroll=True, flipped=False, flipperZeroMenu=True, flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16), flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16), font=None, onlyPrefix=False, selectionBackgroundWidth=200):
     xCoord = 5
     yCoord = 5
     currentSelection = 0 # index of programs list
@@ -224,7 +225,8 @@ def menu(draw, disp, image, choices, GPIO, gpioPins,
     currentSelOld = 0
     while 1:
         yCoordBefore = yCoord
-        selection = list(choices)[0]
+        selection = list(choices)[currentSelection]
+        flipperSelection=Image.open('./core/fonts/selection.bmp')
 
         fullClear(draw)
 
@@ -238,9 +240,12 @@ def menu(draw, disp, image, choices, GPIO, gpioPins,
         currentSelOld = currentSelection
 
         if not cleanScroll:
+            scrollChunks = getChunk(list(choices), 5)
             for chunk in scrollChunks:
-                if selection in chunk:
+                print(chunk)
+                if selection in ';'.join(chunk): # idek anymore
                     listToPrint = chunk
+                    break
         else:
             a = list(choices)
             listToPrint = []
@@ -252,21 +257,61 @@ def menu(draw, disp, image, choices, GPIO, gpioPins,
             for i in a:
                 listToPrint = a[:5]
 
+        if flipperZeroMenu:
+            yCoord = 1
+            listToPrint = [] # clean list to print
+
+            # TODO: figure out something cleaner than this
+            try:
+                b4 = list(choices)[currentSelection - 1]
+            except IndexError: b4=""
+            if currentSelection - 1 == -1: b4 = ""
+            try:
+                after = list(choices)[currentSelection + 1]
+            except IndexError: after=""
+
+            listToPrint = [b4, selection, after] 
+            #
+            #   b4 > pwnagotchi
+            #   selection > reboot 
+            #   after > shutdown
+            #
+            #
+
         for text in list(listToPrint): # do draw
-            if selection != text:
-                returnedCoords = createSelection(draw, text, xCoord, yCoord, selected=0, font=font)
-                programCoords[text] = returnedCoords
+            if not flipperZeroMenu:
+                if selection != text: # if our selection isnt the text iter gave us
+                    returnedCoords = createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
+                    programCoords[text] = returnedCoords # set the coords for later
+                else: # it is our selection
+                    if not onlyPrefix: # if we arent using only prefix
+                        draw.rectangle([(0, yCoord), (selectionBackgroundWidth, 13 + yCoord)], fill=0, outline=255) # draw colored rectangle first
+                        draw.text((xCoord, yCoord), text, fill=1, outline=255, font=font) # draw black text over rectangle
+                    else:
+                        createSelection(draw, selectedPrefix+selection, xCoord, yCoord, selected=0, font=font) # draw over it
+
+                    programCoords[text] = (xCoord, yCoord) # add coord
+                        
+                yCoord += 14
             else:
-                if not onlyPrefix:
-                    draw.rectangle([(0, yCoord), (selectionBackgroundWidth, 13 + yCoord)], fill=0, outline=255)
-                    draw.text((xCoord, yCoord), text, fill=1, outline=255, font=font)
-                    programCoords[text] = (xCoord, yCoord)
+                bigMinimizedText = ''.join([str(x) for x in text][:12]) # usually for big
+                smallMinimizedText = ''.join([str(x) for x in text][:14]) # usually for small
+
+                xCoord = 4
+
+                if text == "": yCoord += 22; continue
+
+                if text == selection:
+                    #boxcoords = [(2, 24), (128 - 4, 18 + vars.yCoord)]
+                    #draw.rectangle(boxcoords, fill=1, outline=0)
+
+                    image.paste(flipperSelection, (0,22))
+
+                    createSelection(draw, bigMinimizedText, xCoord, yCoord, selected=0, font=flipperFontB) # draw over it 
                 else:
-                    #createSelection(draw, selection, xCoord, yCoord, selected=1, font=font) # clear it
-                    draw.text((xCoord, yCoord), selectedPrefix+text, fill=0, outline=255, font=font)
-                    programCoords[text] = (xCoord, yCoord)
-                    
-            yCoord += 14
+                    createSelection(draw, smallMinimizedText, xCoord, yCoord, selected=0, font=flipperFontN) # draw over it 
+
+                yCoord += 22
 
         yCoord = yCoordBefore
 

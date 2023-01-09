@@ -1,5 +1,5 @@
 """
-<75% of this script will be from pwnagotchi's utils module
+ALL of this script will be from pwnagotchi's utils module
 """
 
 class WifiInfo:

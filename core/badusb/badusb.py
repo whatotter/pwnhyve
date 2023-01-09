@@ -1,7 +1,7 @@
 import datetime
 from time import sleep
 from os import path
-from random import randint
+from random import randint, gauss
 import core.badusb.keys as usbKeys
 
 class DuckyScriptInterpreter():
@@ -110,7 +110,7 @@ class DuckyScriptInterpreter():
             self.usb.releaseAll()
 
     def DELAY(self, splitLine:list):
-        sleep(float(splitLine[0]) / 10)
+        sleep(float(splitLine[0]))
 
     def HOLD(self, splitLine:list):
         self.usb.press(splitLine[0], noRelease=True)
@@ -181,15 +181,20 @@ class BadUSB:
 
         self.keyboard.flush()
 
-    def write(self, string, keyDelay=0, jitter=False):
+    def write(self, string, keyDelay=0, jitter=False, pressDelay=0):
         """
         write a string, case sensitive, with a set keyDelay
         """
         for x in [str(x) for x in string]:       
-            self.press(x)
+            self.press(x, releaseDelay=pressDelay)
 
             if jitter != False:
-                sleep(randint(jitter[0], jitter[1]))
+                g = gauss(jitter[0], jitter[1])
+
+                if g < 0:
+                    g = g * -1
+
+                sleep(g)
             else:
                 sleep(keyDelay)
         return True
@@ -201,7 +206,7 @@ class BadUSB:
         a = self.keys['null']*8
         self.rawWrite(a.encode())
 
-    def press(self, key):
+    def press(self, key, releaseDelay=0):
         """
         press a certain key
         """
@@ -233,6 +238,8 @@ class BadUSB:
                 #print("is upper")
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
                 self.rawWrite(text.encode())
+
+        sleep(float(releaseDelay))
 
         self.releaseAll()
         return True

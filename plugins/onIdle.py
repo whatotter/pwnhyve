@@ -8,26 +8,11 @@ from PIL import ImageFont, Image
 import time
 from core.SH1106.screen import waitForKey, checkIfKey
 
-#GPIO define
-RST_PIN        = 25
-CS_PIN         = 8
-DC_PIN         = 24
-
-KEY_UP_PIN     = 6 
-KEY_DOWN_PIN   = 19
-KEY_LEFT_PIN   = 5
-KEY_RIGHT_PIN  = 26
-KEY_PRESS_PIN  = 13
-
-KEY1_PIN       = 21
-KEY2_PIN       = 20
-KEY3_PIN       = 16
-
 class vars:
     font = ImageFont.truetype('core/fonts/Font.ttf', 18)
 
     nyanCat = True # enable meow meow meow meow meow meow 
-    nyanCatDelay = 0.05 # delay inbetween showing new frame
+    nyanCatDelay = 0.0025 # delay inbetween showing new frame
     displayResX, displayResY = 128, 64 # your display resolution to display nyan cat correctly
 
 def fullClear(display):
@@ -53,14 +38,24 @@ def setIdle(args:list):
 
         currFrame = 1
 
+        image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame
+
+        frames = {}
+
+        for x in range(1, 12):
+            bmp = Image.open('./core/nyanCatIdle/frame{}.bmp'.format(x))
+            frames[x] = bmp.resize((vars.displayResX, vars.displayResY))
+
+
         while 1: # wait for key press
             if checkIfKey(GPIO): break
 
             if currFrame == 12: currFrame = 1
-            image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame
-            bmp = Image.open('./core/nyanCatIdle/frame{}.bmp'.format(currFrame))
-            image.paste(bmp.resize((vars.displayResX, vars.displayResY)), (0,5))
+
+            image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame       
+            image.paste(frames[currFrame])
             display.ShowImage(display.getbuffer(image))
+
             currFrame += 1
 
             time.sleep(vars.nyanCatDelay)
@@ -68,4 +63,4 @@ def setIdle(args:list):
     return
 
 def functions():
-    return {"setIdle": "set Artremis as idle, and run its idle definition"}
+    return {"setIdle": "set Artremis as idle, and run its idle definition", "icons": {"setIdle": "./core/icons/zzz.bmp"}}

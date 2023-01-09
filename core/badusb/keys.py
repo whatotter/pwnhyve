@@ -55,6 +55,7 @@ keys = {
         "BACKSPACE": 0x2a, # Keyboard DELETE (Backspace),
         "TAB": 0x2b, # Keyboard Tab,
         " ": 0x2c, # Keyboard Spacebar,
+        #" ": chr(44), # keyboard spacebar 2
         "-": 0x2d, # Keyboard - and _,
         "=": 0x2e, # Keyboard = and +,
         "[": 0x2f, # Keyboard [ and {,
@@ -160,6 +161,7 @@ shifted = {
         "<": [0x36], # Keyboard , and <,
         "_": [0x2d], # Keyboard - and _,
         "+": [0x2e], # Keyboard = and +,
+        "?": [0x38], # Keyboard ?
     }
 
 symbols = [
@@ -183,5 +185,6 @@ symbols = [
         '8',
         '9',
         '0',
-        '/'
+        '/',
+        " "
         ]
