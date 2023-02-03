@@ -1,5 +1,5 @@
-# artemis
-![artemis](https://user-images.githubusercontent.com/42103041/209862002-9ef1712c-38c5-424d-8017-fc9f119492af.png)
+# pwnhyve
+![pwnhyve](https://user-images.githubusercontent.com/42103041/209862002-9ef1712c-38c5-424d-8017-fc9f119492af.png)
 a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell payload generation, 802.11 deauthing, bettercap support, and (crude) duckyscript support, all in the size of a flipper zero (or raspberry pi depending on your setup)
 
 # NOTICE
@@ -27,15 +27,15 @@ note: you could also use a mini usb battery pack, but i'd rather use a built in 
 note: you could use a tiny micro-usb cable with sync+charge support, but charge isnt required since your powering it off of a battery (i hope)
 
 ## why battery?
-if you try to use your pi as a ducky usb, it will take (minimum) 45 seconds to boot up and start artemis, and a couple of minutes to start everything else up; not very stealthy
+if you try to use your pi as a ducky usb, it will take (minimum) 45 seconds to boot up and start pwnhyve, and a couple of minutes to start everything else up; not very stealthy
 
 you could use it without a battery though, just not reccomended
 
 # how install?
 - make sure you're root
 ```bash
-git clone https://github.com/nototter/artemis/
-cd artemis
+git clone https://github.com/nototter/pwnhyve/
+cd pwnhyve
 python3 autoinstall.py
 # go through install & reboot, or start the script
 ```
