@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <link rel="stylesheet" href="main.css">
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="480" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#2f434e" />
+    <meta http-equiv="cleartype" content="on" />
+</head>
+
+<body style="width: 100%; height: 100%">
+    <a href="javascript:showTerm()"></a>
+    <a href="javascript:showStats()"></a>
+    <a href="javascript:showDeauth()"></a>
+
+    <div class="top" style="display:inline-flex">
+        <h2 style="font-size: 28px;">pwnhyve</h2>
+        <button style="margin-left: 88.5%"><img src="shutdown.png" height="25"></button>
+        <button><img src="restart.png" height="25"></button>
+    </div>
+    <div style="width:80px; height:100%; float:left"></div>
+    <div style="width:95%; height:80px; float:right"></div>
+    <div class="side">
+        <img style="float:right; margin-right: 14px" src="/main.png" height="50" width="50" class="logo">
+
+        <button class="side-button" id="local-stats-button">
+            <img id="local-stats-ico" src="graph.png" height="48">
+        </button>
+
+        <button class="side-button" id="usb-button">
+            <img id="usb-ico" src="usb.png" height="48">
+        </button>
+
+        <button class="side-button" id="deauth-button">
+            <img id="deauth-ico" src="nowifi.png" height="44">
+        </button>
+
+        <button class="side-button" id="nmap-button">
+            <img id="nmap-ico" src="nmap.png" height="44">
+        </button>
+
+    </div>
+
+    <div class="main" id="stats" style="display:flex;">
+        <div class="cool-box">
+            <h4 style="padding: 8px 8px 0 8px">CPU Temperature:</h4>
+            <div id="cpuTemp" class="gauge-container four">
+                <span class="value-text">C</span>
+            </div>
+        </div>
+
+        <div class="cool-box">
+            <h4 style="padding: 8px 8px 0 8px">CPU Usage:</h4>
+            <div id="cpuUsage" class="gauge-container four">
+                <span class="value-text">%</span>
+            </div>
+        </div>
+
+        <div class="cool-box">
+            <h4 style="padding: 8px 8px 0 8px">RAM Usage:</h4>
+            <div id="ramUsage" class="gauge-container four">
+                <span class="value-text">%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main" id="deauth-term" style="display:none; height: 92.5%; width: 90%; float:left; justify-content: center;">
+        <div style="display: inline; width: 25%; float:left; height: 100%; margin-right: 2.5%">
+            <div class="sharp-cool-box" style="text-align: center; width: 100%; height: 70.25%; padding: 24px;">
+                <h2>Menu</h2>
+    
+                <div id="buttons" class="button_wrap">
+                    <button id="deauthStart">Start Deauth</button>
+                    <button id="deauthStop">End Deauth</button>
+                </div>
+                <div style="margin-top: 100%">
+                    <label>
+                        <input type="checkbox"><span>Suppress found access point messages</span></input>
+                    </label>
+                </div>
+            </div>
+    
+            <div class="sharp-cool-box" style="width: 100%; height: 25%; margin-top: 1.5%">
+                <h2>Face</h2>
+    
+                <h1 style="font-size: 156px; margin-left: 15%; margin-top: 5%;" id="pwnface">(o_o)</h1>
+            </div>
+        </div>
+
+        <div class="sharp-cool-box" style="float: right; height: 100%; width: 25%; padding-left: 24px">
+            <p style="margin-left: 20px; margin-top: 24px">Console Output</p>
+            <textarea style="margin-top: 2px; margin-right: 20px; width: 92.5%; height: 75%" id="deauth-term-output" disabled></textarea>
+        </div>
+    </div>
+
+    <div class="main" id="nmap-term"
+        style="display:none; height: 92.5%; width: 90%; float:left; justify-content: center;">
+        <div class="sharp-cool-box" style="text-align: center; width: 17.5%; height: 100%; justify-content: center;">
+            <h2>Options</h2>
+
+            <span style="margin-bottom: 8px">host to scan</span>
+            <br>
+            <input type="text" id="nmapTarget" style="width: fit-content; height: 8px; margin-top: 8px"
+                value="127.0.0.1">
+
+            <br>
+
+            <span>Scan Discovery Method</span>
+            <br>
+            <select style="margin-top: 12px; font-size: 18px; height: 4%" class="select">
+                <option>Default (none)</option>
+                <option>TCP-SYN (-sS)</option>
+                <option>Connect() (-sT)</option>
+                <option>ACK (-sA)</option>
+                <option>TCP-Window (-sW)</option>
+                <option>Maimon (-sM)</option>
+                <option>UDP (-sU)</option>
+                <option>TCP-NULL (-sN)</option>
+                <option>TCP-FIN (-sF)</option>
+                <option>TCP-XMAS (-sX)</option>
+            </select>
+
+            <ul class="specialList">
+                <input type="checkbox" id="nmapVerbose"><span>Enable high verbosity (-vv)</span></input>
+                <br>
+                <input type="checkbox" id="nmapOS"><span>OS Detect (-O)</span></input>
+                <br>
+                <input type="checkbox" id="nmapVerFind"><span>Determine service/version info (-sV)</span></input>
+                <br>
+                <input type="checkbox" id="nmapFastMode"><span>Fast Mode (-F)</span></input>
+                <br>
+                <input type="checkbox" id="nmapHostDiscovery"><span>Skip host discovery (-Pn)</span></input>
+                <br>
+                <input type="checkbox" id="nmapSpoofSource"><span>Spoof source IP (-S (random ip))</span></input>
+                <br>
+                <input type="checkbox" id="nmapBadsum"><span>Badsum (--badsum)</span></input>
+                <br>
+                <input type="checkbox" id="nmapPortRange"><span>Scan port ranges (-p):</span><input type="text"
+                    id="nmapPort1"><span> to </span><input type="text" id="nmapPort2"></input>
+            </ul>
+
+            <div id="buttons" class="button_wrap">
+                <button id="nmapStart">Start Scan</button>
+            </div>
+
+        </div>
+
+        <div class="sharp-cool-box" style="float: right; height: 100%; width: 40%">
+            <p style="margin-left: 20px; margin-top: 24px">Console Output</p>
+            <textarea style="margin-top: 2px; margin-right: 20px; width: 92.5%; height: 75%" id="nmap-term-output"
+                disabled></textarea>
+        </div>
+    </div>
+
+    <div class="main" id="badUSB" style="display:none; height: 92.5%; width: 90%; float:left; justify-content: center;">
+        <div class="sharp-cool-box" style="text-align: center; width: 22.5%; height: 100%; justify-content: center;">
+            <h2>Scripts</h2>
+            <div id="usbBoxArea" style="height: auto; max-height: auto; display:flex; flex-wrap: wrap;"></div>
+        </div>
+
+        <div class="sharp-cool-box" style="float: right; height: 100%; width: 20%">
+            <p style="margin-left: 20px; margin-top: 24px">Console Output</p>
+            <textarea style="margin-top: 2px; margin-right: 20px; width: 87.5%; height: 75%" id="usb-term-output" disabled></textarea>
+        </div>
+
+        <div class="sharp-cool-box" style="float: right; height: 100%; width: 7.5%">
+            <p style="margin-left: 20px; margin-top: 24px">Script Percentage</p>
+            <div id="usbPercent" class="gauge-container four">
+                <span class="value-text">%</span>
+            </div>
+        </div>
+    </div>
+
+    </div>
+</body>
+
+<head>
+    <script src="pureknob.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"
+        integrity="sha512-lbwH47l/tPXJYG9AcFNoJaTMhGvYWhVM9YI43CT+uteTRRaiLCui8snIgyAN8XWgNjNhCqlAUdzZptso6OCoFQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css"
+        integrity="sha512-6S2HWzVFxruDlZxI3sXOZZ4/eJ8AcxkQH1+JjSe/ONCEqR9L4Ysq5JdT5ipqtzU7WHalNwzwBv+iE51gNHJNqQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"
+        integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ=="
+        crossorigin="anonymous"></script>
+    <script src="main.js"></script>
+</head>
+
+</html>

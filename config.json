@@ -1,0 +1,12 @@
+{
+    "cleanScroll": true,
+    "onlyPrefix": false,
+    "selectionBackgroundWidth": 200,
+    "idleCycles": 720,
+    "selectedPrefix": ">",
+    "flipperZeroMenu": true,
+
+
+    "monitorInterface": "wlan0",
+    "normalInterface": "wlan0"
+}

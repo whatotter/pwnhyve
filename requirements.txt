@@ -1,0 +1,6 @@
+netifaces
+RPi.GPIO
+requests
+pillow
+numpy
+scapy

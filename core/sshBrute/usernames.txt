@@ -1,0 +1,10 @@
+cisco
+root
+nobody
+admin
+toor
+tplink
+tether
+abc
+user
+guest

@@ -1,0 +1,450 @@
+button {
+    border: none;
+    border-width: 0;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    background-color: rgb(20, 20, 20);
+}
+
+textarea {
+    border: none;
+    background-color: #222;
+    color: white;
+    resize: none;
+    margin: 24px;
+    width: 95%;
+    border-radius: 2px;
+    padding: 8px;
+    transition: ease-in-out;
+    transition-duration: 100ms;
+    outline: 2px solid #333;
+}
+
+textarea:hover, textarea:focus {
+    outline: 2px solid #888;
+}
+
+input[type=text] {
+    height: 32px;
+    margin: 24px;
+    margin-top: 2px;
+    width: 96.5%;
+    background-color: #222;
+    color: white;
+    padding: 10px;
+
+
+    border: none;
+    outline: 2px solid #333;
+    border-radius: 2px;
+
+    transition: ease-in-out;
+    transition-duration: 100ms;
+}
+
+input[type=text]:hover, input[type=text]:focus {
+    outline: 2px solid #888;
+}
+
+.main {
+    float: left;
+    background-color: transparent;
+    padding: 15px;
+    display: inline;
+    width: 95%
+}
+
+.logo {
+    margin-top: 14px;
+    margin-bottom: 20px;
+}
+
+.side-button {
+    width: 80px;
+    height: fit-content;
+    background-color: rgb(30, 30, 30);
+    color: white;
+    justify-content: center;
+    transition-duration: 0.2s;
+    border-style: solid;
+}
+
+.side-button:hover {
+    transition-duration: 0.2s;
+    background-color: rgb(60, 60, 60)
+}
+
+.side-button img {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.side {
+    background-color: rgb(30, 30, 30);
+    float: left;
+    width: 80px;
+    height: 100vh;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 0 3px 0 0;
+    position:fixed
+}
+
+.top {
+    background-color: rgb(30, 30, 30);
+    float: left;
+    width: 100%;
+    height: 70px;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 0 3px 0 0;
+    position:fixed;
+    left: 3%;
+    box-shadow: 20px 0px 0px -30px rgba(0, 0, 0, 0.2), 0 0px 20px 0 rgba(0, 0, 0, 0.19);
+    clip-path: inset(-5px -5px -5px 0px);
+    z-index: 999;
+}
+    .top h1,h2,h3,h4 {
+        color:white;
+        margin-top: 0.85%;
+        margin-left: 0.5%;
+        margin-right: 0;
+        width: max-content
+    }
+    
+    .top button {
+        margin: 8px;
+        background-color: transparent;
+    }
+
+.side img {
+    background-color: transparent;
+    transition-duration: 0.2s;
+}
+
+.cool-box {
+    border-radius: 12px;
+    background-color: rgb(30, 30, 30);
+    width: fit-content;
+    color: lightgrey;
+    padding: 4px;
+    margin: 16px;
+    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    height: 240px;
+}
+
+    .cool-box h4 {
+        margin-left: 8px
+    }
+
+.sharp-cool-box {
+    background-color: rgb(30, 30, 30);
+    width: fit-content;
+    color: lightgrey;
+    padding: 24px;
+    margin: 1px;
+}
+
+.hide {
+    display: none;
+}
+
+.usbBox {
+    background-color: #222;
+    height: 25%;
+    width: 31.75%;
+    padding: 12px;
+    box-sizing: border-box;
+    margin: 4px
+}
+
+    .usbBox h2 {
+        font-size: 20px
+    }
+
+    .usbBox span, .usbBox button {
+        margin-top: 12px;
+        margin-bottom: 12px
+    }
+
+    .usbBox button {
+        border: 2px solid rgb(41, 12, 110);
+        padding: 14px;
+        font-family: Arial, Helvetica, sans-serif;
+        border-radius: 4px;
+        color: white;
+        background-color: #333;
+        font-size: 16px;
+        cursor: pointer;
+        transition-duration: 0.1s;
+        box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    }
+
+    .usbBox button:hover {
+        box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        background-color: #444;
+    }
+
+    .usbBox button:active {
+        transform: translateY(1px);
+    }
+
+.button_wrap {
+    display: inline-block;
+    justify-content: center;
+}
+
+.button_wrap button {
+    border: none;
+    color: white;
+    background: #333;
+    padding: 24px;
+    margin: 4px;
+    font-size: 15px;
+    width: 100%
+}
+
+.button_wrap button:hover {
+    transition-duration: 0.2s;
+    background-color: rgb(60, 60, 60)
+}
+
+.button_wrap button:active {
+    transition-duration: 0.07s;
+    background-color: rgb(40, 40, 40)
+}
+
+
+.specialList {
+    justify-content: center;
+
+}
+
+.specialList input[type=checkbox] {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    content: "";
+    padding-left: -32px;
+    margin-left: -32px;
+}
+
+.specialList input[type=text] {
+    border: none;
+    height: 3%;
+    margin-top: 2px;
+    margin-left: 4pt;
+    margin-right: 1pt;
+    width: 20%;
+    background-color: #202324;
+    color: white;
+    padding: 4px;
+    border-radius: 0;
+}
+
+select {
+    background-color: #333;
+    border: none;
+    padding: 10px;
+    font-family: Arial, Arial, Helvetica, sans-serif;
+    color: white;
+}
+
+select::after {
+    background-color: #333;
+    border: none;
+    padding: 10px;
+    font-family: Arial;
+}
+
+
+.select {
+    width: fit-content;
+    height: 8%;
+    line-height: 3;
+    overflow: hidden;
+    border-radius: .25em;
+}
+
+/* gauges */
+
+.gauge-container {
+    width: 150px;
+    height: 150px;
+    padding: 10px;
+    margin: 7px;
+    margin-top: 0;
+    padding-top: 0;
+    position: relative;
+}
+
+.gauge-container>.label {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.5);
+    font-family: monospace;
+    font-size: 0.8em;
+    padding: 5px 10px;
+}
+
+.gauge-container>.gauge .dial {
+    stroke: #333;
+    stroke-width: 2;
+    fill: rgba(0, 0, 0, 0);
+}
+
+.gauge-container>.gauge .value {
+    stroke: rgb(47, 227, 255);
+    stroke-width: 2;
+    fill: rgba(0, 0, 0, 0);
+}
+
+.gauge-container>.gauge .value-text {
+    fill: rgb(47, 227, 255);
+    font-family: sans-serif;
+    font-weight: bold;
+    font-size: 0.8em;
+}
+
+
+
+
+/* ------- Alternate Style ------- */
+.wrapper {
+    height: 100px;
+    float: left;
+    margin: 7px;
+    overflow: hidden;
+}
+
+.wrapper>.gauge-container {
+    margin: 0;
+}
+
+.gauge-container.two {}
+
+.gauge-container.two>.gauge .dial {
+    stroke: #334455;
+    stroke-width: 10;
+}
+
+.gauge-container.two>.gauge .value {
+    stroke: orange;
+    stroke-dasharray: none;
+    stroke-width: 13;
+}
+
+.gauge-container.two>.gauge .value-text {
+    fill: #ccc;
+    font-weight: 100;
+    font-size: 1em;
+}
+
+
+
+/* ------- Alternate Style ------- */
+.gauge-container.three {}
+
+.gauge-container.three>.gauge .dial {
+    stroke: #334455;
+    stroke-width: 2;
+}
+
+.gauge-container.three>.gauge .value {
+    stroke: #C9DE3C;
+    stroke-width: 5;
+}
+
+.gauge-container.three>.gauge .value-text {
+    fill: #C9DE3C;
+}
+
+
+
+/* ----- Alternate Style ----- */
+.gauge-container.four>.gauge .dial {
+    stroke: #333;
+    stroke-width: 10;
+}
+
+.gauge-container.four>.gauge .value {
+    stroke: #290c6e;
+    stroke-dasharray: none;
+    stroke-width: 10;
+}
+
+.gauge-container.four>.gauge .value-text {
+    fill: white;
+    transform: translate3d(27.5%, 32%, 0);
+    display: inline-block;
+}
+
+.gauge-container.four .value-text {
+    color: white;
+    font-weight: 100;
+    position: absolute;
+    bottom: 18%;
+    right: 10%;
+    display: inline-block;
+}
+
+
+
+/* ----- Alternate Style ----- */
+.gauge-container.five>.gauge .dial {
+    stroke: #334455;
+    stroke-width: 5;
+}
+
+.gauge-container.five>.gauge .value {
+    stroke: #F8774B;
+    stroke-dasharray: 25 1;
+    stroke-width: 5;
+}
+
+.gauge-container.five>.gauge .value-text {
+    fill: #F8774B;
+    font-size: 0.7em;
+}
+
+
+
+/* ----- Alternate Style ----- */
+.gauge-container.six>.gauge .dial {
+    stroke: #334455;
+    fill: "#334455";
+    stroke-width: 20;
+}
+
+.gauge-container.six>.gauge .value {
+    stroke: #FF6DAF;
+    stroke-width: 20;
+}
+
+.gauge-container.six>.gauge .value-text {
+    fill: #FF6DAF;
+    font-size: 0.7em;
+}
+
+
+.gauge-container.seven>.gauge .dial {
+    stroke: transparent;
+    stroke-width: 5;
+    transform: scale(0.9, 0.9) translate3d(5.5px, 5.5px, 0);
+    fill: rgba(148, 112, 57, 0.42);
+}
+
+.gauge-container.seven>.gauge .value {
+    stroke: #F8774B;
+    stroke-dasharray: none;
+    stroke-width: 5;
+}

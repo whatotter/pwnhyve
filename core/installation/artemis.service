@@ -1,0 +1,8 @@
+[Unit]
+Description=artemis startup 
+
+[Service]
+ExecStart=/bin/artemisStart
+
+[Install]
+WantedBy=multi-user.target

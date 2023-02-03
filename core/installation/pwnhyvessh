@@ -1,0 +1,29 @@
+#!/bin/bash
+cd /sys/kernel/config/usb_gadget/
+mkdir -p isticktoit
+cd isticktoit
+echo 0x1d6b > idVendor # Linux Foundation
+echo 0x0104 > idProduct # Multifunction Composite Gadget
+echo 0x0100 > bcdDevice # v1.0.0
+echo 0x0200 > bcdUSB # USB2
+mkdir -p strings/0x409
+echo "fedcba9876543210" > strings/0x409/serialnumber
+echo "Tobias Girstmair" > strings/0x409/manufacturer
+echo "iSticktoit.net USB Device" > strings/0x409/product
+mkdir -p configs/c.1/strings/0x409
+echo "Config 1: ECM network" > configs/c.1/strings/0x409/configuration
+echo 250 > configs/c.1/MaxPower
+
+# Add functions here
+mkdir -p functions/ecm.usb0
+# first byte of address must be even
+HOST="48:6f:73:74:50:43" # "HostPC"
+SELF="42:61:64:55:53:42" # "BadUSB"
+echo $HOST > functions/ecm.usb0/host_addr
+echo $SELF > functions/ecm.usb0/dev_addr
+ln -s functions/ecm.usb0 configs/c.1/
+# End functions
+ls /sys/class/udc > UDC
+#put this at the very end of the file:
+ifconfig usb0 10.0.0.1 netmask 255.255.255.252 up
+route add -net default gw 10.0.0.2

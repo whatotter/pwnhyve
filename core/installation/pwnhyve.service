@@ -1,0 +1,8 @@
+[Unit]
+Description=pwnhyve startup 
+
+[Service]
+ExecStart=/bin/pwnhyveStart
+
+[Install]
+WantedBy=multi-user.target
