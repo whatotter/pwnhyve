@@ -9,6 +9,9 @@ i am not responsible for what you do with this thing; this can actually be used 
 ### help needed
 i need someone to help me with the front end of the control panel, currently it's really ugly and bad and i have no clue on how to fix it
 ***
+### TRELLO FOR SUGGESTIONS
+[asdf](https://trello.com/b/ncgSqzpb/plans-for-pwnhyve)
+***
 
 # NOTICE
 - deauthing works, but can sometimes go silent (see https://github.com/evilsocket/pwnagotchi/issues/267)
