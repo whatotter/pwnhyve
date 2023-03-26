@@ -41,14 +41,7 @@ if you try to use your pi as a ducky usb, it will take (minimum) 25 seconds to b
 you could use it without a battery though, just not reccomended
 
 # how install?
-- make sure you're root
-```bash
-git clone https://github.com/nototter/pwnhyve/
-cd pwnhyve
-python3 autoinstall.py
-# go through install & reboot, or start the script
-```
-or go into the wiki to install
+go into the wiki to install
 
 # credit
 - 95% of this was made by me
