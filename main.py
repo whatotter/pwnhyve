@@ -231,8 +231,6 @@ if __name__ == "__main__":
         # TODO: make battery icons # finished
 
 
-        # end of interface
-
         try: # check if selection is out of range
             selection = list(vars.plugins)[vars.currentSelection]
         except IndexError: # if it is
