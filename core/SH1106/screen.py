@@ -481,29 +481,39 @@ class screenConsole:
     def clearText(self):
         self.text = ""
             
-def waitForKey(GPIO):
-    while 1: # wait for key press
-        if not GPIO.input(KEY_UP_PIN): return KEY_UP_PIN
-    
-        if not GPIO.input(KEY_LEFT_PIN): return KEY_LEFT_PIN
-            
-        if not GPIO.input(KEY_RIGHT_PIN): return KEY_RIGHT_PIN
-            
-        if not GPIO.input(KEY_DOWN_PIN): return KEY_DOWN_PIN
+def waitForKey(GPIO, debounce=False):
+    """wait for key press and return the key pressed
+    debounce waits for the key to be released"""
 
-        if not GPIO.input(KEY_PRESS_PIN): return KEY_PRESS_PIN
-            
-        if not GPIO.input(KEY1_PIN): return KEY1_PIN
-            
-        if not GPIO.input(KEY2_PIN): return KEY2_PIN
-            
-        if not GPIO.input(KEY3_PIN): return KEY3_PIN
+    a = None
+
+    while 1: # wait for key press
+        if not GPIO.input(KEY_UP_PIN): a = KEY_UP_PIN; break
+
+        if not GPIO.input(KEY_LEFT_PIN): a = KEY_LEFT_PIN; break
+        
+        if not GPIO.input(KEY_RIGHT_PIN): a = KEY_RIGHT_PIN; break
+        
+        if not GPIO.input(KEY_DOWN_PIN): a = KEY_DOWN_PIN; break
+
+        if not GPIO.input(KEY_PRESS_PIN): a = KEY_PRESS_PIN; break
+        
+        if not GPIO.input(KEY1_PIN): a = KEY1_PIN; break
+        
+        if not GPIO.input(KEY2_PIN): a = KEY2_PIN; break
+        
+        if not GPIO.input(KEY3_PIN): a = KEY3_PIN; break
 
         sleep(0.05) # prevent really fast ticks
 
-    return
+    if debounce:
+        while checkIfKey(GPIO):
+            pass
+
+    return a
 
 def checkIfKey(GPIO):
+    """check if there is a key being pressed"""
     if not GPIO.input(KEY_UP_PIN): return True
 
     if not GPIO.input(KEY_LEFT_PIN): return True
@@ -523,6 +533,8 @@ def checkIfKey(GPIO):
     return False
 
 def getKey(GPIO):
+    """get key without waiting; return current key pressed"""
+
     if not GPIO.input(KEY_UP_PIN): return KEY_UP_PIN
 
     if not GPIO.input(KEY_LEFT_PIN): return KEY_LEFT_PIN
@@ -557,77 +569,49 @@ def fullClear(display):
     display.rectangle((0, 0, 200, 100), fill=1)
     return True
 
-def enterText(draw, disp, image, GPIO, top=string.digits+"-=", kb="qwertyuiop{}asdfghjkl;'zxcvbnm,./", font=ImageFont.truetype("./core/fonts/pixelop/PixelOperatorHB8.ttf", 8), flipped=False):
+def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "{}\\;',./"], font=ImageFont.truetype("./core/fonts/pixelop/PixelOperatorHB8.ttf", 8), font2=ImageFont.truetype("./core/fonts/pixelop/PixelOperatorHB8.ttf", 4), flipped=False):
     """
     super wip
     """
-    textX, textY = 12, 12
     kbCoords = [0, 24]
 
     chosenKey = "q"
+    compiledStri = ""
+    keyI = 0
+    stringsI = 0
+    chars = [x for x in kbRows[stringsI]]
+
+    print(chars)
 
     while True:
 
+        striShown = compiledStri
+
+        if len(striShown) > 16:
+            v = [str(x) for x in striShown]
+            while len(v) != 16:
+                v.pop() 
+
         fullClear(draw)
 
-        compiledStri = ""
+        draw.rectangle([(0, 14), (128, 16)], fill=0, outline=255)
 
-        draw.rectangle([(textX+4, textY+0), (200, 16)], fill=0, outline=255)
-        draw.text((textX+3, textY+1), compiledStri, fill=1, outline=255, font=font)
+        draw.text((2,2), compiledStri, fill=0, outline=255, font=font)
+        
+        textX, textY = 8, 20
 
-        # keyboar
+        for x in chars:
+            if textX >= 116:
+                textX = 8
+                textY += 10
 
-        keyCoords = {}
-
-        for x in top:
-
-            if chosenKey == x:
-                draw.rectangle((tuple(kbCoords), (kbCoords[0]+14, kbCoords[1]+10)), fill=1, outline=255)
-                draw.text([kbCoords[0] + 2, kbCoords[1]+2], x, fill=0, outline=255, font=font)
+            if x != chosenKey:
+                draw.text((textX, textY), x, fill=0, outline=255, font=font)
             else:
-                draw.rectangle((tuple(kbCoords), (kbCoords[0]+14, kbCoords[1]+10)), fill=0, outline=255)
-                draw.text([kbCoords[0] + 2, kbCoords[1]+2], x, fill=1, outline=255, font=font)
+                draw.rectangle([(textX-2, textY-2), (textX+8, textY+8)], fill=0, outline=255)
+                draw.text((textX, textY), x, fill=1, outline=255, font=font)
 
-            keyCoords[x] = kbCoords
-
-            kbCoords[0] += 10
-
-        kbCoords[0] = 0
-        kbCoords[1] += 10
-
-        for x in kb:
-            if chosenKey == x:
-                draw.rectangle((tuple(kbCoords), (kbCoords[0]+14, kbCoords[1]+10)), fill=1, outline=255)
-                draw.text([kbCoords[0] + 2, kbCoords[1]+2], x, fill=0, outline=255, font=font)
-            else:
-                draw.rectangle((tuple(kbCoords), (kbCoords[0]+14, kbCoords[1]+10)), fill=0, outline=255)
-                draw.text([kbCoords[0] + 2, kbCoords[1]+2], x, fill=1, outline=255, font=font)
-
-            keyCoords[x] = kbCoords
-
-            kbCoords[0] += 10
-
-            if kbCoords[0] > 110:
-                kbCoords[0] = 5
-                kbCoords[1] += 10
-
-        """
-        kbCoords[0] = 0
-        kbCoords[1] += 14
-
-        for x in kb:
-            draw.rectangle((tuple(kbCoords), (kbCoords[0]+10, kbCoords[1]+12)), fill=0, outline=255)
-            draw.text([kbCoords[0] + 2, kbCoords[1]], x, fill=1, outline=255, font=font)
-            keyCoords[x] = kbCoords
-
-            kbCoords[0] += 8
-            if kbCoords[0] > 128:
-                kbCoords[0] = 0
-                kbCoords[1] += 14
-
-            #kbCoords[1] = kbCoords[1] + 4
-
-        """
+            textX += 8
 
         # show compiled image
         if flipped:
@@ -636,34 +620,46 @@ def enterText(draw, disp, image, GPIO, top=string.digits+"-=", kb="qwertyuiop{}a
         else:
             disp.ShowImage(disp.getbuffer(image))
 
-        while True:
-            # 0 is x plane
-            # 1 is y plane
 
-            key = getKey(GPIO)
+        ##
 
-            if key == KEY_DOWN_PIN: # moving on the x and y plane
-                currCoords = keyCoords[chosenKey]
-                for key in keyCoords:
-                    rangeMod = 8
-                    if keyCoords[key][1] in range(currCoords[1] - rangeMod, currCoords[1] + rangeMod):
-                        #if keyCoords[key][0] == currCoords[0] + 5:
-                        chosenKey = key
-                        break
+        key = waitForKey(GPIO, debounce=True)
 
-            elif key == KEY_RIGHT_PIN: # moving on the y plane
-                currCoords = keyCoords[chosenKey]
-                for key in keyCoords:
-                    if keyCoords[key][0] == currCoords[0] + 10:
-                        chosenKey = key
-                        break
+        if key == KEY_DOWN_PIN: # moving on the x and y plane
+            stringsI += 1 if stringsI != len(kbRows)-1 else 0
+            chars = kbRows[stringsI]
 
-            elif key == KEY_LEFT_PIN: # moving on the y plane
-                currCoords = keyCoords[chosenKey]
-                for key in keyCoords:
-                    if keyCoords[key][1] == currCoords[1] - 10:
-                        chosenKey = key
-                        break
+            if keyI > len(chars):
+                keyI = len(chars)
+
+        elif key == KEY_UP_PIN:
+            stringsI -= 1 if stringsI != 0 else 0
+            chars = kbRows[stringsI]
+
+            if keyI > len(chars):
+                keyI = len(chars)
+
+        elif key == KEY_RIGHT_PIN: # moving on the y plane
+            keyI += 1 if keyI != len(chars) -1  else 0
+
+        elif key == KEY_LEFT_PIN: # moving on the y plane
+            keyI -= 1 if keyI != 0 else 0
+
+        elif key == KEY_PRESS_PIN:
+            compiledStri += chosenKey
+
+        elif key == KEY3_PIN:
+            return compiledStri
+        elif key == KEY1_PIN:
+            compiledStri = ''.join([x for x in compiledStri][-1])
+
+        print(keyI)
+
+        try:
+            chosenKey = chars[keyI]
+        except IndexError:
+            keyI = 0
+            chosenKey = chars[keyI]
 
 def menu(draw, disp, image, choices, GPIO, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
  cleanScroll=True, flipped=False, flipperZeroMenu=True, flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16), flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16), font=None, onlyPrefix=False, selectionBackgroundWidth=200, enableIcons=False, iconsDict={}, timeoutCycles=None):

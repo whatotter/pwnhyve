@@ -10,7 +10,6 @@ from core.SH1106.screen import createSelection, fullClear, waitForKey, menu, che
 from core.utils import getChunk, uError, uStatus, fakeGPIO, uSuccess
 from core.plugin import *
 from time import sleep
-from os import system as opsys
 import json
 
 pillowDebug = False # very not reliable, also laggy
@@ -57,7 +56,7 @@ class customizable:
     selectionBackgroundWidth = 200 # width of inverted colors, change if you have bigger display or dont like it
     # ^ reccomended at 200
 
-    idleCycles = 240 * 3 # cycles before reporting idle; # 120 idle cycles is 30 seconds, 240 cycles is 60s (not exact)
+    idleCycles = 2400000 * 60 # cycles before reporting idle; # 120 idle cycles is 30 seconds, 240 cycles is 60s (not exact)
     # ^ reccomended at 240 * 3
 
     selectedPrefix = ">" # if you dont want to fill the background with color, change this to what you want it as and enable "onlyPrefix"
@@ -108,6 +107,18 @@ if __name__ == "__main__":
         customizable.idleCycles = a["idleCycles"]
         customizable.selectedPrefix = a["selectedPrefix"]
         customizable.flipperZeroMenu = a["flipperZeroMenu"]
+
+        if a["enableWebServer"]:
+            uStatus("starting webserver")
+
+            #from flask import Flask, Response, send_file, request
+            import core.controlPanel.cpanel as cpanel
+
+            uSuccess("imported webserver")
+
+            #cpanel.app.run(host="0.0.0.0", port=80)
+
+            Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
 
     if not pillowDebug:
         disp = SH1106.SH1106()
@@ -359,7 +370,7 @@ if __name__ == "__main__":
 
             #print(key)
 
-            if key == False: pass # needed to change for isActive
+            if key == False: sleep(0.01) # TODO: remove maybe?
 
             elif key == gpio['KEY_DOWN_PIN']: # button is pressed
                 vars.isActive = True # set our idle thing
@@ -543,18 +554,18 @@ if __name__ == "__main__":
 
                 break
 
-            if not vars.isActive:
-                if customizable.idleCycles <= vars.passedIdleCycles:
-                    try:
-                        for p in plugins[1]: # for plugin in plugins list
-                            for executable in plugins[1][p][1]: # for every executable in the 
-                                if executable == "setIdle":
-                                    plg = plugins[1][p][2] # chosen plugin
-                                    run("setIdle", [draw, disp, image, GPIO], plg)       
-                        vars.passedIdleCycles = 0
-                    except Exception as e:
-                        raise
-                        #print("failed to go idle: {}".format(str(e)))
-                        #pass
-                vars.passedIdleCycles += 1
-                sleep(0.075)
+            #vars.isActive = True
+            #if not vars.isActive:
+            if customizable.idleCycles == vars.passedIdleCycles:
+                vars.passedIdleCycles = 0
+                try:
+                    for p in plugins[1]: # for plugin in plugins list
+                        for executable in plugins[1][p][1]: # for every executable in the 
+                            if executable == "setIdle":
+                                plg = plugins[1][p][2] # chosen plugin
+                                run("setIdle", [draw, disp, image, GPIO], plg)       
+                except Exception as e:
+                    raise
+                    #print("failed to go idle: {}".format(str(e)))
+                    #pass
+            vars.passedIdleCycles += 1

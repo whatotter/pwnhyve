@@ -6,8 +6,11 @@
 # TEMPORARILY FIXED
 # but anything temporary can be permaneant if you try hard enough
 
-from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
-from plugins.wifi import pwnagotchiHTML
+#from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
+import os, sys
+sys.path.insert(1, os.path.join(sys.path[0], 'core/controlPanel'))
+
+import plugin as plgmanager
 
 from flask import Flask, Response, send_file, request
 import socket
@@ -17,9 +20,11 @@ import base64
 import json
 from hashlib import sha256
 from time import sleep
+import logging
 
 try:
     import psutil
+    windows = False
 except ImportError:
     windows = True
 import os
@@ -28,16 +33,12 @@ app = Flask(__name__)
 #cwd = os.getcwd()
 cwd = "./core/controlPanel"
 loggedIn = []
-loggedPWD = sha256(json.loads(open(f"{cwd}/config.json").read())["password"].encode('ascii')).hexdigest()
+loggedPWD = sha256(json.loads(open(f"{cwd}/config.json").read())["password"].encode('ascii')).hexdigest() # gyat
 
 class system:
     def get_cpu_temp():
         if windows: return 0
         psutil.sensors_temperatures()["cpu_thermal"][0].current
-
-    def get_gpu_temp():
-        if windows: return 0
-        psutil.sensors_temperatures()["gpu_thermal"][0].current
 
     def shellExec(cmd, wait=False, basicSecurity=True):
         if basicSecurity:
@@ -65,10 +66,13 @@ class system:
     percentage = 0
     dsi = None
 
-    deauthPOOL = ""
-    deauthCONSOLE = ""
-    deauthJSON = None
+    sockCon = "" # deez nuts
     unixSock = None
+    sockOutput = None
+    closeSock = None
+
+
+    pluginStop = False
 
 @app.route("/")
 def index():
@@ -168,168 +172,227 @@ def postinfo():
             "data": "ok",
 
             "pools": {
-                "deauth": system.deauthPOOL
+                "console": system.sockCon
             },
 
             "system": {
                 "cpuPercent": psutil.cpu_percent(1.5) if not windows else 0,
                 "ramPercent": psutil.virtual_memory()[2] if not windows else 0,
                 "cpuTemp": round(psutil.sensors_temperatures()["cpu_thermal"][0].current) if not windows else 0,
-                "gpuTemp": round(psutil.sensors_temperatures()["gpu_thermal"][0].current) if not windows else 0,
             },
 
             "usbScripts": os.listdir(f"{cwd}/../../plugins/payloads/"),
-
-            "deauth": system.deauthJSON
         }
     )
 
-@app.route("/api/badusb/scripts")
-def usbInfo():
-    return {"data": "ok",
-            "scripts": os.listdir(f"{cwd}/../../plugins/payloads/")}
+@app.route("/api/plugins/show")
+def pluginsShow():
+    return {"plugins": vars.plugins, "icons": vars.icons}
 
-@app.route("/api/badusb/run", methods=['GET','POST'])
-def usbRun():
-    sn = request.get_json(force=True)["script"]
+@app.route("/api/plugins/console")
+def pluginsConsole():
+    return system.sockCon
 
-    class dsiEx():
-        percentage = 0
-        printed = ""
+@app.route("/api/plugins/input", methods=["GET", "POST"])
+def pluginsInput():
+    a = request.get_json(force=True)
 
-    if not windows:
-        system.dsi = DuckyScriptInterpreter(BadUSB()).run(f"{cwd}/../../plugins/payloads/{sn}")
-    else:
-        system.dsi = dsiEx()
+    print(a)
 
-        for x in range(0,101):
-            system.dsi.percentage = x
-            system.dsi.printed += "abc\n"
-            sleep(0.1)
+    system.sockOutput = a["input"]
 
-        print("ok")
-
-    print(sn)
-
-    return "0"
-
-@app.route("/api/badusb/dumpInfo")
-def usbInfoDump():
-    return {"data": "ok",
-        "scripts": os.listdir(f"{cwd}/../../plugins/payloads/"),
-        "percentageDone": system.dsi.percentage if system.dsi != None else "0",
-        "console": system.dsi.printed
-        }
-
-@app.route("/api/badusb/clearPercentage")
-def usbClearPercentage():
-    system.dsi = None
-    return {"data": "ok"}
-
-@app.route("/api/clearPools")
-def clearPools():
-    system.wifiPOOL, system.arpPOOL, system.deauthPOOL = "", "", ""
+    print(system.sockOutput)
     
-    return {"data": "ok"}
+    return "1"
 
-@app.route("/api/commands/pwnagotchiStart")
-def pwnStart():
-    threading.Thread(target=pwnagotchiHTML, daemon=True).start()
+@app.route("/api/plugins/stop", methods=["GET", "POST"])
+def pluginsStop():
+    system.pluginStop = True
+
+    while system.pluginStop:
+        pass
+
+    return "1"
+
+@app.route("/api/plugins/run", methods=["GET", "POST"])
+def pluginsRun():
+    jsoN = request.get_json(force=True)
+
+    system.sockCon = ""
 
     unixSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    closeSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    unixSock.connect(("127.0.0.1", 62117))
+    closeSock.bind(("127.0.0.1", 62118))
+    unixSock.bind(("127.0.0.1", 62117))
+
+    unixSock.listen(1)
+    closeSock.listen(1)
 
     def unixSockThread(sock):
+        """communication between this script and the plugin - moves all data from plugin to a variable so flask can send to user"""
+
+        sock.settimeout(1)
+        conn, addr = sock.accept()
+        conn.settimeout(1)
+
+        print("[!] got plugin connection")
+
+
         while True:
             try:
-                abc = sock.recv(65536).decode('utf-8')
+                abc = conn.recv(65536).decode('utf-8')
+
+                if not abc or len(abc) == 0:
+                    break
+
+                abc += "\n"
             except ConnectionAbortedError:
                 print("exited gracefully")
-                return
+                system.sockCon += "\nPlugin abruptly disconnected - check for an error?\n"
+                system.pluginStop = True
+                break
+            except TimeoutError:
+                continue
 
+            print(abc)
+
+            if abc.strip() != "userIntervention":
+                if abc.strip() == "exit":
+                    print("exited data sock")
+                    system.sockCon += "\nPlugin exited.\n"
+                    system.pluginStop = True
+                    quit()
+                try:
+                    system.sockCon += abc
+                except:
+                    pass # idk
+            else:
+                system.sockCon += ">>> "
+
+                while system.sockOutput == None:
+                    pass
+
+                print(system.sockOutput)
+
+                conn.sendall(system.sockOutput.encode("utf-8"))
+
+                system.sockCon += system.sockOutput + "\n"
+
+                system.sockOutput = None
+
+        system.unixSock = None
+
+    def closeSockThread(sock):
+        """
+        sends a (basically) SIGKILL command to the plugin to stop running
+
+        when closeSock = True, this socket sends "exit" to plugin thread
+        plugin thread stops everything, returns "ok" and quits
+        if plugin abruptly quits and doesn't send "ok", catches it
+
+        plugin must close unix sock/data sock first, and send "ok" before exitsocket.close()
+        """
+        conn, addr = sock.accept()
+
+        print("[!] got plugin connection")
+
+        while True:
+            if system.pluginStop:
+                try:
+                    conn.sendall("exit".encode("utf-8"))
+                except (BrokenPipeError, ConnectionAbortedError):
+                    print("caught abrupt quit")
+                    break
             try:
-                jsond = json.loads(abc)
-
-                system.deauthCONSOLE = jsond["console"]
-                system.deauthJSON = abc
-                
+                if conn.recv(512).decode("utf-8") == "ok":
+                    break
             except:
-                system.deauthPOOL += abc + "\n"
+                print("caught abrupt quit")
+                break
+        
+        system.pluginStop = False
+        system.closeSock = None
 
 
-    system.unixSock = unixSock
-    threading.Thread(target=unixSockThread, args=(unixSock,), daemon=True).start()
-
-    return {"data": "ok"}
-
-@app.route("/api/commands/pwnagotchiStop")
-def pwnStop():
-
-    system.unixSock.close()
-
-    toExitSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    toExitSock.connect(("127.0.0.1", 62118))
-
-    toExitSock.sendall("exit".encode("utf-8"))
-
-    toExitSock.close()
-
-    return {"data": "ok"}
-
-
-@app.route("/api/commands/nmap")
-def nmapRun():
-    windows=True
-
-    sn = request.get_json(force=True)["args"]
-
-    if windows:
-        cmd = ("cmd.exe /C nmap {} && echo #finish".format(sn)).split(" ")
+    if system.unixSock != None:
+        return "A plugin is already running."
     else:
-        cmd = ("bash nmap {} && echo #finish".format(sn)).split(" ")
+        system.unixSock = unixSock
+        system.closeSock = closeSock
 
-    temp = True
-    isBreak = False
-    a = 0
+        threading.Thread(target=unixSockThread, args=(unixSock,), daemon=True).start()
+        threading.Thread(target=closeSockThread, args=(closeSock,), daemon=True).start()
 
-    p = subprocess.Popen(cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT)
+    # once threads start, start plugin
 
 
-    while temp:
-        if isBreak: break
-        a = 0
-        for line in iter(p.stdout.readline, b''):
-            if len(line.rstrip().decode('ascii')) != 0: yield line.decode('ascii')
+    key = jsoN["plugin"]
 
-            a += 1
+    for p in vars.bigPlugins[1]: # for plugin in plugins list
+        for executable in vars.bigPlugins[1][p][1]: # for every executable in the 
+            if executable == key:
+                plg = vars.bigPlugins[1][p][2] # chosen plugin
 
-            if len(line.rstrip().decode('ascii')) == 0:
-                temp = not temp
-                isBreak=True
-                break
-
-            if "#finish" in str(line.rstrip()):
-                temp = not temp
-                isBreak=True
-                break
-
-            if isBreak: break
-        if a == 0:
-            break # if no more new lines
-
-    yield '01234'
-
-    return
+                print("running")
+                threading.Thread(target=plgmanager.run, args=(key, [("127.0.0.1", 62117), ("127.0.0.1", 62118)], plg), daemon=True).start() # run it
+                return "1"
+    
 
 
 
-if __name__ == '__main__':
 
-    #getLogger('werkzeug').disabled = True
+class vars:
+    plugins = {}
+    icons = {}
+    folders = []
+    bigPlugins = None
+
+def run(host, port):
+
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
     #flask.cli.show_server_banner = lambda *args: None
 
-    app.run(port=80, host="0.0.0.0")
+    plugins = plgmanager.load(folder="webplugins") # load
+
+    vars.bigPlugins = plugins
+
+    for p in plugins[1]: # for plugin in plugins list
+        if len(plugins[1][p][1]) == 0: continue # sanity check
+        for executable in plugins[1][p][1]: # for every executable in the plugin's executable list
+            if executable == "icons": continue
+            vars.plugins[executable] = {} # create dict
+            vars.icons[executable] = {} # create dict
+
+            try:
+                vars.icons[executable] = plugins[1][p][1]["icons"][executable].strip() # define icon
+            except: #KeyError:
+                vars.icons[executable] = None
+
+            try:
+                vars.plugins["{}".format(executable, plugins[1][p][0])]["help"] = (plugins[1][p][1][executable].strip(), plugins[1][p][0]) # define help
+
+            except (KeyError, AttributeError): # command's help not in configurationfile
+                vars.plugins[executable]["help"] = "I AM A FOLDER"
+                vars.folders.append(executable)
+                for item in plugins[1][p][1][executable]: # what the fuck
+                    try:
+                        a = plugins[1][p][1][executable][item]
+                    except:
+                        raise KeyError("{}'s command {} doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
+
+                    try:
+                        vars.icons[item] = plugins[1][p][1]["icons"][item].strip() # define icon
+                    except: #KeyError:
+                        vars.icons[item] = None
+
+                    vars.plugins[executable][item] = a
+                    #vars.plugins[executable]["help"] = a # define help
+
+                    #print(vars.plugins[executable])
+                    #print(vars.plugins)
+
+    print("now running web server")
+
+    app.run(port=port, host=host)

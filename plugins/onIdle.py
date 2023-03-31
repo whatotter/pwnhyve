@@ -12,7 +12,7 @@ class vars:
     font = ImageFont.truetype('core/fonts/Font.ttf', 18)
 
     nyanCat = True # enable meow meow meow meow meow meow 
-    nyanCatDelay = 0.0025 # delay inbetween showing new frame
+    nyanCatDelay = 0.01 # delay inbetween showing new frame
     displayResX, displayResY = 128, 64 # your display resolution to display nyan cat correctly
 
 def fullClear(display):
@@ -26,7 +26,6 @@ def setIdle(args:list):
     print("now idle")
 
     fullClear(canvas)
-
     #canvas.text((10, 10), "a mimir", fill=0, outline=255, font=vars.font)
 
     if not vars.nyanCat:
@@ -59,6 +58,8 @@ def setIdle(args:list):
             currFrame += 1
 
             time.sleep(vars.nyanCatDelay)
+            
+
 
     return
 

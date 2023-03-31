@@ -159,11 +159,10 @@ input[type=text]:hover, input[type=text]:focus {
 
 .usbBox {
     background-color: #222;
-    height: 25%;
-    width: 31.75%;
+    display: block;
     padding: 12px;
     box-sizing: border-box;
-    margin: 4px
+    margin: 4px;
 }
 
     .usbBox h2 {
@@ -171,8 +170,8 @@ input[type=text]:hover, input[type=text]:focus {
     }
 
     .usbBox span, .usbBox button {
-        margin-top: 12px;
-        margin-bottom: 12px
+        margin-top: 50%;
+        margin-bottom: 2px
     }
 
     .usbBox button {
@@ -186,6 +185,7 @@ input[type=text]:hover, input[type=text]:focus {
         cursor: pointer;
         transition-duration: 0.1s;
         box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        width: 100%;
     }
 
     .usbBox button:hover {

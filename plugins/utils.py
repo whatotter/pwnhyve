@@ -20,10 +20,6 @@ class vars:
             "toggleUSB": "toggle usb storage",
         },
 
-        "nwkUtils": {
-            "monitorMode": "toggle monitor mode"
-        },
-
         "systemUtils": {
             "shutdown": "shutdown Artremis and the pi",
             "reboot": "reboot the pi",
@@ -56,6 +52,14 @@ class vars:
 def fullClear(display):
     display.rectangle((0, 0, 200, 100), fill=1)
     return True
+
+def isManaged(iface):
+    a = loads(subprocess.getoutput("ip -j a show {}".format(iface)))
+
+    if "BROADCAST" in a[0]["flags"]:
+        return True # managed
+    elif "radiotap" in a[0]["flags"]:
+        return False # mon
 
 def mountUSB(args:list):
     subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
@@ -210,6 +214,11 @@ def toggleUSB(args:list):
     subprocess.getoutput("ls /sys/class/udc > {}UDC".format(vars.kernelGadgetDir))
     
 def shutdown(args:list):
+    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
+
+    fullClear(draw)
+    disp.ShowImage(disp.getbuffer(image))
+
     print("shutdown thingy")
     print(subprocess.getoutput("sudo shutdown now"))
 
@@ -234,10 +243,16 @@ def system_info(args:list):
 
     for x in ni.interfaces():
         print(x)
+        print(isManaged(x))
         try:
             ifaces[x] = ni.ifaddresses(x)[ni.AF_INET][0]['addr']
         except:
             ifaces[x] = "no addr assoc."
+
+            if isManaged(x):
+                pass
+            else:
+                ifaces[x] = "monitor mode"
 
     for x in ifaces:
         jumbled += "{}: {}\n".format(x, ifaces[x])
@@ -247,29 +262,6 @@ def system_info(args:list):
     sleep(1)
 
     z.exit()
-    waitForKey(GPIO)
-    while checkIfKey(GPIO): pass
-
-def monitorMode(args:list):
-    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
-
-    print("monitor mode shit")
-
-    ifaces = ni.interfaces()
-    priority = loads(open("./config.json", "r").read())
-
-    if priority["normalInterface"] in ifaces:
-        jsond = loads(subprocess.getoutput("ip -j a"))[0]
-
-        subprocess.getoutput("sudo airmon-ng start {}".format(priority["normalInterface"]))
-        draw.text([8,8], "started interface", fill=1, outline=255, font=None)
-
-    """elif priority["monitorInterface"] in ifaces:
-        subprocess.getoutput("sudo airmon-ng stop {}".format(priority["monitorInterface"]))
-        draw.text([8,8], "stopped interface", fill=1, outline=255, font=None)"""
-
-    disp.ShowImage(disp.getbuffer(image))
-
     waitForKey(GPIO)
     while checkIfKey(GPIO): pass
 
