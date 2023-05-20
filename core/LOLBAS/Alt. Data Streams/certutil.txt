@@ -1,0 +1,1 @@
+STRINGLN certutil.exe -urlcache -split -f ![$DS_SOURCE] c:\temp:ttt

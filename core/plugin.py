@@ -24,7 +24,7 @@ def load(folder="plugins"):
                 print("{}.py doesn't have a \"functions()\" definition, contact plugin developer to add one; skipping for now...".format(item))
                 continue
         
-    return (plugins, r)
+    return r
 
 def run(target, arg, plugin, threading=True):
 

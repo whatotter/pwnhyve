@@ -4,7 +4,9 @@ a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell p
 
 ***
 ### DISCLAIMER
-i am not responsible for what you do with this thing; this can actually be used for really bad purposes in the right hands
+i am not responsible for what you do with this thing; this can actually be used for really bad purposes in the right hands  
+this also isn't meant to be better than the p4wnp1-aloa - the aloa has way more support for everything than me
+if support/something you want isn't implemented yet, look at making plugins unless its something else - in that case, [make an issue](https://github.com/woahotter/pwnhyve/issues/new)
 ***
 ### help needed
 i need someone to help me with the front end of the control panel, currently it's really ugly and bad and i have no clue on how to fix it

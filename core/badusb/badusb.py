@@ -1,6 +1,7 @@
 import datetime
 from time import sleep
-from os import path
+import os
+import subprocess
 from random import randint, gauss
 import core.badusb.keys as usbKeys
 
@@ -22,7 +23,8 @@ class DuckyScriptInterpreter():
             "HOLD": self.HOLD,
             "RELEASE": self.RELEASE,
             "JITTER": self.JITTER,
-            "PRINT": self.PRINT
+            "PRINT": self.PRINT,
+            "PRESS": self.PRESS
         }
 
         self.vars = {}
@@ -32,14 +34,44 @@ class DuckyScriptInterpreter():
         return
 
     def STRING(self, splitLine:list):
-        self.usb.write(' '.join(splitLine), jitter=self.jitter)
+        ln = ' '.join(splitLine)
+        if "![$" in ln:
+                b, c = ln.split("![$")
+                val = ""
+
+                for x in [x for x in c]:
+                    if x == "]":
+                        break
+                    val += x
+                
+                ln = ln.replace("![${}]".format(val), os.environ.get(val, ""))
+
+        self.usb.write(ln, jitter=self.jitter)
 
     def STRINGLN(self, splitLine:list):
-        self.usb.write(' '.join(splitLine), jitter=self.jitter)
+        ln = ' '.join(splitLine)
+        if "![$" in ln:
+                b, c = ln.split("![$")
+                val = ""
+
+                for x in [x for x in c]:
+                    if x == "]":
+                        break
+                    val += x
+
+                print("-" * 20 + val)
+                print(os.environ.get(val, ""))
+
+                ln = ln.replace("![${}]".format(val), os.environ.get(val, ""))
+
+        self.usb.write(ln, jitter=self.jitter)
         self.usb.press('ENTER')
         
     def REM(self):
         return
+    
+    def PRESS(self, splitLine:list):
+        self.usb.press(splitLine[0])
 
     def ALT(self, splitLine:list):
         if len(splitLine) > 1:
@@ -134,6 +166,17 @@ class DuckyScriptInterpreter():
             base = line[0]
             line.pop(0)
 
+            if "![$" in ln: # this is "truly" the best way to find shit
+                b, c = ln.split("![$")
+                val = ""
+
+                for x in [x for x in c]:
+                    if x == "]":
+                        break
+                    val += x
+                
+                ln = ln.replace("![${}]".format(val), os.environ.get(val, ""))
+
             currIndex = file.index(ln)
 
             self.percentage = round(100 - float(
@@ -153,7 +196,7 @@ class DuckyScriptInterpreter():
 
 class BadUSB:
     def __init__(self, hidDirectory:str="/dev/hidg0", hidWriteType:str='rb+'):
-        if path.exists(hidDirectory):
+        if os.path.exists(hidDirectory):
             pass
         else:
             raise FileNotFoundError("\"{}\" doesn't exist")

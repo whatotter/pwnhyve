@@ -62,8 +62,11 @@ class customizable:
     selectedPrefix = ">" # if you dont want to fill the background with color, change this to what you want it as and enable "onlyPrefix"
     # ^ doesnt matter what you set it as but the default was ">"
 
-    flipperZeroMenu = True # flipper zero type menu; inspired by https://www.youtube.com/watch?v=HVHVkKt-ldc (upir)
+    screenType = "original" # menu type
     # ^ prefrence
+
+    disableIdle = False # disable idle
+    # ^ prefrence, but reduces cpu usage, which in turn increases lifespan on battery
 
 
 class vars:
@@ -81,6 +84,7 @@ class vars:
     icons = {}
     folders= []
     prevSelection = None
+    menus = {}
 
     font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
     flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16)
@@ -96,8 +100,6 @@ if __name__ == "__main__":
 
     # 240x240 display with hardware SPI:
 
-    if customizable.flipperZeroMenu: yCoord = 1
-
     with open("config.json", "r") as f:
         a = json.loads(f.read())
 
@@ -106,7 +108,15 @@ if __name__ == "__main__":
         customizable.selectionBackgroundWidth = a["selectionBackgroundWidth"]
         customizable.idleCycles = a["idleCycles"]
         customizable.selectedPrefix = a["selectedPrefix"]
-        customizable.flipperZeroMenu = a["flipperZeroMenu"]
+        customizable.disableIdle = a["disableIdle"]
+
+        customizable.screenType = a["screenType"]
+        # types of screens
+        # "original": the original display i made
+        # "flipper": the display based off a flipper zero
+        # "minimalistic": the display based off the classic deauth watch - also really minimalistic, personal favorite
+
+        if customizable.screenType == "flipper": yCoord = 1
 
         if a["enableWebServer"]:
             uStatus("starting webserver")
@@ -167,36 +177,36 @@ if __name__ == "__main__":
 
     image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
     draw = ImageDraw.Draw(image) # dsiayp
-    programCoords = {} # auisdhgwe89-drgyn 354-97n8g7tg6v0o89dt7gh6b0bfbt5o98fdftr0b8gi0cdfjstuxrogl7ht5rhu9gtgturjstinufdrg5nuhuotilxfcdfrugh
 
     plugins = load(folder="plugins") # load
 
-    for p in plugins[1]: # for plugin in plugins list
-        if len(plugins[1][p][1]) == 0: continue # sanity check
-        for executable in plugins[1][p][1]: # for every executable in the plugin's executable list
+    # THIS SHIT IS FUCKED UP
+    for p in plugins: # for plugin in plugins list
+        if len(plugins[p][1]) == 0: continue # sanity check
+        for executable in plugins[p][1]: # for every executable in the plugin's executable list
             if executable == "icons": continue
             vars.plugins[executable] = {} # create dict
             vars.icons[executable] = {} # create dict
 
             try:
-                vars.icons[executable] = plugins[1][p][1]["icons"][executable].strip() # define icon
+                vars.icons[executable] = plugins[p][1]["icons"][executable].strip() # define icon
             except: #KeyError:
                 vars.icons[executable] = None
 
             try:
-                vars.plugins["{}".format(executable, plugins[1][p][0])]["help"] = (plugins[1][p][1][executable].strip(), plugins[1][p][0]) # define help
+                vars.plugins["{}".format(executable, plugins[p][0])]["help"] = (plugins[p][1][executable].strip(), plugins[p][0]) # define help
 
             except (KeyError, AttributeError): # command's help not in configurationfile
-                vars.plugins[executable]["help"] = "I AM A FOLDER"
+                vars.plugins[executable]["help"] = "I AM A FOLDER" # reminds me of that "I AM A SURGON" thing
                 vars.folders.append(executable)
-                for item in plugins[1][p][1][executable]: # what the fuck
+                for item in plugins[p][1][executable]: # what the fuck
                     try:
-                        a = plugins[1][p][1][executable][item]
+                        a = plugins[p][1][executable][item]
                     except:
-                        raise KeyError("{}'s command {} doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
+                        raise KeyError("{}'s command {} doesn't have a help key pair in it's configuration".format(plugins[p][0], executable))
 
                     try:
-                        vars.icons[item] = plugins[1][p][1]["icons"][item].strip() # define icon
+                        vars.icons[item] = plugins[p][1]["icons"][item].strip() # define icon
                     except: #KeyError:
                         vars.icons[item] = None
 
@@ -205,6 +215,10 @@ if __name__ == "__main__":
 
                     #print(vars.plugins[executable])
                     #print(vars.plugins)
+
+    #print(plugins)
+
+    menus = load(folder="menus") # load for menus
 
 
     if devOptions:
@@ -237,110 +251,30 @@ if __name__ == "__main__":
             vars.currentSelection = vars.currentSelection - 1 # failsafe
             selection = list(vars.plugins)[vars.currentSelection - 1] # go back 1 (TODO: maybe remove)
 
-        if customizable.cleanScroll:
-            if vars.currentSelection >= vars.maxLNprint: # if current selection index is equal or more than max line print
-                if vars.currentSelection != vars.currentSelOld: # and if current selection isnt the same as old index
-                    vars.cleanScrollNum += 1 # increase scroll
-            else: # if it's smaller
-                if vars.currentSelection != vars.currentSelOld: # and it isnt the same as old index
-                    vars.cleanScrollNum -= 1 # decrease scroll
+        """        
+        if vars.currentSelection >= vars.maxLNprint: # if current selection index is equal or more than max line print
+            if vars.currentSelection != vars.currentSelOld: # and if current selection isnt the same as old index
+                vars.cleanScrollNum += 1 # increase scroll
+        else: # if it's smaller
+            if vars.currentSelection != vars.currentSelOld: # and it isnt the same as old index
+                vars.cleanScrollNum -= 1 # decrease scroll
 
         # TODO: make the screen not update if selection hasn't changed
         #if vars.currentSelection == vars.currentSelOld:
             #continue # no updates needed, will be faster
 
         vars.currentSelOld = vars.currentSelection # set our old value after we checked
-
+        """
 
         fullClear(draw)
 
-        if not customizable.cleanScroll: # if we arent clean scroll
-            # slightly ram saving
-            for chunk in vars.scrollChunks:
-                if selection in chunk: # if our selected string is in the chunk (string = "abcd", chunks = [["banana", >>>"abcd"<<<, "efg"], ["apple", "green", "xyz"]])
-                    listToPrint = chunk
-        else:
-            if customizable.flipperZeroMenu:
-                vars.yCoord = 1
-                listToPrint = [] # clean list to print
+        if customizable.screenType in menus:
+            b = menus[customizable.screenType]
 
-                # TODO: figure out something cleaner than this
-                try:
-                    b4 = list(vars.plugins)[vars.currentSelection - 1]
-                except IndexError: b4=list(vars.plugins)[0]
-                try:
-                    after = list(vars.plugins)[vars.currentSelection + 1]
-                except IndexError: after=list(vars.plugins)[0]
+            listToPrint = b[2].screen.getItems([vars.plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection])
 
-                listToPrint = [b4, selection, after]
-                #
-                #   b4 > pwnagotchi
-                #   selection > reboot 
-                #   after > shutdown
-                #
-                #
-            else:
-                a = list(vars.plugins) # turn our plugins dict into a list
-                listToPrint = [] # clean list to print
-
-                for _ in range(vars.currentSelection): # iter over current selection (i dont understand this)
-                    if vars.cleanScrollNum != 0:
-                        a.pop(0)
-
-                for i in a: # iter over our plugin
-                    listToPrint = a[:5] # add 5 items every time
-            
-        for text in list(listToPrint): # do draw
-            text = text.replace("_", " ") # cool formatting
-            sSelection = selection.replace(" ", "_")
-            if not customizable.flipperZeroMenu:
-                if sSelection != text: # if our selection isnt the text iter gave us
-                    returnedCoords = createSelection(draw, text, vars.xCoord, vars.yCoord, selected=0, font=vars.font) # draw it normally
-                    programCoords[text] = returnedCoords # set the coords for later
-                else: # it is our selection
-                    if not customizable.onlyPrefix: # if we arent using only prefix
-                        draw.rectangle([(0, vars.yCoord), (customizable.selectionBackgroundWidth, 13 + vars.yCoord)], fill=0, outline=255) # draw colored rectangle first
-                        draw.text((vars.xCoord, vars.yCoord), text, fill=1, outline=255, font=vars.font) # draw black text over rectangle
-                    else:
-                        createSelection(draw, customizable.selectedPrefix+selection, vars.xCoord, vars.yCoord, selected=0, font=vars.font) # draw over it
-
-                    programCoords[text] = (vars.xCoord, vars.yCoord) # add coord
-                        
-                vars.yCoord += 14
-            else:
-                bigMinimizedText = ''.join([str(x) for x in text][:12]) # usually for big
-                smallMinimizedText = ''.join([str(x) for x in text][:14]) # usually for small
-
-                vars.xCoord = 24
-
-                if text == "": vars.yCoord += 22; continue
-
-                icoX, icoY = 4, vars.yCoord + 2
-
-                try:
-                    try:
-                        ico1 = vars.icons[text]
-                    except: ico1 = None
-                    #                 ^ v smartest person alive rn
-                    if ico1 == None: ico1 = "./core/icons/missing.bmp"
-
-                    ico = Image.open(ico1).resize((16,16))
-                except Exception as e:
-                    raise
-
-                if text == sSelection:
-                    #boxcoords = [(2, 24), (128 - 4, 18 + vars.yCoord)]
-                    #draw.rectangle(boxcoords, fill=1, outline=0)
-
-                    image.paste(vars.flipperSelection, (0,22))
-
-                    createSelection(draw, bigMinimizedText, vars.xCoord, vars.yCoord, selected=0, font=vars.flipperFontB) # draw over it 
-                    image.paste(ico, (icoX, icoY)) # do icon again cuz it glitches
-                else:
-                    createSelection(draw, smallMinimizedText, vars.xCoord, vars.yCoord, selected=0, font=vars.flipperFontN) # draw over it 
-                    image.paste(ico, (icoX, icoY))
-
-                vars.yCoord += 22
+            b[2].screen.display([draw, disp, image, GPIO, list(listToPrint), plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection, vars.icons])
+        
 
         vars.yCoord = yCoordBefore # set our y coord
 
@@ -429,12 +363,12 @@ if __name__ == "__main__":
                     
                     print(list(plgList))
 
-                    a = menu(draw, disp, image, list(plgList), GPIO, cleanScroll=True, flipperZeroMenu=True, enableIcons=True, iconsDict=vars.icons)
+                    a = menu(draw, disp, image, list(plgList), GPIO, menuType=customizable.screenType)
 
                     #key = list(plgList)[vars.currentSelection]
 
                     for executable in plgList: # for every executable in the
-                        #print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                        #print("KURWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                         #print(executable)
 
                         #choice = plugins[1][p][1][executable]
@@ -447,19 +381,19 @@ if __name__ == "__main__":
                         if executable == a:
                             plg = None
 
-                            for x in plugins[1]:
-                                for y in plugins[1][x]:
-                                    print("{} in {}".format(a, list(plugins[1][x][1])))
-                                    for z in list(plugins[1][x][1]):
-                                        if type(plugins[1][x][1][z]) == dict:
-                                            print(plugins[1][x][1][z])
+                            for x in plugins:
+                                for y in plugins[x]:
+                                    print("{} in {}".format(a, list(plugins[x][1])))
+                                    for z in list(plugins[x][1]):
+                                        if type(plugins[x][1][z]) == dict:
+                                            print(plugins[x][1][z])
                                             if z == "icons": continue
-                                            if a in list(plugins[1][x][1][z]):
+                                            if a in list(plugins[x][1][z]):
                                                 print("boom")
-                                                plg = plugins[1][x][2]
+                                                plg = plugins[x][2]
                                     
                             if plg == None:
-                                plg = plugins[1][p][2] # chosen plugin
+                                plg = plugins[p][2] # chosen plugin
 
                             assert plg != None
 
@@ -477,10 +411,10 @@ if __name__ == "__main__":
 
                     break
                 else:
-                    for p in plugins[1]: # for plugin in plugins list
-                        for executable in plugins[1][p][1]: # for every executable in the 
+                    for p in plugins: # for plugin in plugins list
+                        for executable in plugins[p][1]: # for every executable in the 
                             if executable == key:
-                                plg = plugins[1][p][2] # chosen plugin
+                                plg = plugins[p][2] # chosen plugin
                                 run(key, [draw, disp, image, GPIO], plg) # run it
 
                     break
@@ -554,16 +488,19 @@ if __name__ == "__main__":
 
             #vars.isActive = True
             #if not vars.isActive:
-            if customizable.idleCycles == vars.passedIdleCycles:
-                vars.passedIdleCycles = 0
-                try:
-                    for p in plugins[1]: # for plugin in plugins list
-                        for executable in plugins[1][p][1]: # for every executable in the 
-                            if executable == "setIdle":
-                                plg = plugins[1][p][2] # chosen plugin
-                                run("setIdle", [draw, disp, image, GPIO], plg)       
-                except Exception as e:
-                    raise
-                    #print("failed to go idle: {}".format(str(e)))
-                    #pass
-            vars.passedIdleCycles += 1
+            if customizable.disableIdle:
+                pass
+            else:
+                if customizable.idleCycles == vars.passedIdleCycles:
+                    vars.passedIdleCycles = 0
+                    try:
+                        for p in plugins[1]: # for plugin in plugins list
+                            for executable in plugins[1][p][1]: # for every executable in the 
+                                if executable == "setIdle":
+                                    plg = plugins[1][p][2] # chosen plugin
+                                    run("setIdle", [draw, disp, image, GPIO], plg)       
+                    except Exception as e:
+                        raise
+                        #print("failed to go idle: {}".format(str(e)))
+                        #pass
+                vars.passedIdleCycles += 1

@@ -12,6 +12,7 @@ from threading import Thread
 import core.villain.villan_core as vil
 import json
 from base64 import b64decode
+from requests import get, post
 
 class vars:
 
@@ -23,10 +24,12 @@ class vars:
         "pypayloads": {
             "pullIP": "get the local ip of a computer by starting an HTTP server, and making the client connect to it through browser",
             "wxHoaxShell": "to use: 1. run modified villain in an ssh session\n2.run this on victim\n3. profit",
+            "lolbas": "run lolbas scripts",
         },
 
         "icons": {
             "pypayloads": "./core/icons/usbfolder.bmp",
+            "lolbas": "./core/icons/usbfolder.bmp",
             "payloads": "./core/icons/usbfolder.bmp",
             "pullIP": "./core/icons/shell_laptop.bmp",
             "wxHoaxShell": "./core/icons/usbskull.bmp"
@@ -53,7 +56,7 @@ def payloads(args:list):
 
     sleep(0.5)
 
-    a = menu(draw, disp, image, list(vars.payloadList), GPIO, cleanScroll=True, flipperZeroMenu=True)
+    a = menu(draw, disp, image, list(vars.payloadList), GPIO, menuType=json.loads(open("config.json", "r").read())["screenType"])
 
     if a == "back":
         return
@@ -67,6 +70,8 @@ def payloads(args:list):
     Thread(target=handler.start,daemon=True).start() # start handler
 
     handler.setPercentage(0)
+
+    dsi = DuckyScriptInterpreter(usb)
 
     for ln in vars.payloadList[a]:
         if len(ln) == 0: continue
@@ -92,7 +97,10 @@ def payloads(args:list):
         base = line[0]
         line.pop(0)
 
-        dsi = DuckyScriptInterpreter(usb)
+        # sys vars
+        if "![$" in line: # im going to blow up and die
+            a = line
+            a.split("![$")[-1]
 
         if base in dsi.key:
             dsi.key[base](line)
@@ -153,24 +161,83 @@ def wxHoaxShell(args:list):
 
     return
 
-def percentageTest(args:list):
+def lolbas(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
 
-    handler = usbRunPercentage(draw,disp,image)
+    directory = "./core/LOLBAS/"
 
-    Thread(target=handler.start,daemon=True).start()
+    while True:
+        # theres definitely a better way of doin this
+        ####
 
-    #for x in range(101):
-        #handler.percentage = x
-        #sleep(0.05)
+        folder = menu(draw, disp, image, [x if os.path.isdir(x) else "" for x in os.listdir("./core/LOLBAS")], GPIO)
 
-    handler.text = 'lorem ipsump i dont know the rest aawawiojaiouwj'
+        if folder == None: return
 
-    #handler.text = "123456789abcde\n"*24
+        directory += folder
 
-    sleep(30)
+        ###
+
+        script = menu(draw, disp, image, [x.replace(".txt", "") for x in os.listdir(directory)], GPIO)
+
+        if script == None: continue
+
+        directory += script
+
+        break
+
+        ###
+
+    script = open(directory, "r").read().split("\n")
+
+    usb = BadUSB()
+
+    handler = usbRunPercentage(draw,disp,image) # init handler
+    Thread(target=handler.start,daemon=True).start() # start handler
+
+    handler.setPercentage(0)
+
+    dsi = DuckyScriptInterpreter(usb)
+
+    try:
+        for ln in script:
+            if len(ln) == 0: continue
+            if ln[0] == "#": continue
+
+            currIndex = script.index(ln)
+
+            # this is painful
+            handler.setPercentage(
+                round(100 - float(
+                    str( # turn decimal percentage into a string
+                        "{:.0%}".format(
+                            currIndex/len(
+                                script # make decimal percentage
+                            )
+                        )
+                    ).replace("%", "") # remove percentage sign
+                ) # turn string back into float
+                ) # round it up
+            ) # set percentage
+
+            line = ln.split(" ")
+            base = line[0]
+            line.pop(0)
+
+            if base in dsi.key:
+                dsi.key[base](line)
+
+            if base == "PRINT": # print to display
+                handler.addText(' '.join(line))
+    except:
+        pass
 
     handler.exit()
+
+    waitForKey(GPIO)
+
+
+
 
 def pullIP(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]

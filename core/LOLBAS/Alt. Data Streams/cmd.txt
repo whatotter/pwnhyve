@@ -1,0 +1,1 @@
+STRINGLN cmd.exe - < ![$DS_FAKEFILE]:payload.bat

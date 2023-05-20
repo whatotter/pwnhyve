@@ -15,16 +15,21 @@ class vars:
         # 123456789abcdefghijkl 123456789abcdefghijkl
         "usbUtils": {
             "usbSteal": "steal files with a filetype or keyword set in the script; auto mounts",
-            "umountUSB": "toggle mounting usb to read on current system",
-            "mountUSB": "mount .bin file on the pi and read stuff on it",
-            "toggleUSB": "toggle usb storage",
+
+            "hostUmountUSB": "unmount the .bin file from host for reading on the pi",
+            "hostHideUSB": "completely disable usb mass - as if you unplugged a usb",
+
+            "pUMountUSB": "unmount the .bin file from the pi for using it on a victim",
+            "pMountUSB": "mount the .bin file on the pi to read"
+            
         },
 
         "systemUtils": {
             "shutdown": "shutdown Artremis and the pi",
             "reboot": "reboot the pi",
             "system_info": "info about the pi",
-            "localSSHMode": "enable ssh via usb, disables all other things"
+            #"localSSHMode": "enable ssh via usb, disables all other things",
+            "setEnviroVars": "set enviroment variables for things"
         },
 
         "icons": {
@@ -33,14 +38,18 @@ class vars:
             "disableUSBstorage": "./core/icons/tool.bmp",
             "enableUSBstorage": "./core/icons/tool.bmp",
             "usbSteal": "./core/icons/usbfolder.bmp",
-            "umountUSB": "./core/icons/tool.bmp",
-            "mountUSB": "./core/icons/tool.bmp",
-            "toggleUSB": "./core/icons/tool.bmp",
+
+            "hostUmountUSB": "./core/icons/tool.bmp",
+            "hostHideUSB": "./core/icons/tool.bmp",
+            "pUMountUSB": "./core/icons/tool.bmp",
+            "pMountUSB": "./core/icons/tool.bmp",
+
             "usbUtils": "./core/icons/usbfolder.bmp",
             "systemUtils": "./core/icons/tool.bmp",
+            "setEnviroVars": "./core/icons/tool.bmp",
             "system_info": "./core/icons/graph.bmp",
             "nwkUtils": "./core/icons/ethfolder.bmp",
-            "localSSHMode": "./core/icons/eth.bmp"
+            #"localSSHMode": "./core/icons/eth.bmp"
         }
     }
 
@@ -61,9 +70,40 @@ def isManaged(iface):
     elif "radiotap" in a[0]["flags"]:
         return False # mon
 
-def mountUSB(args:list):
+def pMountUSB(args:list):
     subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
     subprocess.getoutput("mount /piusb.bin /mnt/otterusb")
+
+def pUMountUSB(args:list):
+    subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
+
+def setEnviroVars(args:list):
+    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
+
+    name, value = None, None
+    
+    choice = menu(draw, disp, image, ["set variable name", "set variable value"], GPIO)
+
+    if choice == None: return
+    elif choice == "set variable name":
+        name = enterText(draw, disp, image, GPIO)
+    elif choice == "set variable value":
+        value = enterText(draw, disp, image, GPIO)
+
+    while True:
+        choice = menu(draw, disp, image,
+                       ["name: {}".format(name) if name != None else "set variable name", "value: {}".format(value) if value != None else "set variable value", "set"], #wtf
+                         GPIO)
+        
+        if choice == None or choice == "set": break
+        elif choice == "set variable name":
+            name = enterText(draw, disp, image, GPIO)
+        elif choice == "set variable value":
+            value = enterText(draw, disp, image, GPIO)
+        
+    os.environ[name] = value
+
+    return
 
 def usbSteal(args:list):
     """auto mount from https://gist.github.com/slobdell/7d052e01fed005f387b1c8e4994cd6d1"""
@@ -108,6 +148,12 @@ def usbSteal(args:list):
                 continue
 
         if output is None: continue
+
+        if checkIfKey(GPIO):
+            handler.addText("quitting")
+            handler.exit()
+            sleep(1)
+            return
             
         if len(output) > 0: # i dont even know anymore
             output = output.split("\n")
@@ -178,7 +224,7 @@ def usbSteal(args:list):
         subprocess.getoutput("sudo rm -rf {}".format(MOUNT_DIR))
     except Exception as e: print("couldn't remove mount dir: {}".format(str(e))); subprocess.getoutput("sudo rm -rf {}".format(MOUNT_DIR))
 
-def umountUSB(args:list):
+def hostUmountUSB(args:list):
     """i dont even know how i found this"""
 
     binFile = "/piusb.bin"
@@ -190,7 +236,7 @@ def umountUSB(args:list):
 
     vars.usbMounted = not vars.usbMounted
 
-def toggleUSB(args:list):
+def hostHideUSB(args:list):
     """i dont even know how i found this v2"""
 
 

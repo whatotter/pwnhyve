@@ -1,0 +1,1 @@
+STRINGLN bitsadmin /create 1 & bitsadmin /addfile 1 c:\windows\system32\cmd.exe ![$DS_DIRECTORY] & bitsadmin /RESUME 1 & bitsadmin /Complete 1 & bitsadmin /reset

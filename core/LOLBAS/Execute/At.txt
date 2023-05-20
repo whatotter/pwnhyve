@@ -1,0 +1,1 @@
+STRINGLN C:\Windows\System32\at.exe at ![$DS_TIME] /interactive /every:m,t,w,th,f,s,su ![$DS_EXECUTABLE]

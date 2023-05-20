@@ -1,0 +1,2 @@
+STRINGLN ConfigSecurityPolicy.exe ![$DS_SOURCE]
+PRINT %LOCALAPPDATA%\Microsoft\Windows\INetCache\IE

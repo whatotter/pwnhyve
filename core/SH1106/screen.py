@@ -2,6 +2,8 @@ from PIL import Image, ImageFont
 from time import sleep
 from core.utils import getChunk
 import string
+from core.plugin import load
+from json import loads
 
 #GPIO define
 RST_PIN        = 25
@@ -482,8 +484,11 @@ class screenConsole:
         self.text = ""
             
 def waitForKey(GPIO, debounce=False):
-    """wait for key press and return the key pressed
-    debounce waits for the key to be released"""
+    """
+    wait for key press and return the key pressed
+
+    debounce waits for the key to be released
+    """
 
     a = None
 
@@ -569,19 +574,15 @@ def fullClear(display):
     display.rectangle((0, 0, 200, 100), fill=1)
     return True
 
-def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "{}\\;',./"], font=ImageFont.truetype("./core/fonts/pixelop/PixelOperatorHB8.ttf", 8), font2=ImageFont.truetype("./core/fonts/pixelop/PixelOperatorHB8.ttf", 4), flipped=False):
+def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "1234567890", "!@#$%^&*()_-+={}\\;',./"], font=ImageFont.truetype('core/fonts/tahoma.ttf', 11), flipped=False):
     """
     super wip
     """
-    kbCoords = [0, 24]
-
     chosenKey = "q"
     compiledStri = ""
     keyI = 0
     stringsI = 0
     chars = [x for x in kbRows[stringsI]]
-
-    print(chars)
 
     while True:
 
@@ -603,15 +604,15 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
         for x in chars:
             if textX >= 116:
                 textX = 8
-                textY += 10
+                textY += 12
 
             if x != chosenKey:
                 draw.text((textX, textY), x, fill=0, outline=255, font=font)
             else:
-                draw.rectangle([(textX-2, textY-2), (textX+8, textY+8)], fill=0, outline=255)
+                draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill=0, outline=255)
                 draw.text((textX, textY), x, fill=1, outline=255, font=font)
 
-            textX += 8
+            textX += 10
 
         # show compiled image
         if flipped:
@@ -651,9 +652,9 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
         elif key == KEY3_PIN:
             return compiledStri
         elif key == KEY1_PIN:
-            compiledStri = ''.join([x for x in compiledStri][-1])
-
-        print(keyI)
+            compiledStri = compiledStri[:-1]
+            while checkIfKey(GPIO):
+                pass
 
         try:
             chosenKey = chars[keyI]
@@ -661,22 +662,20 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
             keyI = 0
             chosenKey = chars[keyI]
 
-def menu(draw, disp, image, choices, GPIO, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
- cleanScroll=True, flipped=False, flipperZeroMenu=True, flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16), flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16), font=None, onlyPrefix=False, selectionBackgroundWidth=200, enableIcons=False, iconsDict={}, timeoutCycles=None):
+def menu(draw, disp, image, choices, GPIO,
+          gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
+            flipped=False, menuType=loads(open("./config.json", "r").read())["screenType"], menus=load(folder="menus"), caption=None):
     xCoord = 5
     yCoord = 5
     currentSelection = 0 # index of programs list
-    selectedPrefix = ">"
     maxLNprint = 5
     cleanScrollNum = 0
-    scrollChunks = []
     currentSelOld = 0
-    cycles = 0
-
-    flipperSelection=Image.open('./core/fonts/selection.bmp')
 
     if len(choices) == 0:
         raise KeyError("no choices provided")
+    if "" in choices:
+        choices.remove("") # any whitespace
 
     while 1:
         yCoordBefore = yCoord
@@ -693,97 +692,22 @@ def menu(draw, disp, image, choices, GPIO, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_P
 
         currentSelOld = currentSelection
 
-        if not cleanScroll:
-            scrollChunks = getChunk(list(choices), 5)
-            for chunk in scrollChunks:
-                print(chunk)
-                if selection in ';'.join(chunk): # idek anymore
-                    listToPrint = chunk
-                    break
+        if caption == None:
+            pass
         else:
-            a = list(choices)
-            listToPrint = []
+            draw.rectangle([(0, 0), (255, 13)], fill=1, outline=255)
+            draw.text([1,1], caption, font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+            yCoord += 14
 
-            for _ in range(currentSelection):
-                if cleanScrollNum != 0:
-                    a.pop(0)
+        if menuType in menus:
+            b = menus[menuType]
 
-            for i in a:
-                listToPrint = a[:5]
+            listToPrint = b[2].screen.getItems([choices, yCoord, xCoord, currentSelection, selection])
 
-        if flipperZeroMenu:
-            yCoord = 1
-            listToPrint = [] # clean list to print
+            b[2].screen.display([draw, disp, image, GPIO, list(listToPrint), choices, yCoord, xCoord, currentSelection, selection, {}])
 
-            # TODO: figure out something cleaner than this
-            try:
-                b4 = list(choices)[currentSelection - 1]
-            except IndexError: b4=""
-            if currentSelection - 1 == -1: b4 = ""
-            try:
-                after = list(choices)[currentSelection + 1]
-            except IndexError: after=""
 
-            listToPrint = [b4, selection, after] 
-            #
-            #   b4 > pwnagotchi
-            #   selection > reboot 
-            #   after > shutdown
-            #
-            #
-
-        for text in list(listToPrint): # do draw
-            if not flipperZeroMenu:
-                if selection != text: # if our selection isnt the text iter gave us
-                    returnedCoords = createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                    programCoords[text] = returnedCoords # set the coords for later
-                else: # it is our selection
-                    if not onlyPrefix: # if we arent using only prefix
-                        draw.rectangle([(0, yCoord), (selectionBackgroundWidth, 13 + yCoord)], fill=0, outline=255) # draw colored rectangle first
-                        draw.text((xCoord, yCoord), text, fill=1, outline=255, font=font) # draw black text over rectangle
-                    else:
-                        createSelection(draw, selectedPrefix+selection, xCoord, yCoord, selected=0, font=font) # draw over it
-
-                    programCoords[text] = (xCoord, yCoord) # add coord
-                        
-                yCoord += 14
-            else:
-                bigMinimizedText = ''.join([str(x) for x in text][:12]) # usually for big
-                smallMinimizedText = ''.join([str(x) for x in text][:14]) # usually for small
-
-                xCoord = 4
-                if enableIcons: xCoord += 22
-
-                if text == "": yCoord += 22; continue
-                icoX, icoY = 4, yCoord + 2
-
-                try:
-                    #print(iconsDict)
-                    try:
-                        ico1 = iconsDict[text]
-                    except Exception as e: print(e); ico1 = None
-                    #                 ^ v smartest person alive rn
-                    if ico1 == None: ico1 = "./core/icons/missing.bmp"
-
-                    ico = Image.open(ico1).resize((16,16))
-                except Exception as e:
-                    raise
-
-                if text == selection:
-                    #boxcoords = [(2, 24), (128 - 4, 18 + vars.yCoord)]
-                    #draw.rectangle(boxcoords, fill=1, outline=0)
-
-                    image.paste(flipperSelection, (0,22))
-
-                    createSelection(draw, bigMinimizedText, xCoord, yCoord, selected=0, font=flipperFontB) # draw over it 
-                    if enableIcons: image.paste(ico, (icoX, icoY))
-                else:
-                    createSelection(draw, smallMinimizedText, xCoord, yCoord, selected=0, font=flipperFontN) # draw over it 
-                    if enableIcons: image.paste(ico, (icoX, icoY))
-
-                yCoord += 22
-
-        yCoord = yCoordBefore
+        yCoord = yCoordBefore # set our y coord
 
         if flipped:
             img1 = image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
@@ -794,6 +718,7 @@ def menu(draw, disp, image, choices, GPIO, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_P
         # button stuff
 
         while True:
+            waitForKey(GPIO)
             key = getKey(GPIO)
 
             #print(key)

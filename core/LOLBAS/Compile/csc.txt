@@ -1,0 +1,1 @@
+STRINGLN csc.exe -out:![$DS_OUTPUT] ![$DS_INPUT]

@@ -1,0 +1,1 @@
+STRINGLN CertReq -Post -config ![$DS_OUTPUT] ![$DS_FILE]

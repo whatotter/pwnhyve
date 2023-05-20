@@ -1,0 +1,2 @@
+STRINGLN psr.exe /start /output ![$DS_OUTPUT] /sc 1 /gui 0
+PRINT use psr.exe /stop to stop

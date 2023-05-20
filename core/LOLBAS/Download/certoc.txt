@@ -1,0 +1,1 @@
+STRINGLN certoc.exe -GetCACAPS ![$DS_SOURCE]

@@ -1,13 +1,13 @@
 import core.bettercap.bettercap as bcap
 from core.SH1106.screen import *
 from core.utils import *
-from random import choice, randrange
+from random import choice, randrange,randint
 from PIL import Image, ImageFont
 from threading import Thread
 from time import sleep
 import netifaces as nf
 from scapy.all import RandMAC, RadioTap, Dot11, Dot11Beacon, Dot11Elt, sendp, sniff, Dot11ProbeResp
-from json import loads
+from json import loads, dumps
 from subprocess import getoutput
 
 class vars:
@@ -280,21 +280,51 @@ def monitorMode(args:list):
     waitForKey(GPIO)
     while checkIfKey(GPIO): pass
 
+def setInterfaces(args:list):
+    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
+
+    ifaces = nf.interfaces()
+
+    a = menu(draw, disp, image, ifaces, GPIO)
+
+    if a in nf.interfaces():
+        b = loads(open("./config.json", "r").read())
+
+        b["normalInterface"] = a
+
+        #fullClear(draw)
+        #draw.text([4,4], "select monitor mode interface", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
+        #disp.ShowImage(disp.getbuffer(image))
+        #waitForKey(GPIO, debounce=True)
+
+        getoutput("sudo airmon-ng start {}".format(a))
+
+        ifaces2 = nf.interfaces()
+
+        c = menu(draw, disp, image, ifaces2, GPIO, caption="select monmode iface")
+
+        b["monitorInterface"] = c
+
+        getoutput("sudo airmon-ng stop {}".format(a))
+
+        with open("./config.json", "w") as f:
+            f.write(dumps(b, indent=4))
+            f.flush()
+    else:
+        draw.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+        draw.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
+        waitForKey(GPIO)
+        while checkIfKey(GPIO): pass
+
 def beaconSpam(args:list):
     #enterText(args[0], args[1], args[2], args[3])
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
 
-    def probeBeaconThread(ssid, mac=RandMAC()):
-        frame = RadioTap()/Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=mac, addr3=mac)/Dot11Beacon()/Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
-        while True:
-            if vars.beaconExit: break
-
-            if checkIfKey(GPIO): break
-
-            sendp(frame, iface=iface, verbose=0)
-            vars.framesSent += 1
-
-            sleep(0.1)
+    def genFrame(ssid):
+        dot11Frame = Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=RandMAC(), addr3=RandMAC())
+        beac = Dot11Beacon(cap="ESS+privacy")
+        elt = Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
+        return RadioTap()/dot11Frame/beac/elt
 
     with open("./core/aps2spam", "r") as f:
         ssids = f.read().split("\n")
@@ -305,7 +335,7 @@ def beaconSpam(args:list):
 
     #handler.setPercentage(0)
 
-    #ssidFrames = {}
+    ssidFrames = []
     threads1 = []
 
     iface = loads(open("./config.json").read())["monitorInterface"]
@@ -313,7 +343,11 @@ def beaconSpam(args:list):
     handler.text = "iface: {}".format(iface)
 
     for ssid in ssids:
-        if [x for x in ssid][0] == "#": continue
+        try:
+            if [x for x in ssid][0] == "#": continue
+        except:
+            continue # empty line
+
         multiple=False
 
         # create frames for all ssids
@@ -323,28 +357,30 @@ def beaconSpam(args:list):
             try:
                 multiple = int(ssid.split("?$?")[-1])
             except:
-                continue
+                raise
 
         if multiple == False:
-            #ssidFrames[ssid] = RadioTap()/Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=mac, addr3=mac)/Dot11Beacon()/Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
-            threads1.append(Thread(target=probeBeaconThread, args=(ssid,), daemon=True))
+            a = ':'.join('%02x'%randint(0,255) for x in range(6))
+            print("{} | {} | one AP".format(ssid, a))
+            ssidFrames.append(genFrame(ssid))
+            #threads1.append(Thread(target=probeBeaconThread, args=(ssid,), daemon=True))
         else:
             for x in range(multiple):
-                #ssidFrames[ssid] = RadioTap()/Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=mac, addr3=mac)/Dot11Beacon()/Dot11Elt(ID="SSID", info=ssid+str(x), len=len(ssid))
-                threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
+                ssid = ssid.replace("?$?{}".format(multiple), "")
+                a = ':'.join('%02x'%randint(0,255) for x in range(6))
+                print("{} | {} | multiplied".format(ssid, a))
+                ssidFrames.append(genFrame(ssid+str(x)))
+                #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
 
     while checkIfKey(GPIO): sleep(0.1)
-
-    for x in threads1:
-        x.start()
-        sleep(0.1) # just so they dont access interface at the same time
 
     while True:
         if checkIfKey(GPIO): break
 
-        handler.text = "frames: {}\n\npress any key\nto stop".format(vars.framesSent)
+        sendp(ssidFrames, iface=iface, verbose=1, count=25)
+
+        handler.text = "frames: {}\niface: {}\nhold any key to stop".format(vars.framesSent,iface)
         
-        sleep(0.25)
 
     vars.beaconExit = True
     handler.text = "shutting threads.."
@@ -499,12 +535,14 @@ def functions():
         "marauder": {
             "pwnagotchi": "dfhuigosaio9by tdfhudfhudfhudfhudfhurdfhuedfhusdfhuodfhudfhudfhudfhudfhudfhudfhudfhudfhudfhudofhudfhuodfhuodofhudfhu",
             "beaconSpam": "spam beacons",
-            "rssiReader": "read rssi beacons"
+            "rssiReader": "read rssi beacons",
+            "monitorMode": "toggle monitor mode",
+            "setInterfaces": "set normal and monitor mode interfaces"
         },
         
         "icons":{
             "marauder": "./core/icons/wififolder.bmp",
             "pwnagotchi": "./core/icons/wifi.bmp",
-            "beaconSpam": "./core/icons/routeremit.bmp",
+            "beaconSpam": "./core/icons/routeremit.bmp"
         }
     }

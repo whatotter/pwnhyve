@@ -1,0 +1,1 @@
+STRINGLN ConfigSecurityPolicy.exe ![$DS_INPUT] ![$DS_OUTPUT]

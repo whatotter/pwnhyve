@@ -1,0 +1,1 @@
+STRINGLN type ![$DS_WEBDAV] > ![$DS_OUTPUT]

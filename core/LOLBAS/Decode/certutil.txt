@@ -1,0 +1,1 @@
+STRINGLN certutil -decode ![$DS_INPUT] ![$DS_OUTPUT]
