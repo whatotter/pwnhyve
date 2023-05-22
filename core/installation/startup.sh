@@ -2,4 +2,4 @@
 
 sleep 5
 cd %cwd% &&
-sudo python %cwd%/main.py
+sudo -E python %cwd%/main.py
