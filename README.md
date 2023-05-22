@@ -11,7 +11,7 @@ if support/something you want isn't implemented yet, look at making plugins unle
 ### help needed
 i need someone to help me with the front end of the control panel, currently it's really ugly and bad and i have no clue on how to fix it
 ***
-### TRELLO FOR SUGGESTIONS
+### trello
 [asdf](https://trello.com/b/ncgSqzpb/plans-for-pwnhyve)
 ***
 
