@@ -29,7 +29,9 @@ class vars:
             "reboot": "reboot the pi",
             "system_info": "info about the pi",
             #"localSSHMode": "enable ssh via usb, disables all other things",
-            "setEnviroVars": "set enviroment variables for things"
+            "setEnviroVars": "set enviroment variables for things",
+            "connectWifi": "connect to a wifi network",
+            "fixInterfaces": "bandaid fix to issues with interfaces"
         },
 
         "icons": {
@@ -49,6 +51,9 @@ class vars:
             "setEnviroVars": "./core/icons/tool.bmp",
             "system_info": "./core/icons/graph.bmp",
             "nwkUtils": "./core/icons/ethfolder.bmp",
+
+            "connectWifi": "./core/icons/wifi.bmp",
+            "fixInterfaces": "./core/icons/tool.bmp",
             #"localSSHMode": "./core/icons/eth.bmp"
         }
     }
@@ -76,6 +81,30 @@ def pMountUSB(args:list):
 
 def pUMountUSB(args:list):
     subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
+
+def terminal(args:list):
+    """
+    when i took this with me and had no access to my laptop (or any place to reliably fix bugs), i was left with rebooting the pi over and over
+    if i had a terminal, it would've solved 90% of my problems and helped me diagnose most bugs
+    this might be super hard to use, but its something
+    """
+
+    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
+
+    z = screenConsole(draw, disp, image)
+    Thread(target=z.start, daemon=True).start()
+
+    while True:
+        z.stopWriting = True # make the screen console stop writing so it doesn't overlap with the keyboard
+        command = enterText(draw, disp, image, GPIO)
+        if command == "": z.exit(); return
+        z.stopWriting = False # allow the screen console to write once more
+
+        z.text = subprocess.getoutput(command)
+        waitForKey(GPIO, debounce=True)
+
+
+    
 
 def setEnviroVars(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
@@ -272,7 +301,6 @@ def shutdown(args:list):
 
 def reboot(args:list):
     subprocess.getoutput("sudo reboot")
-
     return
 
 def system_info(args:list):
@@ -311,33 +339,53 @@ def system_info(args:list):
     waitForKey(GPIO)
     while checkIfKey(GPIO): pass
 
-def localSSHMode(args:list):
+def connectWifi(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
 
     fullClear(draw)
 
-    draw.text((2,2), "this will reboot the pi, are you sure?\n\nup = yes\ndown = no")
+    def findNetworks():
+        ssids = []
+        for x in subprocess.getoutput("sudo iw dev wlan0 scan | grep SSID:").split("\n"):
+            ssid = x.replace("SSID: ", "").strip()
+            if len(ssid) == 0: continue
+            ssids.append(ssid)
+        return ssids
+    
+    def selectNetwork(ssids=findNetworks()):
+        return menu(draw, disp, image, ssids, GPIO)
 
-    disp.ShowImage(disp.getbuffer(image))
 
-    waitForKey(GPIO)
-    if getKey(GPIO) == 6:
+    ssid = selectNetwork()
+
+    if ssid in findNetworks():
         pass
     else:
-        return
+        return # ssid no more
     
-    fullClear(draw)
-    disp.ShowImage(disp.getbuffer(image))
+    # copied n edited from setEnviroVars
     
-    if "pwnhyveusb001" not in os.listdir("/bin"):
-        subprocess.getoutput("sudo mv /bin/pwnhyveusb /bin/pwnhyveusb001")
-        subprocess.getoutput("sudo mv /bin/pwnhyvessh /bin/pwnhyveusb")
-    else:
-        subprocess.getoutput("sudo mv /bin/pwnhyveusb /bin/pwnhyvessh")
-        subprocess.getoutput("sudo mv /bin/pwnhyveusb001 /bin/pwnhyveusb")
-
-    reboot(args)
-
+    pwd = None
+    
+    while True:
+        choice = menu(draw, disp, image,
+                       ["ssid: {}".format(ssid), "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password", "connect"], #wtf
+                         GPIO)
+        
+        if choice == None or choice == "connect": break
+        elif choice == "ssid: {}".format(ssid):
+            ssid = selectNetwork()
+        elif choice == "enter password" or choice == "password: {}".format(''.join(["*" for _ in pwd])):
+            pwd = enterText(draw, disp, image, GPIO, secret=True)
+    
+    subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
+    
+def fixInterfaces():
+    # bandaid
+    for x in ni.interfaces():
+        subprocess.getoutput("sudo airmon-ng stop {}".format(x))
+        subprocess.getoutput("sudo ifconfig {} up".format(x))
+    subprocess.getoutput("sudo systemctl restart NetworkManager")
 
 def functions():
 

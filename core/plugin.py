@@ -16,7 +16,10 @@ def load(folder="plugins"):
             
             item = item.replace('.py','')
 
-            plugins[item] = importlib.import_module(f'{folder}.{item}')
+            try:
+                plugins[item] = importlib.import_module(f'{folder}.{item}')
+            except ModuleNotFoundError:
+                continue # sometimes it picks up a blank file/item, and attempts to import that - dont understand why; ive tried to fix it with other things and it still goes through
 
             try:
                 r[item] = (f'{item}.py', plugins[item].functions(), plugins[item])

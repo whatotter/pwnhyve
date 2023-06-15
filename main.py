@@ -401,7 +401,11 @@ if __name__ == "__main__":
                             print(plg)
                             print("--------")
                             #TODO: make it run in a different thread so it doesnt error main thread
+
+                            open("./core/temp/threadQuit", "w").write("0")
                             z = run(a, [draw, disp, image, GPIO], plg) # run it
+                            open("./core/temp/threadQuit", "w").write("1")
+
                             print(z)
                             print('ab2')
                             break

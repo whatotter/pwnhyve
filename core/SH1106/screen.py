@@ -55,6 +55,7 @@ class usbRunPercentage:
         percentageX, percentageY = 94,24
         while 1:
             #print(self.text) # dee bug
+            if open("./core/temp/threadQuit", "r").read().strip() == "1": self.close = True; open("./core/temp/threadQuit", "w").write("0")
             if self.close: return # request to close
 
 
@@ -160,6 +161,9 @@ class usbRunPercentage:
         self.percentage = percent
 
 class AsyncMenu:
+    """
+    DEPRECIATED
+    """
     def __init__(self, draw, disp, image, GPIO, choices) -> None:
         self.choices = choices
 
@@ -377,6 +381,7 @@ class screenConsole:
 
         self.cFont = consoleFont
         self.flipped = flipped
+        self.stopWriting = False
 
     def update(self):
         self.updateBool = True
@@ -386,12 +391,15 @@ class screenConsole:
         tempText = []
 
         while 1:
+            if open("./core/temp/threadQuit", "r").read().strip() == "1": self.close = True; open("./core/temp/threadQuit", "w").write("0")
+
             if self.autoUpdate == False:
                 while self.updateBool != True:
                     pass
                 self.updateBool = False
             #print(self.text) # dee bug
             if self.close: return # request to close
+            if self.stopWriting: sleep(0.5); continue
 
 
             # to prevent drawing more lines than display res, remove first line of console if the len of a newline split list is equal to 5
@@ -570,13 +578,23 @@ def createSelection(display, text, xCoord, yCoord, selected=0, **kwargs):
     display.text(coords, text, fill=selected, **kwargs)
     return coords
 
-def fullClear(display):
-    display.rectangle((0, 0, 200, 100), fill=1)
+def fullClear(draw):
+    draw.rectangle((0, 0, 200, 100), fill=1)
     return True
 
-def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "1234567890", "!@#$%^&*()_-+={}\\;',./"], font=ImageFont.truetype('core/fonts/tahoma.ttf', 11), flipped=False):
+def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "1234567890", "!@#$%^&*()_-+={}\\;',./"], font=ImageFont.truetype('core/fonts/tahoma.ttf', 11), flipped=False, secret=False):
     """
     super wip
+    
+    draw, disp, image, GPIO are all required
+
+    kbRows: the rows/set of characters to let the user choose from - default is alphanumeric characters and symbols
+
+    font: the default font to use for the letters, etc.
+
+    flipped: if the keyboard should be flipped (used for when the user isn't using the display in normal orentiation)
+
+    secret: if the text being entered should be classified - example, a password
     """
     chosenKey = "q"
     compiledStri = ""
@@ -597,8 +615,11 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
 
         draw.rectangle([(0, 14), (128, 16)], fill=0, outline=255)
 
-        draw.text((2,2), compiledStri, fill=0, outline=255, font=font)
-        
+        if not secret:
+            draw.text((2,2), compiledStri, fill=0, outline=255, font=font)
+        else:
+            draw.text((2,2), ''.join(["*" for _ in compiledStri]), fill=0, outline=255, font=font)
+
         textX, textY = 8, 20
 
         for x in chars:
@@ -651,6 +672,8 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
 
         elif key == KEY3_PIN:
             return compiledStri
+        elif key == KEY2_PIN:
+            compiledStri += "" #space
         elif key == KEY1_PIN:
             compiledStri = compiledStri[:-1]
             while checkIfKey(GPIO):

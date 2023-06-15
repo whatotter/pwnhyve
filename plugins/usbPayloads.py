@@ -73,40 +73,45 @@ def payloads(args:list):
 
     dsi = DuckyScriptInterpreter(usb)
 
-    for ln in vars.payloadList[a]:
-        if len(ln) == 0: continue
-        if ln[0] == "#": continue
+    try:
+        for ln in vars.payloadList[a]:
+            if len(ln) == 0: continue
+            if ln[0] == "#": continue
 
-        currIndex = vars.payloadList[a].index(ln)
+            currIndex = vars.payloadList[a].index(ln)
 
-        # this is painful
-        handler.setPercentage(
-            round(100 - float(
-                str( # turn decimal percentage into a string
-                    "{:.0%}".format(
-                        currIndex/len(
-                            vars.payloadList[a] # make decimal percentage
+            # this is painful
+            handler.setPercentage(
+                round(100 - float(
+                    str( # turn decimal percentage into a string
+                        "{:.0%}".format(
+                            currIndex/len(
+                                vars.payloadList[a] # make decimal percentage
+                            )
                         )
-                    )
-                ).replace("%", "") # remove percentage sign
-            ) # turn string back into float
-            ) # round it up
-        ) # set percentage
+                    ).replace("%", "") # remove percentage sign
+                ) # turn string back into float
+                ) # round it up
+            ) # set percentage
 
-        line = ln.split(" ")
-        base = line[0]
-        line.pop(0)
+            line = ln.split(" ")
+            base = line[0]
+            line.pop(0)
 
-        # sys vars
-        if "![$" in line: # im going to blow up and die
-            a = line
-            a.split("![$")[-1]
+            # sys vars
+            if "![$" in line: # im going to blow up and die
+                a = line
+                a.split("![$")[-1]
 
-        if base in dsi.key:
-            dsi.key[base](line)
+            if base in dsi.key:
+                dsi.key[base](line)
 
-        if base == "PRINT": # print to display
-            handler.addText(' '.join(line))
+            if base == "PRINT": # print to display
+                handler.addText(' '.join(line))
+    except:
+        pass # makes handler exit
+
+    handler.addText('finished executing')
 
     handler.exit()
 

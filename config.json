@@ -8,6 +8,6 @@
     "enableWebServer": true,
     "disableIdle": true,
 
-    "monitorInterface": "wlan0",
+    "monitorInterface": "wlan0mon",
     "normalInterface": "wlan0"
 }

@@ -36,7 +36,7 @@ class Client(object):
             Thread(target=self.start, daemon=True,
                    kwargs={"iface": iface, }).start()
 
-        self._wait_bettercap()
+        self.successful = self._wait_bettercap()
 
     def session(self):
         r = requests.get("%s/session" % self.url, auth=self.auth)
@@ -126,14 +126,15 @@ class Client(object):
         return aps
 
     def _wait_bettercap(self):
-        while True:
+        for x in range(5):
             try:
                 requests.get("%s/session" % self.url, auth=self.auth)
                 uStatus("bettercap avaialble")
-                return
+                return True
             except Exception:
                 uStatus("waiting for bettercap API to be available ...")
                 sleep(1)
+        return False
 
     def stop(self):
         getoutput("sudo pkill -f bettercap")

@@ -24,7 +24,11 @@ class DuckyScriptInterpreter():
             "RELEASE": self.RELEASE,
             "JITTER": self.JITTER,
             "PRINT": self.PRINT,
-            "PRESS": self.PRESS
+            "PRESS": self.PRESS,
+            "MOVE": self.MOVE,
+            "MOUSEPRESS": self.MOUSEPRESS,
+            "MOUSEHOLD": self.MOUSEHOLD,
+            "MOUSERELEASE": self.MOUSERELEASE
         }
 
         self.vars = {}
@@ -159,6 +163,18 @@ class DuckyScriptInterpreter():
     def PRINT(self, splitLine:list):
         self.printed += ' '.join(splitLine)
 
+    def MOVE(self, splitLine:list):
+        self.usb.move(int(splitLine[0]), int(splitLine[1]))
+
+    def MOUSEPRESS(self, splitLine:list):
+        self.usb.mousePress(int(splitLine[0]))
+
+    def MOUSEHOLD(self, splitLine:list):
+        self.usb.mouseHold(int(splitLine[0]))
+
+    def MOUSERELEASE(self, splitLine:list):
+        self.usb.mouseRelease()
+
     def run(self, script):
         file = open(script, "r").read().split("\n")
         for ln in file:
@@ -195,15 +211,22 @@ class DuckyScriptInterpreter():
 
 
 class BadUSB:
-    def __init__(self, hidDirectory:str="/dev/hidg0", hidWriteType:str='rb+'):
-        if os.path.exists(hidDirectory):
+    def __init__(self, kbHidDirectory:str="/dev/hidg0", mouseHidDirectory:str="/dev/hidg1", hidWriteType:str='rb+'):
+        if os.path.exists(kbHidDirectory):
             pass
         else:
             raise FileNotFoundError("\"{}\" doesn't exist")
 
-        self.hidDirectory = hidDirectory
+        if os.path.exists(mouseHidDirectory):
+            pass
+        else:
+            raise FileNotFoundError("\"{}\" doesn't exist")
+
+        self.kbHidDirectory = kbHidDirectory
+        self.mouseHidDirectory = mouseHidDirectory
         self.writeType=hidWriteType
-        self.keyboard = open(self.hidDirectory, self.writeType)
+
+        self.keyboard = open(self.kbHidDirectory, self.writeType)
 
         self.keys = usbKeys.keys
         self.shifted = usbKeys.shifted
@@ -211,7 +234,7 @@ class BadUSB:
 
     def isUpper(self, string:str): return True if string.upper() == string else False
 
-    def rawWrite(self, direct, useAdditives=False):
+    def kbRawWrite(self, direct, useAdditives=False):
         """
         write exact given arg directly to hid serial
         """
@@ -223,6 +246,23 @@ class BadUSB:
             self.keyboard.write(text.encode())
 
         self.keyboard.flush()
+
+    def mouseRawWrite(self, direct, useAdditives=False):
+        """
+        write exact given arg directly to hid serial
+        """
+
+        #print(type(direct.encode()))
+
+        with open(self.mouseHidDirectory, "wb+") as mouse:
+            if not useAdditives:
+                mouse.write(direct)
+            else:
+                mouse.write(direct.encode())
+
+            #mouse.flush()
+
+        sleep(0.5)
 
     def write(self, string, keyDelay=0, jitter=False, pressDelay=0):
         """
@@ -241,13 +281,88 @@ class BadUSB:
             else:
                 sleep(keyDelay)
         return True
+    
+    def move(self, xPx:int, yPx:int):
+        """
+        move the mouse x,y
+        """
+        
+        chars = []
+
+        # anything past 128 makes it go back
+        if xPx < 0:
+            print("x axis negative")
+            xPx = xPx*-1 + 127
+        
+        if yPx < 0:
+            print("y axis negative")
+            yPx = yPx*-1 + 127
+        
+        print("{}, {}".format(xPx, yPx))
+
+        # TODO: make it -254 from the actual value instead of just doing 254
+
+        if xPx > 254:
+            b = xPx
+            for x in range(round(xPx/254)):
+                chars.append((254, 0))
+        if yPx > 254:
+            b = yPx
+            for x in range(round(yPx/254)):
+                print('a')
+                chars.append((0, 254))
+        if yPx < 254 and xPx < 254:
+            chars.append((xPx, yPx))
+
+        # ima be 100 percent with whoever is reading this
+        # i am so dumb i needed chatgpt to help me
+        #byte_data = bytes.fromhex(''.join(['\\x', hex(xPx)[2:]]))
+
+        #self.mouseRawWrite(b"\x00" + chr(xPx).encode() + chr(yPx).encode(), useAdditives=False)
+        for x,y in chars:
+
+            # theres a better way of doing this i just dont know
+            if len(hex(x)[2:]) == 1:
+                hexiX = "0" + hex(x)[2:]
+            else:
+                hexiX = hex(x)[2:]
+
+            if len(hex(y)[2:]) == 1:
+                hexiY = "0" + hex(y)[2:]
+            else:
+                hexiY = hex(y)[2:]
+
+            print("-" * 10)
+            print(hexiX)
+            print(hexiY)
+
+            self.mouseRawWrite(b'\x00'+ eval('b"' + r'\x' + hexiX + '"') + eval('b"' + r'\x' + hexiY + '"'), useAdditives=False)
+
+    def mousePress(self, button:int):
+        """
+        press buttons 1, 2, 3
+        """
+        self.mouseRawWrite(chr(button).encode() + b'\x00\x00', useAdditives=False)
+        self.mouseRawWrite(b"\x00\x00\x00", useAdditives=False)
+
+    def mouseHold(self, button:int):
+        """
+        hold buttons 1, 2, 3
+        """
+        self.mouseRawWrite(chr(button).encode() + b'\x00\x00', useAdditives=False)
+
+    def mouseRelease(self):
+        """
+        release all buttons
+        """
+        self.mouseRawWrite(b"\x00\x00\x00", useAdditives=False)
 
     def releaseAll(self):
         """
         release all pressed keys, always called after self.press() and self.write()
         """
         a = self.keys['null']*8
-        self.rawWrite(a.encode())
+        self.kbRawWrite(a.encode())
 
     def press(self, key, releaseDelay=0):
         """
@@ -269,18 +384,18 @@ class BadUSB:
         if type(keyInt) == list: # special shifted char
             #print("is list")
             text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt[0])+self.keys["null"]*5
-            self.rawWrite(text.encode())
+            self.kbRawWrite(text.encode())
         else:
             if not key == key.upper(): # if lowercase
                 #print("is lower")
-                self.rawWrite(keyInt, useAdditives=True)
+                self.kbRawWrite(keyInt, useAdditives=True)
             elif key in list(self.symbols):
                 #print("is special")
-                self.rawWrite(keyInt, useAdditives=True)
+                self.kbRawWrite(keyInt, useAdditives=True)
             else: # if uppercase
                 #print("is upper")
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
 
         sleep(float(releaseDelay))
 
@@ -309,13 +424,13 @@ class BadUSB:
         else:
             if not key == key.upper(): # if lowercase
                 text = chr(self.keys["LCTRL"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             elif key in list(self.symbols):
                 text = chr(self.keys["LCTRL"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             else: # if uppercase, it doesnt matter
                 text = chr(self.keys["LCTRL"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
 
         if not noRelease:
             self.releaseAll()
@@ -344,13 +459,13 @@ class BadUSB:
         else:
             if not key == key.upper(): # if lowercase
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             elif key in list(self.symbols):
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             else: # if uppercase, it doesnt matter
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
 
         if not noRelease:
             self.releaseAll()
@@ -379,13 +494,13 @@ class BadUSB:
         else:
             if not key == key.upper(): # if lowercase
                 text = chr(self.keys["LALT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             elif key in list(self.symbols):
                 text = chr(self.keys["LALT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             else: # if uppercase, it doesnt matter
                 text = chr(self.keys["LALT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
 
         if not noRelease:
             self.releaseAll()
@@ -414,13 +529,13 @@ class BadUSB:
         else:
             if not key == key.upper(): # if lowercase
                 text = chr(self.keys["LMETA"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             elif key in list(self.symbols):
                 text = chr(self.keys["LMETA"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
             else: # if uppercase, it doesnt matter
                 text = chr(self.keys["LMETA"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
-                self.rawWrite(text.encode())
+                self.kbRawWrite(text.encode())
 
         if not noRelease:
             self.releaseAll()
@@ -434,7 +549,7 @@ class BadUSB:
 
         text = chr(self.keys["LMETA"]) + self.keys["null"] + chr(self.keys["r"])+self.keys["null"]*5
 
-        self.rawWrite(text.encode())
+        self.kbRawWrite(text.encode())
 
         sleep(0.25)
 
