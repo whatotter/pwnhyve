@@ -4,6 +4,8 @@ from core.utils import getChunk
 import string
 from core.plugin import load
 from json import loads
+from io import BytesIO
+import base64
 
 #GPIO define
 RST_PIN        = 25
@@ -141,12 +143,8 @@ class usbRunPercentage:
             self.draw.text((percentageX, percentageY), "{}%".format(self.percentage), fill=0, outline=255, font=self.pFont) # percentage
 
             self.draw.text((4, 4), self.text, fill=0, outline=255, font=self.cFont) # console
-
-            if self.flipped:
-                img1 = self.image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-                self.disp.ShowImage(self.disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-            else:
-                self.disp.ShowImage(self.disp.getbuffer(self.image))
+            
+            screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
 
     def exit(self):
         self.close = True
@@ -159,212 +157,6 @@ class usbRunPercentage:
 
     def setPercentage(self, percent:int):
         self.percentage = percent
-
-class AsyncMenu:
-    """
-    DEPRECIATED
-    """
-    def __init__(self, draw, disp, image, GPIO, choices) -> None:
-        self.choices = choices
-
-        self.draw = draw
-        self.disp = disp
-        self.GPIO = GPIO
-        self.image = image
-
-        self.selection = None
-
-        self.haltBool = False
-        self.halted = False
-
-        self.exited = False
-        pass
-
-    def toggleHalt(self):
-        self.haltBool = not self.haltBool
-        op = not self.halted
-        while self.halted != op:
-            pass
-        return self.halted
-
-    def exit(self):
-        self.exited = True
-
-    def menu(self, gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
-    cleanScroll=True, flipped=False, flipperZeroMenu=True, flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16), flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16), font=None, onlyPrefix=False, selectionBackgroundWidth=200, enableIcons=False, iconsDict={}, timeoutCycles=None):
-        xCoord = 5
-        yCoord = 5
-        currentSelection = 0 # index of programs list
-        selectedPrefix = ">"
-        maxLNprint = 5
-        cleanScrollNum = 0
-        scrollChunks = []
-        currentSelOld = 0
-        cycles = 0
-
-        while 1:
-            if self.exited: return
-
-            #print(self.choices)
-            #print(self.haltBool)
-            #print(self.halted)
-            #print(currentSelection)
-            
-            if len(self.choices) == 0:
-                while len(self.choices) == 0:
-                    pass
-
-            if self.haltBool:
-                self.halted = True
-                while self.haltBool:
-                    if self.exited: return
-                    pass
-                self.halted = False
-
-            yCoordBefore = yCoord
-            selection = list(self.choices)[currentSelection]
-            print(selection)
-            flipperSelection=Image.open('./core/fonts/selection.bmp')
-
-            fullClear(self.draw)
-
-            if currentSelection >= maxLNprint:
-                if currentSelection != currentSelOld:
-                    cleanScrollNum += 1
-            else:
-                if currentSelection != currentSelOld:
-                    cleanScrollNum -= 1
-
-            currentSelOld = currentSelection
-
-            if not cleanScroll:
-                scrollChunks = getChunk(list(self.choices), 5)
-                for chunk in scrollChunks:
-                    print(chunk)
-                    if selection in ';'.join(chunk): # idek anymore
-                        listToPrint = chunk
-                        break
-            else:
-                a = list(self.choices)
-                listToPrint = []
-
-                for _ in range(currentSelection):
-                    if cleanScrollNum != 0:
-                        a.pop(0)
-
-                for i in a:
-                    listToPrint = a[:5]
-
-            if flipperZeroMenu:
-                yCoord = 1
-                listToPrint = [] # clean list to print
-
-                # TODO: figure out something cleaner than this
-                try:
-                    b4 = list(self.choices)[currentSelection - 1]
-                except IndexError: b4=""
-                if currentSelection - 1 == -1: b4 = ""
-                try:
-                    after = list(self.choices)[currentSelection + 1]
-                except IndexError: after=""
-
-                listToPrint = [b4, selection, after] 
-                #
-                #   b4 > pwnagotchi
-                #   selection > reboot 
-                #   after > shutdown
-                #
-                #
-
-            for text in list(listToPrint): # do self.draw
-                if not flipperZeroMenu:
-                    if selection != text: # if our selection isnt the text iter gave us
-                        returnedCoords = createSelection(self.draw, text, xCoord, yCoord, selected=0, font=font) # self.draw it normally
-                        programCoords[text] = returnedCoords # set the coords for later
-                    else: # it is our selection
-                        if not onlyPrefix: # if we arent using only prefix
-                            self.draw.rectangle([(0, yCoord), (selectionBackgroundWidth, 13 + yCoord)], fill=0, outline=255) # self.draw colored rectangle first
-                            self.draw.text((xCoord, yCoord), text, fill=1, outline=255, font=font) # self.draw black text over rectangle
-                        else:
-                            createSelection(self.draw, selectedPrefix+selection, xCoord, yCoord, selected=0, font=font) # self.draw over it
-
-                        programCoords[text] = (xCoord, yCoord) # add coord
-                            
-                    yCoord += 14
-                else:
-                    bigMinimizedText = ''.join([str(x) for x in text][:12]) # usually for big
-                    smallMinimizedText = ''.join([str(x) for x in text][:14]) # usually for small
-
-                    xCoord = 4
-                    if enableIcons: xCoord += 22
-
-                    if text == "": yCoord += 22; continue
-                    icoX, icoY = 4, yCoord + 2
-
-                    try:
-                        print(iconsDict)
-                        try:
-                            ico1 = iconsDict[text]
-                        except Exception as e: print(e); ico1 = None
-                        #                 ^ v smartest person alive rn
-                        if ico1 == None: ico1 = "./core/icons/missing.bmp"
-
-                        ico = Image.open(ico1).resize((16,16))
-                    except Exception as e:
-                        raise
-
-                    if text == selection:
-                        #boxcoords = [(2, 24), (128 - 4, 18 + vars.yCoord)]
-                        #self.draw.rectangle(boxcoords, fill=1, outline=0)
-
-                        self.image.paste(flipperSelection, (0,22))
-
-                        createSelection(self.draw, bigMinimizedText, xCoord, yCoord, selected=0, font=flipperFontB) # self.draw over it 
-                        if enableIcons: self.image.paste(ico, (icoX, icoY))
-                    else:
-                        createSelection(self.draw, smallMinimizedText, xCoord, yCoord, selected=0, font=flipperFontN) # draw over it 
-                        if enableIcons: self.image.paste(ico, (icoX, icoY))
-
-                    yCoord += 22
-
-            yCoord = yCoordBefore
-
-            # button stuff
-
-            if self.GPIO.input(gpioPins['KEY_DOWN_PIN']): # button is released
-                pass # button not pressed
-            else: # button is pressed:
-                if currentSelection != (len(self.choices) - 1):
-                    currentSelection += 1
-                #print("down")
-
-            if self.GPIO.input(gpioPins['KEY_UP_PIN']): # button is released
-                pass # not press
-            else: # button is pressed:
-                if currentSelection != 0:
-                    currentSelection -= 1
-                #print("Up")
-
-            if self.GPIO.input(gpioPins['KEY_PRESS_PIN']): # button is released
-                pass # not press
-            else: # button is pressed:
-                #return self.choices[currentSelection]
-                self.selection = self.choices[currentSelection]
-                #print("center")
-
-            if not self.GPIO.input(gpioPins['KEY_LEFT_PIN']): self.selection = False; return False
-
-            if timeoutCycles != None:
-                if cycles == timeoutCycles:
-                    return None
-                else:
-                    cycles += 1
-
-            if flipped:
-                img1 = self.image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-                self.disp.ShowImage(self.disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-            else:
-                self.disp.ShowImage(self.disp.getbuffer(self.image))
 
 class screenConsole:
     def __init__(self, draw, disp, image,
@@ -398,7 +190,11 @@ class screenConsole:
                     pass
                 self.updateBool = False
             #print(self.text) # dee bug
-            if self.close: return # request to close
+            if self.close:
+                fullClear(self.draw)
+                screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
+                return # request to close
+            
             if self.stopWriting: sleep(0.5); continue
 
 
@@ -476,11 +272,7 @@ class screenConsole:
 
             self.draw.text((4, 4), self.text, fill=0, outline=255, font=self.cFont) # console
 
-            if self.flipped:
-                img1 = self.image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-                self.disp.ShowImage(self.disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-            else:
-                self.disp.ShowImage(self.disp.getbuffer(self.image))
+            screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
 
     def exit(self):
         self.close = True
@@ -490,6 +282,29 @@ class screenConsole:
 
     def clearText(self):
         self.text = ""
+
+def checkSocketINput():
+    gpio = None
+    with open("/tmp/socketGPIO", "r") as f:
+        gpio = f.read()
+    
+    open("/tmp/socketGPIO", "w").write("") # leave blank (worst way to do this probably)
+
+    if gpio == "":
+        return False
+    else:
+        if gpio in ["up", "left", "right", "down", "1", "2", "3", "press"]:
+            buttons = {
+            "up": 6 ,
+            "down": 19,
+            "left": 5,
+            "right": 26,
+            "press": 13,
+            "1": 21,
+            "2": 20,
+            "3": 16,
+            }
+            return int(buttons[gpio])
             
 def waitForKey(GPIO, debounce=False):
     """
@@ -501,6 +316,13 @@ def waitForKey(GPIO, debounce=False):
     a = None
 
     while 1: # wait for key press
+        sockGPIO = checkSocketINput()
+        if not sockGPIO:
+            pass
+        else:
+            a = sockGPIO
+            break
+
         if not GPIO.input(KEY_UP_PIN): a = KEY_UP_PIN; break
 
         if not GPIO.input(KEY_LEFT_PIN): a = KEY_LEFT_PIN; break
@@ -522,11 +344,17 @@ def waitForKey(GPIO, debounce=False):
     if debounce:
         while checkIfKey(GPIO):
             pass
+        sleep(0.01)
 
     return a
 
 def checkIfKey(GPIO):
     """check if there is a key being pressed"""
+
+    a = checkSocketINput()
+    if a:
+        return True
+
     if not GPIO.input(KEY_UP_PIN): return True
 
     if not GPIO.input(KEY_LEFT_PIN): return True
@@ -547,6 +375,10 @@ def checkIfKey(GPIO):
 
 def getKey(GPIO):
     """get key without waiting; return current key pressed"""
+
+    a = checkSocketINput()
+    if a:
+        return a
 
     if not GPIO.input(KEY_UP_PIN): return KEY_UP_PIN
 
@@ -581,6 +413,27 @@ def createSelection(display, text, xCoord, yCoord, selected=0, **kwargs):
 def fullClear(draw):
     draw.rectangle((0, 0, 200, 100), fill=1)
     return True
+
+def screenShow(disp, image, flipped=False, stream=False):
+
+    if flipped:
+        disp.ShowImage(disp.getbuffer(image.transpose(Image.FLIP_LEFT_RIGHT)))
+    else:
+        disp.ShowImage(disp.getbuffer(image))
+
+    if stream:
+
+        buffered = BytesIO()
+        
+        image.save(buffered, format="JPEG")
+
+        img_str = base64.b64encode(buffered.getvalue())
+
+        with open("/tmp/base64Data", "w") as f:
+            f.write(img_str.decode('ascii'))
+            f.flush()
+
+    return disp.getbuffer(image)
 
 def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "1234567890", "!@#$%^&*()_-+={}\\;',./"], font=ImageFont.truetype('core/fonts/tahoma.ttf', 11), flipped=False, secret=False):
     """
@@ -636,11 +489,7 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
             textX += 10
 
         # show compiled image
-        if flipped:
-            img1 = image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-            disp.ShowImage(disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-        else:
-            disp.ShowImage(disp.getbuffer(image))
+        screenShow(disp, image, flipped=flipped, stream=True)
 
 
         ##
@@ -676,8 +525,6 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
             compiledStri += "" #space
         elif key == KEY1_PIN:
             compiledStri = compiledStri[:-1]
-            while checkIfKey(GPIO):
-                pass
 
         try:
             chosenKey = chars[keyI]
@@ -732,19 +579,14 @@ def menu(draw, disp, image, choices, GPIO,
 
         yCoord = yCoordBefore # set our y coord
 
-        if flipped:
-            img1 = image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-            disp.ShowImage(disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-        else:
-            disp.ShowImage(disp.getbuffer(image))
+        screenShow(disp, image, flipped=flipped, stream=True)
 
         # button stuff
 
         while True:
-            waitForKey(GPIO)
-            key = getKey(GPIO)
+            key = waitForKey(GPIO, debounce=True)
 
-            #print(key)
+            print(key)
 
             if key == False: continue
 

@@ -1,4 +1,5 @@
 from PIL import ImageFont
+from core.SH1106.screen import *
 import time
 
 class example1:
@@ -40,7 +41,7 @@ def hello(args:list):
 
     canvas.text((10, 10), "hello world", fill=0, outline=255, font=example1.font)
 
-    display.ShowImage(display.getbuffer(image))
+    screenShow(display, image, flipped=False, stream=True)
 
     time.sleep(3)
 

@@ -6,11 +6,15 @@ gpio code snippets are from waveshare docs
 rest are mine
 """
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from core.SH1106.screen import createSelection, fullClear, waitForKey, menu, checkIfKey, getKey
+from core.SH1106.screen import *
 from core.utils import getChunk, uError, uStatus, fakeGPIO, uSuccess
 from core.plugin import *
 from time import sleep
 import json
+import threading
+import socket
+from io import BytesIO
+import base64
 
 pillowDebug = False # very not reliable, also laggy
 enableWebServer = True
@@ -68,6 +72,9 @@ class customizable:
     disableIdle = False # disable idle
     # ^ prefrence, but reduces cpu usage, which in turn increases lifespan on battery
 
+    disableKeys = False # disable keys from socket
+    # ^ can be disabled just in case, disables all socket info
+
 
 class vars:
     xCoord = 5
@@ -86,11 +93,57 @@ class vars:
     prevSelection = None
     menus = {}
 
+    streamSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
     flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16)
     flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16)
     flipperSelection = Image.open('./core/fonts/selection.bmp')
     microFont = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono8.ttf', 5)
+
+def stream():
+    """
+    replay all pillow images to socket
+    """
+
+    vars.streamSock.bind(("0.0.0.0", 11198))
+    vars.streamSock.listen(1)
+    vars.streamSock.settimeout(None)
+
+    open("/tmp/socketGPIO", "w").write("")
+    open("/tmp/base64Data", "w").write("")
+
+    while True:
+        vars.streamSock.settimeout(None)
+
+        conn, addr = vars.streamSock.accept()
+
+        conn.settimeout(0.05)
+        vars.streamSock.settimeout(0.05)
+
+        while True:
+            if os.path.exists("/tmp/base64Data"):
+                with open("/tmp/base64Data", "r") as f:
+                    try:
+                        conn.sendall(f.read().encode('utf-8'))
+                    except:
+                        break
+
+            try:
+                data = conn.recv(512).decode('utf-8') # 100ms delay
+            except:
+                continue
+
+            if data:
+                with open("/tmp/socketGPIO", "w") as f:
+                    f.write(data)
+                    f.flush()
+            else:
+                continue
+
+        vars.streamSock.settimeout(None)
+
+
 
 if __name__ == "__main__":
 
@@ -99,6 +152,8 @@ if __name__ == "__main__":
     #print("[!] started villain; use fg to bring it to console")
 
     # 240x240 display with hardware SPI:
+
+    threading.Thread(target=stream, daemon=True).start()
 
     with open("config.json", "r") as f:
         a = json.loads(f.read())
@@ -136,6 +191,8 @@ if __name__ == "__main__":
         disp.clear()
 
         GPIO.setmode(GPIO.BCM)
+
+        GPIO.sockStream = vars.streamSock
 
         gpio = { # gpio pins are the buttons, like joystick, side buttons, etc.
             'KEY_UP_PIN': 6,
@@ -274,26 +331,13 @@ if __name__ == "__main__":
             listToPrint = b[2].screen.getItems([vars.plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection])
 
             b[2].screen.display([draw, disp, image, GPIO, list(listToPrint), plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection, vars.icons])
+
+            screenShow(disp, image, flipped=vars.flipped, stream=True)
         
 
         vars.yCoord = yCoordBefore # set our y coord
 
         # button stuff
-
-        # show compiled image
-        if vars.flipped:
-            img1 = image.transpose(Image.FLIP_TOP_BOTTOM) # easy read
-            disp.ShowImage(disp.getbuffer(img1.transpose(Image.FLIP_LEFT_RIGHT)))
-        else:
-            if not pillowDebug:
-                disp.ShowImage(disp.getbuffer(image))
-            else:
-                disp.getbuffer(image)
-                #image.show()
-                #plt.pause(0.01)
-                #plt.imshow(image)
-                #sleep(0.25) # approx time for display to display image
-                #plt.show()
 
         vars.prevSelection = vars.currentSelection
 
@@ -480,11 +524,7 @@ if __name__ == "__main__":
                 if not printed:
                     draw.text((10, 25), "no help is available for this plugin", fill=1, outline=255, font=vars.font)
 
-                # show compiled image
-                if vars.flipped:
-                    disp.ShowImage(disp.getbuffer(image.transpose(Image.FLIP_LEFT_RIGHT)))
-                else:
-                    disp.ShowImage(disp.getbuffer(image))
+                screenShow(disp, image, flipped=vars.flipped, stream=True)
 
                 waitForKey(GPIO)
 

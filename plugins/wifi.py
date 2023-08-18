@@ -204,7 +204,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
                     # or
                     #cli.scapyDeauth(ap, targetClient[0])
 
-                sleep(10) # camp their handshake for 10 seconds, as thats the average time a device needs to disconnect and reconnect; bettercap will be sniffing during this 10s
+                sleep(2.5) # camp their handshake for 2 n a half seconds, as thats the average time a device needs to disconnect and reconnect; bettercap will be sniffing during this 10s
 
                 for _y in range(checkHandshakeTries):
                     if screen.exited: cli.run("exit"); return
@@ -293,7 +293,7 @@ def monitorMode(args:list):
 
         draw.text([8,8], "stopped all ifaces", fill=0, outline=255, font=None)
 
-    disp.ShowImage(disp.getbuffer(image))
+    screenShow(disp, image, flipped=False, stream=True)
 
     waitForKey(GPIO)
     while checkIfKey(GPIO): pass
@@ -482,10 +482,7 @@ def rssiReader(args:list):
 
             if len(loading) == 24: loading = "."
 
-            if flipped:
-                disp.ShowImage(disp.getbuffer(image.transpose(Image.FLIP_LEFT_RIGHT)))
-            else:
-                disp.ShowImage(disp.getbuffer(image))
+            screenShow(disp, image, flipped=flipped, stream=True)
 
             sleep(1)
 
@@ -516,11 +513,7 @@ def rssiReader(args:list):
         # TODO: finish this; scroll left and right
         draw.text((3, 16), '\n'.join(compiledJson), fill=0, outline=255, font=font)
 
-        # show compiled image
-        if flipped:
-            disp.ShowImage(disp.getbuffer(image.transpose(Image.FLIP_LEFT_RIGHT)))
-        else:
-            disp.ShowImage(disp.getbuffer(image))
+        screenShow(disp, image, flipped=flipped, stream=True)
 
         while True:
             key = getKey(GPIO)
@@ -545,6 +538,7 @@ def rssiReader(args:list):
                 #print(cli.run("exit"))
                 cli.stop()
                 return
+
 
 
 def functions():

@@ -292,10 +292,12 @@ def shutdown(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
 
     fullClear(draw)
-    disp.ShowImage(disp.getbuffer(image))
+    screenShow(disp, image, flipped=False, stream=True)
 
     print("shutdown thingy")
     print(subprocess.getoutput("sudo shutdown now"))
+
+    sleep(5)
 
     return
 

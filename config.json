@@ -5,7 +5,7 @@
     "idleCycles": 720,
     "selectedPrefix": ">",
     "screenType": "minimalistic",
-    "enableWebServer": true,
+    "enableWebServer": false,
     "disableIdle": true,
 
     "monitorInterface": "wlan0mon",

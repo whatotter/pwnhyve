@@ -6,7 +6,7 @@ you can also edit the nyan cat frames to show what you wanna show, just edit the
 
 from PIL import ImageFont, Image
 import time
-from core.SH1106.screen import waitForKey, checkIfKey
+from core.SH1106.screen import waitForKey, checkIfKey, screenShow
 
 class vars:
     font = ImageFont.truetype('core/fonts/Font.ttf', 18)
@@ -29,11 +29,11 @@ def setIdle(args:list):
     #canvas.text((10, 10), "a mimir", fill=0, outline=255, font=vars.font)
 
     if not vars.nyanCat:
-        display.ShowImage(display.getbuffer(image))
+        screenShow(display, image, flipped=False, stream=True)
 
         waitForKey(GPIO)
     else:
-        display.ShowImage(display.getbuffer(image))
+        screenShow(display, image, flipped=False, stream=True)
 
         currFrame = 1
 
@@ -53,7 +53,8 @@ def setIdle(args:list):
 
             image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame       
             image.paste(frames[currFrame])
-            display.ShowImage(display.getbuffer(image))
+
+            screenShow(display, image, flipped=False, stream=True)
 
             currFrame += 1
 
