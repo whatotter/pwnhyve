@@ -1,4 +1,4 @@
-from PIL import Image, ImageFont
+from PIL import Image, ImageFont, ImageOps
 from time import sleep
 from core.utils import getChunk
 import string
@@ -417,7 +417,8 @@ def fullClear(draw):
 def screenShow(disp, image, flipped=False, stream=False):
 
     if flipped:
-        disp.ShowImage(disp.getbuffer(image.transpose(Image.FLIP_LEFT_RIGHT)))
+        a = ImageOps.flip(image)
+        disp.ShowImage(disp.getbuffer(a.transpose(Image.FLIP_LEFT_RIGHT)))
     else:
         disp.ShowImage(disp.getbuffer(image))
 
@@ -534,7 +535,7 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
 
 def menu(draw, disp, image, choices, GPIO,
           gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
-            flipped=False, menuType=loads(open("./config.json", "r").read())["screenType"], menus=load(folder="menus"), caption=None):
+            flipped=False, menuType=loads(open("./config.json", "r").read())["screenType"], menus=load(folder="menus"), caption=None, disableBack=False):
     xCoord = 5
     yCoord = 5
     currentSelection = 0 # index of programs list
@@ -591,14 +592,24 @@ def menu(draw, disp, image, choices, GPIO,
             if key == False: continue
 
             if key == gpioPins['KEY_DOWN_PIN']: # button is released
-                if currentSelection != (len(choices) - 1):
-                    currentSelection += 1
+                if not flipped:
+                    if currentSelection != (len(choices) - 1):
+                        currentSelection += 1
+                else:
+                    if currentSelection != 0:
+                        currentSelection -= 1
+                        
                 break
                 #print("down")
 
             if key == gpioPins['KEY_UP_PIN']: # button is released
-                if currentSelection != 0:
-                    currentSelection -= 1
+                if flipped:
+                    if currentSelection != (len(choices) - 1):
+                        currentSelection += 1
+                else:
+                    if currentSelection != 0:
+                        currentSelection -= 1
+
                 break
                 #print("Up")
 
@@ -606,4 +617,10 @@ def menu(draw, disp, image, choices, GPIO,
                 return choices[currentSelection]
                 #print("center")
 
-            if key == gpioPins['KEY_LEFT_PIN']: return None
+            if key == 20: # button is released
+                flipped = not flipped
+                break
+                #print("center")
+
+            if not disableBack:
+                if key == gpioPins['KEY_LEFT_PIN']: return None

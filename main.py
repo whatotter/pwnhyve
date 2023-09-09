@@ -5,16 +5,13 @@ absolute shitshow of code
 gpio code snippets are from waveshare docs
 rest are mine
 """
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from core.SH1106.screen import *
-from core.utils import getChunk, uError, uStatus, fakeGPIO, uSuccess
+from core.utils import getChunk, uError, uStatus, uSuccess
 from core.plugin import *
-from time import sleep
 import json
 import threading
 import socket
-from io import BytesIO
-import base64
 
 pillowDebug = False # very not reliable, also laggy
 enableWebServer = True
@@ -50,7 +47,9 @@ except ImportError:
 
 
 class customizable:
-    # everything is overridden by the config.json
+    # (mostly) everything is overridden by the config.json
+    # !!!!!!!!!!!!!!!!!!!!!! DO NOT EDIT !!!!!!!!!!!!!!!!!!! because of ^
+
     cleanScroll = True # true = everything scrolls, false = once you reach the bottom everything is redrawn
     # ^ reccomended on
 
@@ -135,9 +134,10 @@ def stream():
                 continue
 
             if data:
-                with open("/tmp/socketGPIO", "w") as f:
-                    f.write(data)
-                    f.flush()
+                if not customizable.disableKeys:
+                    with open("/tmp/socketGPIO", "w") as f:
+                        f.write(data)
+                        f.flush()
             else:
                 continue
 
@@ -153,8 +153,6 @@ if __name__ == "__main__":
 
     # 240x240 display with hardware SPI:
 
-    threading.Thread(target=stream, daemon=True).start()
-
     with open("config.json", "r") as f:
         a = json.loads(f.read())
 
@@ -166,6 +164,10 @@ if __name__ == "__main__":
         customizable.disableIdle = a["disableIdle"]
 
         customizable.screenType = a["screenType"]
+
+        if a["enableStream"]:
+            threading.Thread(target=stream, daemon=True).start()
+
         # types of screens
         # "original": the original display i made
         # "flipper": the display based off a flipper zero
@@ -185,7 +187,6 @@ if __name__ == "__main__":
 
             Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
 
-    if not pillowDebug:
         disp = SH1106.SH1106()
         disp.Init()
         disp.clear()
@@ -207,30 +208,6 @@ if __name__ == "__main__":
 
         for gpioPin in gpio: # init gpio
             GPIO.setup(gpio[gpioPin],GPIO.IN,pull_up_down=GPIO.PUD_UP)
-    else:
-        class disp: # idk
-            width = 128
-            height = 64
-
-            def ShowImage(buf):
-                print(buf)
-            def getbuffer(buf):
-                plt.pause(0.0000000001)
-                plt.imshow(image)
-                sleep(0.025) # approx time for display to display image
-
-        gpio = { # gpio pins are the buttons, like joystick, side buttons, etc.
-            'KEY_UP_PIN': 'UP',
-            'KEY_DOWN_PIN': 'DOWN',
-            'KEY_LEFT_PIN': 'LEFT',
-            'KEY_RIGHT_PIN': 'RIGHT',
-            'KEY_PRESS_PIN': '.',
-            'KEY1_PIN': 'q',
-            'KEY2_PIN': 'a',
-            'KEY3_PIN': 'z',
-        }
-
-        GPIO = fakeGPIO(gpio)
 
     image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
     draw = ImageDraw.Draw(image) # dsiayp
@@ -292,8 +269,6 @@ if __name__ == "__main__":
     while 1:
         vars.isActive = False
         yCoordBefore = vars.yCoord
-        if pillowDebug:
-            os.system("cls") # clear term
 
         # interface for batteries n stuff
         #draw.text((6,0), "CPU:000", font=vars.microFont)
@@ -342,209 +317,77 @@ if __name__ == "__main__":
         vars.prevSelection = vars.currentSelection
 
         while True:
-            key = getKey(GPIO)
+            key = menu(draw, disp, image, list(vars.plugins), GPIO, disableBack=True)
 
             #print(key)
 
-            if key == False: sleep(0.01) # TODO: remove maybe?
+            print(vars.folders)
 
-            elif key == gpio['KEY_DOWN_PIN']: # button is pressed
-                vars.isActive = True # set our idle thing
-                vars.passedIdleCycles = 0 # ^
-
-                if vars.flipped:
-                    if vars.currentSelection == 0:
-                        vars.currentSelection = len(vars.plugins)
-                        continue
-                    vars.currentSelection -= 1
-                else:
-                    if vars.currentSelection == (len(vars.plugins) - 1):
-                        vars.currentSelection = 0
-                        continue
-                    vars.currentSelection += 1
-
-                break
-
-            elif key == gpio['KEY_UP_PIN']: # button is pressed
-                vars.isActive = True # set our idle thing
-                vars.passedIdleCycles = 0 # ^
-
-                if not vars.flipped:
-                    if vars.currentSelection == 0:
-                        vars.currentSelection = len(vars.plugins)
-                        continue
-                    vars.currentSelection -= 1
-                else:
-                    if vars.currentSelection == (len(vars.plugins)):
-                        vars.currentSelection = 0
-                        continue
-                    vars.currentSelection += 1
-
-                break
-
-            elif key == gpio['KEY_PRESS_PIN'] or key == gpio['KEY_RIGHT_PIN']: # button is pressed
-                vars.isActive = True # set our idle thing
-                vars.passedIdleCycles = 0 # ^
-
-                key = list(vars.plugins)[vars.currentSelection] # set key value
-
-                if key == "exitScript":
-                    quit()
-
-                #print(key)
-
-                print(vars.folders)
-
-                if key in vars.folders:
-                    #print("AB" * 30)
-                    # URGENT TODO: FIX THIS
-                    while checkIfKey(GPIO): pass
-                        
-                        
-                    plgList = vars.plugins[key]
-                    if "help" in plgList:
-                        plgList.pop("help")
+            if key in vars.folders:
+                #print("AB" * 30)
+                # URGENT TODO: FIX THIS
                     
-                    print(list(plgList))
+                    
+                plgList = vars.plugins[key]
+                if "help" in plgList:
+                    plgList.pop("help")
+                
+                print(list(plgList))
 
-                    a = menu(draw, disp, image, list(plgList), GPIO, menuType=customizable.screenType)
+                a = menu(draw, disp, image, list(plgList), GPIO, menuType=customizable.screenType)
 
-                    #key = list(plgList)[vars.currentSelection]
+                #key = list(plgList)[vars.currentSelection]
 
-                    for executable in plgList: # for every executable in the
-                        #print("KURWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-                        #print(executable)
+                for executable in plgList: # for every executable in the
+                    #print("KURWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    #print(executable)
 
-                        #choice = plugins[1][p][1][executable]
-                        #print(choice)
+                    #choice = plugins[1][p][1][executable]
+                    #print(choice)
 
-                        print("--------------------------------")
-                        print(plgList)
-                        print("--------------------------------")
+                    print("--------------------------------")
+                    print(plgList)
+                    print("--------------------------------")
 
-                        if executable == a:
-                            plg = None
+                    if executable == a:
+                        plg = None
 
-                            for x in plugins:
-                                for y in plugins[x]:
-                                    print("{} in {}".format(a, list(plugins[x][1])))
-                                    for z in list(plugins[x][1]):
-                                        if type(plugins[x][1][z]) == dict:
-                                            print(plugins[x][1][z])
-                                            if z == "icons": continue
-                                            if a in list(plugins[x][1][z]):
-                                                print("boom")
-                                                plg = plugins[x][2]
-                                    
-                            if plg == None:
-                                plg = plugins[p][2] # chosen plugin
+                        for x in plugins:
+                            for y in plugins[x]:
+                                print("{} in {}".format(a, list(plugins[x][1])))
+                                for z in list(plugins[x][1]):
+                                    if type(plugins[x][1][z]) == dict:
+                                        print(plugins[x][1][z])
+                                        if z == "icons": continue
+                                        if a in list(plugins[x][1][z]):
+                                            print("boom")
+                                            plg = plugins[x][2]
+                                
+                        if plg == None:
+                            plg = plugins[p][2] # chosen plugin
 
-                            assert plg != None
+                        assert plg != None
 
-                            print("--------")
-                            print(plg)
-                            print("--------")
-                            #TODO: make it run in a different thread so it doesnt error main thread
+                        print("--------")
+                        print(plg)
+                        print("--------")
+                        #TODO: make it run in a different thread so it doesnt error main thread
 
-                            open("./core/temp/threadQuit", "w").write("0")
-                            z = run(a, [draw, disp, image, GPIO], plg) # run it
-                            open("./core/temp/threadQuit", "w").write("1")
+                        open("./core/temp/threadQuit", "w").write("0")
+                        z = run(a, [draw, disp, image, GPIO], plg) # run it
+                        open("./core/temp/threadQuit", "w").write("1")
 
-                            print(z)
-                            print('ab2')
-                            break
-                        else:
-                            pass
-                            #print("abf") # i love spelling
-
-                    break
-                else:
-                    for p in plugins: # for plugin in plugins list
-                        for executable in plugins[p][1]: # for every executable in the 
-                            if executable == key:
-                                plg = plugins[p][2] # chosen plugin
-                                run(key, [draw, disp, image, GPIO], plg) # run it
-
-                    break
-
-                #break
-
-            elif key == gpio['KEY2_PIN']: # button is pressed
-                vars.isActive = True # set our idle thing
-                vars.passedIdleCycles = 0 # ^
-                vars.flipped = not vars.flipped # flip display
+                        break
+                    else:
+                        pass
+                        #print("abf") # i love spelling
 
                 break
-
-            elif key == gpio['KEY3_PIN']: # button is pressed
-                vars.isActive = True # set our idle thing
-                vars.passedIdleCycles = 0 # ^
-
-                fullClear(draw)
-
-                cur = list(vars.plugins)[vars.currentSelection]
-                printed = False
-
-                draw.rectangle([(0, 0), (200, 16)], fill=0, outline=255)
-                draw.text((3, 1), "help for \"{}\"".format(cur), fill=1, outline=255, font=vars.font)
-
-
-                help = vars.plugins[cur]['help'][0] # get all help from modules
-
-                if len(help) > 21:
-                    a = []
-                    c = [str(x) for x in help]
-
-                    while True:
-                        if len(c) > 21: d = 21
-                        else: d = len(c)
-
-                        if d == 0: break
-
-                        a.append(''.join(c[:d]).strip())
-
-                        for i in c[:d]:
-                            c.remove(i)
-
-                    help = '\n'.join(a)
-
-                if "\n" in help:
-                    print("newline in help")
-                    a = help.split("\n")
-                    b = 18
-                    for i in a:
-                        draw.text((5, b), i, fill=0, outline=255, font=vars.font)
-                        print('added {}'.format(i))
-                        b += 11
-                else:
-                    print("newline not in help")
-                    draw.text((5, 18), help, fill=0, outline=255, font=vars.font)
-                printed = True
-
-                if not printed:
-                    draw.text((10, 25), "no help is available for this plugin", fill=1, outline=255, font=vars.font)
-
-                screenShow(disp, image, flipped=vars.flipped, stream=True)
-
-                waitForKey(GPIO)
-
-                break
-
-            #vars.isActive = True
-            #if not vars.isActive:
-            if customizable.disableIdle:
-                pass
             else:
-                if customizable.idleCycles == vars.passedIdleCycles:
-                    vars.passedIdleCycles = 0
-                    try:
-                        for p in plugins[1]: # for plugin in plugins list
-                            for executable in plugins[1][p][1]: # for every executable in the 
-                                if executable == "setIdle":
-                                    plg = plugins[1][p][2] # chosen plugin
-                                    run("setIdle", [draw, disp, image, GPIO], plg)       
-                    except Exception as e:
-                        raise
-                        #print("failed to go idle: {}".format(str(e)))
-                        #pass
-                vars.passedIdleCycles += 1
+                for p in plugins: # for plugin in plugins list
+                    for executable in plugins[p][1]: # for every executable in the 
+                        if executable == key:
+                            plg = plugins[p][2] # chosen plugin
+                            run(key, [draw, disp, image, GPIO], plg) # run it
+
+                break

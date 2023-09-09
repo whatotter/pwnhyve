@@ -7,6 +7,7 @@ from requests.auth import HTTPBasicAuth
 from subprocess import getoutput
 from threading import Thread
 from time import sleep
+from os import system
 
 
 def decode(r):
@@ -48,7 +49,7 @@ class Client(object):
         return decode(r)
 
     def start(self, iface: str = "wlan0mon"):
-        getoutput("sudo bettercap --iface %s -eval \"api.rest on\"" % (iface))
+        system("sudo bettercap --iface %s -eval \"api.rest on\"" % (iface))
 
     def deauth(self, sta, throttle=0):
 
