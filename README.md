@@ -1,4 +1,8 @@
 # pwnhyve
+P.S. this project is not dead - i have plans for it (view bottom of readme), but my pi's screen broke and amazon refuses to send me another   
+also been working on other projects (as you can see on my profile, azamuku is the one i'm working on as we speak) and schoolwork
+***
+
 ![pwnhyve](https://user-images.githubusercontent.com/42103041/209862002-9ef1712c-38c5-424d-8017-fc9f119492af.png)
 a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell payload generation, 802.11 deauthing, bettercap support, and (crude) duckyscript support, all in the size of a flipper zero (or raspberry pi depending on your setup)
 
@@ -41,3 +45,11 @@ go into the wiki to install
 # credit
 - 98% of this was made by me
 - some of it was from [pwnagotchi](https://github.com/evilsocket/pwnagotchi/) for deauthing
+
+# TBD
+- SourApple attacks
+- custom ble frames
+- radiofrequency hacking with cc1101 (requires custom pcb shim)
+- nfc emulation (requires custom pcb shim)
+- actual good pcb shim for a BMS, instead of wires poking out
+- custom pi display hat using cheap oleds and buttons w/ bumpers mimicing an xbox controller (need this done ASAP) (should be under 10$ to make)
