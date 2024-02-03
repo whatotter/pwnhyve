@@ -9,12 +9,12 @@ boom ur done
 DO NOT CHANGED VALUES IN BOTH CONFIGS THAT ARE WRAPPED IN %s
 
 # switching pages
-you can make your own pages, and do a post request to /get or a get request with get parameters
+you can make your own pages, and do a post/get request to `/get`
 
 for example:
 post `{"username": "apple", "password": "banana", "email": "banana@example.com"}` to /get
 - OR -
-get request to `/get?username=apple&password=banana&email=banana@example.com`
+get request to the same endpoint `/get?username=apple&password=banana&email=banana@example.com`
 
 apple and banana will come out on the display, but email wont
 BUT email will be saved in the data dump file

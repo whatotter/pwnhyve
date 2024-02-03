@@ -42,6 +42,7 @@ BL_PIN          = 18
 
 Device_SPI = 1
 Device_I2C = 0
+devbus = None
 
 if(Device_SPI == 1):
     Device = Device_SPI
@@ -49,6 +50,9 @@ if(Device_SPI == 1):
     while True:
         try:
             spi = spidev.SpiDev(0, 0)
+            devbus = spi
+            #spi.max_speed_hz = 10000000
+            #spi.mode = 0b00
             break
         except FileNotFoundError:
             time.sleep(0.5)
@@ -56,6 +60,7 @@ else :
     Device = Device_I2C
     address         = 0x3C
     bus = SMBus(1)
+    devbus = bus
 
 def digital_write(pin, value):
     GPIO.output(pin, value)
@@ -68,7 +73,7 @@ def delay_ms(delaytime):
 
 def spi_writebyte(data):
     # SPI.writebytes(data)
-    spi.writebytes([data[0]])
+    spi.writebytes2([data[0]])
 
 def i2c_writebyte(reg, value):
     bus.write_byte_data(address, reg, value)
@@ -78,7 +83,7 @@ def module_init():
     # print("module_init")
 
     GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
+    GPIO.setwarnings(True)
     GPIO.setup(RST_PIN, GPIO.OUT)
     GPIO.setup(DC_PIN, GPIO.OUT)
     GPIO.setup(CS_PIN, GPIO.OUT)
@@ -92,7 +97,7 @@ def module_init():
         # spi.SYSFS_software_spi_begin()
         # spi.SYSFS_software_spi_setDataMode(0);
         # spi.SYSFS_software_spi_setClockDivider(1);
-        spi.max_speed_hz = 10000000
+        spi.max_speed_hz = int(0.8 * 1000000)
         spi.mode = 0b00
     
     GPIO.output(CS_PIN, 0)

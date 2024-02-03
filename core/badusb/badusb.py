@@ -1,16 +1,30 @@
 import datetime
+import json
+import math
+import threading
 from time import sleep
 import os
-import subprocess
 from random import randint, gauss
+
+import core.SH1106.screen as scrn
+import jinja2
 import core.badusb.keys as usbKeys
+from core.utils import config
+import select
 
 class DuckyScriptInterpreter():
     """
     a crude, shitty duckyscript implementation
     """
-    def __init__(self, usb):
+    def __init__(self, usb, file, draw, disp, image):
         self.usb = usb
+        self.file = file
+        self.fileData = open(file, "r").read().split("\n")
+
+        self.draw = draw
+        self.disp = disp
+        self.image = image
+
         self.key = { # key for things
             "STRING": self.STRING,
             "STRINGLN": self.STRINGLN,
@@ -35,8 +49,47 @@ class DuckyScriptInterpreter():
         self.jitter = False
         self.percentage = 0
         self.printed = ''
+
+        self.handler = scrn.usbRunPercentage(draw,disp,image) # init handler
+        threading.Thread(target=self.handler.start,daemon=True).start() # start handler
+        self.handler.setPercentage(0)
+
         return
 
+    def parse(self):
+        indexesToRemove = []
+        index = 0
+
+        for x in self.fileData:
+            if x.split(" ")[0].upper() == "VAR":
+                varname, varval = x.split(" ")[1], x.split(" ")[3]
+                os.environ[varname] = varval
+                indexesToRemove.append(self.fileData.index(x))
+        
+        for x in indexesToRemove:
+            self.fileData.pop(x)
+
+        template = jinja2.Template('\n'.join(self.fileData))
+        output = template.render(os.environ).split("\n")
+
+        print(output)
+
+        for ln in output:
+            index += 1
+
+            if len(ln) == 0: continue
+            if ln[0] == "#": continue
+
+            print("{}: {}".format(index, ln))
+
+            base, line = ln.split(" ", 1)
+            if base in self.key:
+                self.key[base](line.split(" "))
+
+            # this is painful
+            self.handler.setPercentage(math.floor((index / len(self.fileData)) * 100)) # set percentage
+
+        self.handler.addText("finished")
     def STRING(self, splitLine:list):
         ln = ' '.join(splitLine)
         if "![$" in ln:
@@ -161,7 +214,7 @@ class DuckyScriptInterpreter():
             self.jitter = False
 
     def PRINT(self, splitLine:list):
-        self.printed += ' '.join(splitLine)
+        self.handler.addText(' '.join(splitLine))
 
     def MOVE(self, splitLine:list):
         self.usb.move(int(splitLine[0]), int(splitLine[1]))
@@ -211,7 +264,7 @@ class DuckyScriptInterpreter():
 
 
 class BadUSB:
-    def __init__(self, kbHidDirectory:str="/dev/hidg0", mouseHidDirectory:str="/dev/hidg1", hidWriteType:str='rb+'):
+    def __init__(self, kbHidDirectory:str=config["badusb"]["keyboardPath"], mouseHidDirectory:str=config["badusb"]["mousePath"], hidWriteType:str='rb+'):
         if os.path.exists(kbHidDirectory):
             pass
         else:
@@ -232,7 +285,70 @@ class BadUSB:
         self.shifted = usbKeys.shifted
         self.symbols = usbKeys.symbols
 
+        self.capsLock = False
+        self.scrollLock = False
+        self.numLock = False
+
+        threading.Thread(target=self.toggleCheck, daemon=True).start()
+
     def isUpper(self, string:str): return True if string.upper() == string else False
+
+    def toggleCheck(self, hz=2048):
+        numLockValue = 1
+        capsLockValue = 2
+        scrollLockValue = 4
+        while True:
+            r, w, e = select.select([ self.keyboard ], [], [], 0)
+            if self.keyboard in r:
+                a = int.from_bytes(self.keyboard.read(1), byteorder='little')
+
+                if a == 0: # null/nothing toggled on
+                    self.capsLock = False
+                    self.scrollLock = False
+                    self.numLock = False
+
+                # base
+
+                elif a == capsLockValue:
+                    self.capsLock = True
+                    self.scrollLock = False
+                    self.numLock = False
+
+                # num
+                    
+
+                elif a == numLockValue:
+                    self.numLock = True
+                    self.capsLock = False
+                    self.scrollLock = False
+
+                elif a == numLockValue + capsLockValue:
+                    self.numLock = True
+                    self.capsLock = True
+                    self.scrollLock = False
+
+                # scrl
+                elif a == 4:
+                    self.scrollLock = True
+                    self.capsLock = False
+                    self.numLock = False
+
+                elif a == 6:
+                    self.scrollLock = True
+                    self.capsLock = True
+                    self.numLock = False
+
+                elif a == 4 + numLockValue:
+                    self.scrollLock = True
+                    self.numLock = True
+                    self.capsLock = False
+                
+                elif a == 7:
+                    self.numLock = True
+                    self.capsLock = True
+                    self.scrollLock = True
+
+            sleep(1/hz)
 
     def kbRawWrite(self, direct, useAdditives=False):
         """
@@ -321,7 +437,7 @@ class BadUSB:
         #self.mouseRawWrite(b"\x00" + chr(xPx).encode() + chr(yPx).encode(), useAdditives=False)
         for x,y in chars:
 
-            # theres a better way of doing this i just dont know
+            # theres a better way of doing this i just dont know it
             if len(hex(x)[2:]) == 1:
                 hexiX = "0" + hex(x)[2:]
             else:
@@ -583,3 +699,5 @@ class BadUSB:
         self.keyboard.close()
         self.keyboard = None
         return None
+    
+os.system("sudo /bin/pwnhyveusb")

@@ -1,3 +1,0 @@
-"""
-nmap and etc.
-"""

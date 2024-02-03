@@ -7,73 +7,138 @@ from threading import Thread
   
 plugins = {}
 
-def load(folder="plugins"):
-    r = {}
+class BasePwnhyvePlugin:
+    def __init__(self):
+        print("initiation")
+        return None
 
-    for item in os.listdir(f"./{folder}"):
-        if item == "plugin.py": continue
-        if ".py" in item:
-            
-            item = item.replace('.py','')
+class pwnhyveDisplayLoader():
+    """
+    loads custom screens from ./menus folder.
+    seperate from "pwnhyvePluginLoader" for compatibility and less confusion, even though they're 99% the same
 
-            try:
+    folder: folder to load displays from, defaults to "menus"
+    """
+    def __init__(self, folder="menus",):
+        r = {}
+
+        for item in os.listdir(f"./{folder}"):
+            if ".py" in item:
+                
+                item = item.replace('.py','')
+
                 plugins[item] = importlib.import_module(f'{folder}.{item}')
-            except ModuleNotFoundError:
-                continue # sometimes it picks up a blank file/item, and attempts to import that - dont understand why; ive tried to fix it with other things and it still goes through
 
-            try:
-                r[item] = (f'{item}.py', plugins[item].functions(), plugins[item])
-            except AttributeError: # plugin script didnt have a functions() module
-                print("{}.py doesn't have a \"functions()\" definition, contact plugin developer to add one; skipping for now...".format(item))
-                continue
+                z = plugins[item].Screen()
+                r[item] = {"module": z}
+            
+        self.modules = r
+
+class pwnhyvePluginLoader():
+    """
+    pwnhyve's plugin loader, using a single class instead of a functions function (yuck!)
+
+    folder: folder to load plugins from, defaults to "plugins"
+    enableThreading: enables threading when you call a plugin's function, to prevent errors on the main thread, which would completely brick the pi's display
+    """
+    def __init__(self, folder:str="plugins", enableThreading:bool=True):
+        r = {}
+
+        for item in os.listdir(f"./{folder}"):
+            if ".py" in item:
+                
+                item = item.replace('.py','')
+                if len(item) == 0:
+                    continue
+
+                importfolder = folder.replace("/", ".")
+
+                print('-' * 30)
+                print(item)
+                print("{}{}".format(importfolder, item))
+
+                FUCK = "{}{}".format(importfolder, item).replace("..", ".")
+
+                plugins[item] = importlib.import_module(FUCK)
+
+                objects = [x for x in dir(plugins[item]) if x.startswith("PWN") or x == "Plugin"]
+
+                for x in objects:
+                    #z = plugins[item].Plugin()
+                    z = getattr(plugins[item], x)
+                    r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z}
+            
+        self.th = enableThreading
+
+        self.modules = r
+        self.moduleList = []
+
+        for k,v in self.modules.items():
+            self.moduleList += v["functions"]
+
+        print(self.modules)
+
+    def run(self, plugin:object, target:str, *args, **kwargs):
+        """
+        run a command using it's class and function name, alongside args
+
+        plugin: class/object the function is in, for example "MyClass"
+        target: the function in that object to call, for example "MyFunction"
+        *args: passed to the called function
+        **kwargs: passed to the called function
+
+        returns the function passed, for example the actual object of "MyFunction"
+        """
+        func = getattr(plugin, target)
+        if self.th:
+            thread = Thread(target=func, args=args, kwargs=kwargs, daemon=True)
+                
+            thread.start()
+            thread.join()
+
+        else:
+            func(*args, **kwargs)
         
-    return r
+        return func
+    
+    def getOriginModule(self, function):
+        """
+        gets the class/object that a function came from, for calling, used in conjunction with self.run()
 
-def run(target, arg, plugin, threading=True):
+        function: function to find
 
-    if plugin == None:
-        print("1")
-        err = 0
-        for function in plugins:
-            if target.replace(".py", "") in str(function):
-                func = getattr(plugins[function], function, None)
+        returns False if not found, returns the object otherwise
+        """
 
-                if func:
-                    func(arg)
-                    return True
-                else:
-                    err += 1
+        for k,v in self.modules.items():
+            if function in list(v["functions"]):
+                return v["module"]
+        return False
+    
+    def mergeWithFolder(self, folder, overlap=False):
+        """
+        merge current object with new folder, sometimes used if there's an update
 
-                if err == len(plugins):
-                    raise AttributeError("function doesnt exist")
-        
+        folder: folder to read from and update
+        overlap: if to overlap already loaded functions - for example: if 'abcd' already exists, add another 'abcd' if it's found again
 
-    else:
-        print("2")
-        err = 0
-        for x in range(len(plugins)):
-            print(err)
-            try:
-                func = getattr(plugin, target)
-            except AttributeError:
-                err += 1
+        returns the pwnhyvePluginLoader object for that function
+        """
+
+        # actually merge the folder
+        a = pwnhyvePluginLoader(folder=folder)
+        self.modules.update(a.modules)
+
+        # redo modulelist
+        self.moduleList = []
+        for k,v in self.modules.items():
+            if overlap:
+                self.moduleList += v["functions"]
             else:
-                if not threading:
-                    if not arg:
-                        a = func()
+                for x in v["functions"]:
+                    if x not in self.moduleList:
+                        self.moduleList.append(x) # isn't in modulelist
                     else:
-                        a = func(arg)
-                    return (True, a)
-                else:
-                    if arg:
-                        thread= Thread(target=func, args=(arg,), daemon=True)
-                    else:
-                        thread = Thread(target=func, daemon=True)
-                        
-                    thread.start()
-                    thread.join()
+                        ... # is already in modulelist
 
-                    return (True, -1)
-
-            if err == len(plugins):
-                return False
+        return a # return new, added folder

@@ -1,0 +1,7 @@
+# make curl parrot
+
+{% set url = "parrot.live" %}
+
+GUI R
+DELAY 0.1
+STRINGLN curl {{ url }}

@@ -6,3 +6,4 @@ numpy
 scapy
 smbus
 spidev
+pytoml

@@ -1,5 +1,0 @@
-# make curl parrot
-
-GUI R
-DELAY 0.1
-STRINGLN curl parrot.live

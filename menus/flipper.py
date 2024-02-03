@@ -1,8 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from core.plugin import BasePwnhyvePlugin
 
-class screen:
-    def getItems(args:list):
-        plugins, yCoord, xCoord, currentSelection, selection = args
+class Screen(BasePwnhyvePlugin):
+    def getItems(self, plugins, yCoord, xCoord, currentSelection, selection):
     
         listToPrint = [] # clean list to print
 
@@ -24,7 +24,10 @@ class screen:
 
         return listToPrint
 
-    def display(args:list):
+    def display(self, draw, disp, image,
+                 GPIO, listToPrint, plugins,
+                   yCoord, xCoord, currentSelection,
+                     selection, icons):
 
         draw, disp, image, GPIO, listToPrint, plugins, yCoord, xCoord, currentSelection, selection, icons = args
 
@@ -61,10 +64,10 @@ class screen:
 
                 image.paste(flipperSelection, (0,22))
 
-                createSelection(draw, bigMinimizedText, xCoord, yCoord, selected=0, font=flipperFontB) # draw over it 
+                createSelection(draw, bigMinimizedText.replace("_", ""), xCoord, yCoord, selected=0, font=flipperFontB) # draw over it 
                 image.paste(ico, (icoX, icoY)) # do icon again cuz it glitches
             else:
-                createSelection(draw, smallMinimizedText, xCoord, yCoord, selected=0, font=flipperFontN) # draw over it 
+                createSelection(draw, smallMinimizedText.replace("_", ""), xCoord, yCoord, selected=0, font=flipperFontN) # draw over it 
                 image.paste(ico, (icoX, icoY))
 
             yCoord += 22

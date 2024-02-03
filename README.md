@@ -2,21 +2,36 @@
 ![pwnhyve](https://user-images.githubusercontent.com/42103041/209862002-9ef1712c-38c5-424d-8017-fc9f119492af.png)
 a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell payload generation, 802.11 deauthing, bettercap support, and (crude) duckyscript support, all in the size of a flipper zero (or raspberry pi depending on your setup)
 
+some of it's features:
+
+- [duckyscript's iconic keystroke reflection](https://docs.hak5.org/hak5-usb-rubber-ducky/advanced-features/exfiltration#the-keystroke-reflection-attack)
+- remote control
+- jinja2 enabled duckyscript support (WIP, but enough to use most scripts)
+- deauthing and sniffing attacks (EAPOL supported (thanks bettercap)), access point spamming, evil portal
+- usb mass storage emulation, mouse emulation
+- ~~BLE hacking~~ work in progress
+- infinite amount of plugins
+- reverse shell hosting
+- literal entire kali linux system in your pocket
+
+with the shim (WIP, not released to public *yet*)
+- RF hacking (rolljam, sniffing, jamming, replay)
+- IR hacking (replay, jamming)
+- wireless charging
+- pin fuzzing (SPI, IIC/I2C, UART)
+- ~~nfc~~ space constrained and also very hard to make
+
 ***
 ### DISCLAIMER
 i am not responsible for what you do with this thing; this can actually be used for really bad purposes in the right hands  
 this also isn't meant to be better than the p4wnp1-aloa - the aloa has way more support for everything than me
-if support/something you want isn't implemented yet, look at making plugins unless its something else - in that case, [make an issue](https://github.com/woahotter/pwnhyve/issues/new)
-***
-### help needed
-i need someone to help me with the front end of the control panel, currently it's really ugly and bad and i have no clue on how to fix it
-***
-### trello
-[asdf](https://trello.com/b/ncgSqzpb/plans-for-pwnhyve)
+if support/something you want isn't implemented yet, look at making plugins  
+unless its something else, like a bug - in that case, [PLEASE make an issue](https://github.com/whatotter/pwnhyve/issues/new)
 ***
 
 # NOTICE
 - deauthing works, but can sometimes go silent (see https://github.com/evilsocket/pwnagotchi/issues/267)
+- this is in the middle of a rewrite, bugs are to be expected
 
 # BILL OF MATERIALS
 - a raspberry pi zero w (can also be a 2)
@@ -42,7 +57,7 @@ if you try to use your pi as a ducky usb, it will take (minimum) 25 seconds to b
 you could use it without a battery though, just not reccomended
 
 # how install?
-go into the wiki to install
+[go into the wiki to install](https://github.com/whatotter/pwnhyve/wiki/installing)
 
 # credit
 - 98% of this was made by me

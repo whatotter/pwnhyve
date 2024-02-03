@@ -1,8 +1,11 @@
+import json
+import socket
+import threading
 from PIL import Image, ImageFont, ImageOps
 from time import sleep
-from core.utils import getChunk
-import string
-from core.plugin import load
+from core.utils import redir, config
+import traceback
+from core.plugin import pwnhyveDisplayLoader
 from json import loads
 from io import BytesIO
 import base64
@@ -23,7 +26,116 @@ KEY2_PIN       = 20
 KEY3_PIN       = 16
 
 programCoords = {}
+s = pwnhyveDisplayLoader()
+screens = s.modules
 
+if config["vnc"]["enableVNC"]:
+    streamSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    streamSock.bind(("0.0.0.0", 11198))
+    streamSock.listen(1)
+
+class sockStream:
+    connection = None
+    mostRecentImage = None
+    mostRecentButton = None
+    queue = []
+
+    def handleConnections():
+        global streamSock
+
+        if not config["vnc"]["enableVNC"]:
+            print('vnc disabled')
+            return
+        
+        streamSock.setblocking(True)
+        threading.Thread(target=sockStream.manageQueue, daemon=True).start()
+        while True:
+            print("waiting for connection")
+            try:
+                conn, addr = streamSock.accept()
+
+                conn.sendall(b'\x01\r\n')
+                a = conn.recv(16)
+
+                print('base: {}'.format(a))
+
+                conn.settimeout(30)
+                sockStream.connection = conn
+
+                while sockStream.connection != None:
+
+                    if len(sockStream.queue) != 0:
+                        frame = sockStream.queue[0]
+                        sockStream.queue.pop(0)
+                    else:
+                        frame = sockStream.mostRecentImage
+                    
+                    if frame != None:
+
+                        sockStream.send(json.dumps({
+                            "frame": frame.decode('ascii'),
+                            "log": base64.b64encode(
+                                ''.join(redir.log).encode('ascii')
+                                ).decode('ascii')
+                            }).encode('ascii'))
+                        
+                        redir.log = []
+                        
+
+                        #conn.sendall(b'\x05') # "do you have any keys pressed?"
+                        dta = conn.recv(512)
+                        if dta:
+                            if dta != b'\x00':
+                                if config["vnc"]["vncControl"]:
+                                    sockStream.mostRecentButton = dta
+                                else:
+                                    print("vnc client sent a key, but was not parsed")
+
+                                conn.sendall(b"\x01")#ack
+
+                    sleep(0.1)
+            except:
+                raise
+                print("connection reset")
+                continue
+
+    def send(data:bytes):
+        #print(data)
+        if sockStream.connection is not None:
+            try:
+                sockStream.connection.sendall("L:{}".format(len(data)).encode('ascii'))
+                b = sockStream.connection.recv(16)
+                if b == b"\x01": # ack
+                    sockStream.connection.sendall(data)
+
+            except (ConnectionAbortedError, ConnectionResetError, TimeoutError):
+                sockStream.connection = None
+                return False
+            
+        else:
+            return False
+        
+    def manageQueue():
+        if len(sockStream.queue) != 0:
+            sockStream.send(sockStream.queue[-1])
+            sockStream.queue.pop()
+    
+    def recv(buffer:int):
+        if sockStream.connection is not None:
+            sockStream.connection.setblocking(False)
+            try:
+                return sockStream.connection.recv(buffer)
+            except (BlockingIOError, TimeoutError):
+                return False
+            except Exception:
+                print(traceback.print_exc())
+                sockStream.connection = None
+                return False
+        else:
+            return False
+        
+threading.Thread(target=sockStream.handleConnections, daemon=True).start()
+        
 class customizable:
     cleanScroll = True
     onlyPrefix = False
@@ -131,32 +243,45 @@ class usbRunPercentage:
             percentageOld = self.percentage          
             """
 
-            if self.percentage < 100: # to have 90% and 100% in the middle
-                percentageX = 94
-            else:
-                percentageX = 96
+            self.update()
+            sleep(0.05)
 
-            fullClear(self.draw)
+    def update(self):
+        percentageX, percentageY = 94,24
 
-            self.draw.rectangle([(86, 0), (88, 64)], fill=0, outline=255) # divider
+        if self.percentage < 100: # to have 90% and 100% in the middle
+            percentageX = 94
+        else:
+            percentageX = 96
             
-            self.draw.text((percentageX, percentageY), "{}%".format(self.percentage), fill=0, outline=255, font=self.pFont) # percentage
+        fullClear(self.draw)
 
-            self.draw.text((4, 4), self.text, fill=0, outline=255, font=self.cFont) # console
-            
-            screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
+        self.draw.rectangle([(86, 0), (88, 64)], fill=0, outline=255) # divider
+        
+        self.draw.text((percentageX, percentageY), "{}%".format(self.percentage), fill=0, outline=255, font=self.pFont) # percentage
+
+        self.draw.text((4, 4), self.text, fill=0, outline=255, font=self.cFont) # console
+        
+        screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
 
     def exit(self):
         self.close = True
 
     def addText(self, stri:str):
+        if self.text == "...":
+            self.text = ""
+            
         self.text += stri+"\n"
+        self.update()
 
     def clearText(self):
         self.text = ""
+        self.update()
 
     def setPercentage(self, percent:int):
         self.percentage = percent
+        print("set percentage to {}".format(percent))
+        self.update()
 
 class screenConsole:
     def __init__(self, draw, disp, image,
@@ -284,11 +409,15 @@ class screenConsole:
         self.text = ""
 
 def checkSocketINput():
-    gpio = None
-    with open("/tmp/socketGPIO", "r") as f:
-        gpio = f.read()
+    gpio = sockStream.mostRecentButton
+    sockStream.mostRecentButton = None
     
-    open("/tmp/socketGPIO", "w").write("") # leave blank (worst way to do this probably)
+    if gpio is None:
+        return False
+    else:
+        gpio = gpio.decode('ascii')
+
+    #open("/tmp/socketGPIO", "w").write("") # leave blank (worst way to do this probably)
 
     if gpio == "":
         return False
@@ -415,24 +544,25 @@ def fullClear(draw):
     return True
 
 def screenShow(disp, image, flipped=False, stream=False):
-
-    if flipped:
-        a = ImageOps.flip(image)
-        disp.ShowImage(disp.getbuffer(a.transpose(Image.FLIP_LEFT_RIGHT)))
-    else:
-        disp.ShowImage(disp.getbuffer(image))
-
     if stream:
 
         buffered = BytesIO()
         
-        image.save(buffered, format="JPEG")
+        invimage = ImageOps.invert(image.convert('L'))
+        invimage.save(buffered, format="JPEG")
 
         img_str = base64.b64encode(buffered.getvalue())
 
-        with open("/tmp/base64Data", "w") as f:
-            f.write(img_str.decode('ascii'))
-            f.flush()
+        sockStream.queue.append(img_str)
+        sockStream.mostRecentImage = img_str
+
+    if not config["menu"]["disableWrite"]:
+        if flipped:
+            a = ImageOps.flip(image)
+            disp.ShowImage(disp.getbuffer(a.transpose(Image.FLIP_LEFT_RIGHT)))
+        else:
+            disp.ShowImage(disp.getbuffer(image))
+
 
     return disp.getbuffer(image)
 
@@ -535,7 +665,7 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
 
 def menu(draw, disp, image, choices, GPIO,
           gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
-            flipped=False, menuType=loads(open("./config.json", "r").read())["screenType"], menus=load(folder="menus"), caption=None, disableBack=False):
+            flipped=False, menuType=config["menu"]["screenType"], menus=screens, caption=None, disableBack=False):
     xCoord = 5
     yCoord = 5
     currentSelection = 0 # index of programs list
@@ -544,7 +674,7 @@ def menu(draw, disp, image, choices, GPIO,
     currentSelOld = 0
 
     if len(choices) == 0:
-        raise KeyError("no choices provided")
+        choices = ["empty"]
     if "" in choices:
         choices.remove("") # any whitespace
 
@@ -573,9 +703,9 @@ def menu(draw, disp, image, choices, GPIO,
         if menuType in menus:
             b = menus[menuType]
 
-            listToPrint = b[2].screen.getItems([choices, yCoord, xCoord, currentSelection, selection])
+            listToPrint = b["module"].getItems(choices, currentSelection)
 
-            b[2].screen.display([draw, disp, image, GPIO, list(listToPrint), choices, yCoord, xCoord, currentSelection, selection, {}])
+            b["module"].display(draw, disp, image, GPIO, list(listToPrint), choices, yCoord, xCoord, currentSelection, selection, {})
 
 
         yCoord = yCoordBefore # set our y coord

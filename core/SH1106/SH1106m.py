@@ -18,6 +18,7 @@ class SH1106(object):
         self._rst = config.RST_PIN
         self._bl = config.BL_PIN
         self.Device = config.Device
+        self.bus = config.devbus
 
 
     """    Write register address and data     """
@@ -108,7 +109,11 @@ class SH1106(object):
             # config.spi_writebyte([~Image[i]])
             
     def ShowImage(self, pBuf):
+        fullpage = time.time_ns()
+        #print("|")
+
         for page in range(0,8):
+            onepage = time.time_ns()
             # set page address #
             self.command(0xB0 + page);
             # set low column address #
@@ -119,12 +124,17 @@ class SH1106(object):
             # time.sleep(0.01)
             if(self.Device == Device_SPI):
                 GPIO.output(self._dc, GPIO.HIGH);
+            
+            #print("| took {}ms to set commands on one page".format((time.time_ns() - onepage) / 1_000_000))
+            
             for i in range(0,self.width):#for(int i=0;i<self.width; i++)
-                if(self.Device == Device_SPI):
-                    config.spi_writebyte([~pBuf[i+self.width*page]]); 
-                else :
-                    config.i2c_writebyte(0x40, ~pBuf[i+self.width*page])
-                    
+                zb = [~pBuf[i+self.width*page]]
+                self.bus.writebytes2(zb); 
+
+            #print("| took {}ms to write one page to display".format((time.time_ns() - onepage) / 1_000_000))
+            #print("(--------------------)")
+
+        #print("\\ took {}ms to write all 8 pages to display".format((time.time_ns() - fullpage) / 1_000_000))
                     
 
 	

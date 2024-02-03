@@ -1,21 +1,15 @@
-from core.SH1106.screen import enterText
+from core.plugin import BasePwnhyvePlugin
 
+class PWNTestOne(BasePwnhyvePlugin):
+    def command(self, draw, disp, image, GPIO):
+        print("ok")
 
-config = { 
-    # you can have this in an external file, aslong as main file gets it in dictionary format
-    # this is for your command help n stuff
-    "test": "test",
+    def balls(self, draw, disp, image, GPIO):
+        print("ok")
 
-    "icons": {
-        "hello": "./core/icons/zzz.bmp"
-    }
-}
+    def sack(self, draw, disp, image, GPIO):
+        print("ok")
 
-def test(args):
-    canvas, display, image, GPIO = args[0], args[1], args[2], args[3]
-
-    enterText(canvas, display, image, GPIO)
-
-
-def functions():
-    return config
+class PWNTestTwo(BasePwnhyvePlugin):
+    def chicken(self, draw, disp, image, GPIO):
+        print("ok")

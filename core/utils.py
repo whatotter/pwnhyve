@@ -2,6 +2,29 @@ try:
     import keyboard
 except ImportError:
     keyboardDisabled = True
+import sys
+import pytoml as toml
+
+config = {}
+
+stdout = sys.stdout
+class redir:
+    """
+    redirect all prints to a log
+    """
+    log = []
+
+    def write(string):
+        global stdout
+        redir.log.append(string)
+        stdout.write(string)
+
+    def flush():
+        global stdout
+        stdout.flush()
+
+sys.stdout = redir
+
 
 def getChunk(chunkingList, divisor):
     returnList = []
@@ -64,6 +87,10 @@ def uSuccess(string, **kwargs):
 def uInput(string, **kwargs):
     return input("[?] {}".format(string), **kwargs)
 
+def lprint(stri):
+    sys.stdout.write(stri)
+
+
 
 class enableInterrupt():
     def __init__(self, socket):
@@ -90,3 +117,5 @@ class fakeGPIO():
         print("{}: {}".format(key, not keyboard.is_pressed(key)))
 
         return not keyboard.is_pressed(key)
+
+config = toml.loads(open("./config.toml").read())

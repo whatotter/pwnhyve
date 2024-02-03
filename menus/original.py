@@ -1,12 +1,13 @@
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from core.plugin import BasePwnhyvePlugin
 
 class vars:
     maxLNprint = 5
     cleanScrollNum = 0
     currentSelOld = 0
 
-class screen:
-    def getItems(args:list):
+class Screen(BasePwnhyvePlugin):
+    def getItems(self, args:list):
         plugins, yCoord, xCoord, currentSelection, selection = args
 
         if currentSelection >= vars.maxLNprint: # if current selection index is equal or more than max line print
@@ -30,11 +31,13 @@ class screen:
 
         for i in a: # iter over our plugin
             listToPrint = a[:5] # add 5 items every time
-        
+
+        listToPrint = plugins[currentSelection:currentSelection+5]
+
         return listToPrint
 
 
-    def display(args:list):
+    def display(self, args:list):
         draw, disp, image, GPIO, listToPrint, plugins, yCoord, xCoord, currentSelection, selection, icons = args
 
         font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
@@ -42,10 +45,10 @@ class screen:
         for text in list(listToPrint): # do draw
             if selection != text: # if our selection isnt the text iter gave us
                 #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                draw.text((xCoord, yCoord), text, fill=0, outline=255, font=font) # draw black text over rectangle
+                draw.text((xCoord, yCoord), text.replace("_", ""), fill=0, outline=255, font=font) # draw black text over rectangle
             else: # it is our selection
                 draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill=0, outline=255) # draw colored rectangle first
-                draw.text((xCoord, yCoord), text, fill=1, outline=255, font=font) # draw black text over rectangle
+                draw.text((xCoord, yCoord), text.replace("_", ""), fill=1, outline=255, font=font) # draw black text over rectangle
 
                     
             yCoord += 14
