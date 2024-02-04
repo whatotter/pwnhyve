@@ -2,6 +2,7 @@
 # Licensed under GPL 3.0, we should be able to use this right? 
 # ESP32(Python) Sour Apple by @RapierXbox and @Amachik
 
+from core.plugin import BasePwnhyvePlugin
 import random
 import bluetooth._bluetooth as bluez
 from time import sleep
@@ -11,7 +12,8 @@ import array
 import fcntl
 from errno import EALREADY
 
-def main():
+class PWNble(BasePwnhyvePlugin):
+    def iphoneBLE():
     hci_sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_RAW, socket.BTPROTO_HCI)
     req_str = struct.pack("H", 0)
     request = array.array("b", req_str)
@@ -54,7 +56,3 @@ def main():
         print(f"An error occurred: {e}")
         cmd_pkt = struct.pack("<B", 0x00)
         bluez.hci_send_cmd(sock, 0x08, 0x000A, cmd_pkt)
-
-
-if __name__ == "__main__":
-    main()
