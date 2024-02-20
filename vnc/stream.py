@@ -15,7 +15,7 @@ from PyQt5.QtCore import Qt, QByteArray, QPoint
 import base64
 
 
-ip = sys.argv[1]
+ip = input("ip: ") if len(sys.argv) == 1 else sys.argv[1]
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.settimeout(1)
 s.connect((ip, 11198))

@@ -83,7 +83,11 @@ class sockStream:
                         
 
                         #conn.sendall(b'\x05') # "do you have any keys pressed?"
-                        dta = conn.recv(512)
+                        try:
+                            dta = conn.recv(512)
+                        except:
+                            break
+
                         if dta:
                             if dta != b'\x00':
                                 if config["vnc"]["vncControl"]:
@@ -270,7 +274,7 @@ class usbRunPercentage:
     def addText(self, stri:str):
         if self.text == "...":
             self.text = ""
-            
+
         self.text += stri+"\n"
         self.update()
 
@@ -435,7 +439,7 @@ def checkSocketINput():
             }
             return int(buttons[gpio])
             
-def waitForKey(GPIO, debounce=False):
+def waitForKey(GPIO, debounce=True):
     """
     wait for key press and return the key pressed
 
@@ -526,7 +530,7 @@ def getKey(GPIO):
     if not GPIO.input(KEY3_PIN): return KEY3_PIN
 
     return False
-
+    
 def showImage(disp, directory):
     img = Image.new('1', (disp.width, disp.height), 255)  # 255: clear the frame
     bmp = Image.open(directory)
@@ -543,7 +547,7 @@ def fullClear(draw):
     draw.rectangle((0, 0, 200, 100), fill=1)
     return True
 
-def screenShow(disp, image, flipped=False, stream=False):
+def screenShow(disp, image, flipped=False, stream=True):
     if stream:
 
         buffered = BytesIO()
@@ -582,9 +586,9 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
     """
     chosenKey = "q"
     compiledStri = ""
-    keyI = 0
-    stringsI = 0
-    chars = [x for x in kbRows[stringsI]]
+
+    rowIndex = 0
+    characterIndex = 0
 
     while True:
 
@@ -595,29 +599,36 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
             while len(v) != 16:
                 v.pop() 
 
-        fullClear(draw)
+        fullClear(draw) # clear
 
-        draw.rectangle([(0, 14), (128, 16)], fill=0, outline=255)
+        draw.rectangle([(0, 14), (128, 16)], fill=0, outline=255) # draw the line spliting the text and the keyboard
 
         if not secret:
             draw.text((2,2), compiledStri, fill=0, outline=255, font=font)
         else:
             draw.text((2,2), ''.join(["*" for _ in compiledStri]), fill=0, outline=255, font=font)
 
-        textX, textY = 8, 20
 
-        for x in chars:
-            if textX >= 116:
-                textX = 8
-                textY += 12
+        ### draws the kb
+            
+        maxPixelX = 116
+        textX, textY = 8, 20 # starting coordinate of the first letter
 
-            if x != chosenKey:
-                draw.text((textX, textY), x, fill=0, outline=255, font=font)
-            else:
-                draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill=0, outline=255)
-                draw.text((textX, textY), x, fill=1, outline=255, font=font)
+        for x in kbRows[rowIndex]: # for every character in our row..
+            if textX >= maxPixelX: # if we already maxed out the display length...
+                # start a new line
+                maxPixelX -= 4 # reduce our max pixel X since we're doing halfgrid
+                textX = 8 + 4 # \r
+                textY += 12 # \n
 
-            textX += 10
+            if x != chosenKey: # if this character we're writing isn't chosen..
+                draw.text((textX, textY), x, fill=0, outline=255, font=font) # write it normally
+
+            else: # if it is chosen...
+                draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill=0, outline=255) # write it with inverted colors..
+                draw.text((textX, textY), x, fill=1, outline=255, font=font) # .. and with a box around it 
+
+            textX += 10 # move right for our next character
 
         # show compiled image
         screenShow(disp, image, flipped=flipped, stream=True)
@@ -628,24 +639,42 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
         key = waitForKey(GPIO, debounce=True)
 
         if key == KEY_DOWN_PIN: # moving on the x and y plane
+
+            """
             stringsI += 1 if stringsI != len(kbRows)-1 else 0
             chars = kbRows[stringsI]
 
             if keyI > len(chars):
                 keyI = len(chars)
+            """
+
+            if rowIndex != len(kbRows):
+                rowIndex += 1
+
+            if characterIndex > len(kbRows[rowIndex]):
+                characterIndex = len(kbRows[rowIndex])
 
         elif key == KEY_UP_PIN:
+
+            if rowIndex != 0:
+                rowIndex -= 1
+
+            if characterIndex > len(kbRows[rowIndex]):
+                characterIndex = len(kbRows[rowIndex])
+
+            """
             stringsI -= 1 if stringsI != 0 else 0
             chars = kbRows[stringsI]
 
             if keyI > len(chars):
                 keyI = len(chars)
+            """
 
         elif key == KEY_RIGHT_PIN: # moving on the y plane
-            keyI += 1 if keyI != len(chars) -1  else 0
+            characterIndex += 1 if characterIndex != len(kbRows[rowIndex]) -1  else 0
 
         elif key == KEY_LEFT_PIN: # moving on the y plane
-            keyI -= 1 if keyI != 0 else 0
+            characterIndex -= 1 if characterIndex != 0 else 0
 
         elif key == KEY_PRESS_PIN:
             compiledStri += chosenKey
@@ -657,11 +686,13 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
         elif key == KEY1_PIN:
             compiledStri = compiledStri[:-1]
 
+        # calculate our chosen key
+            
         try:
-            chosenKey = chars[keyI]
+            chosenKey = kbRows[rowIndex][characterIndex]
         except IndexError:
-            keyI = 0
-            chosenKey = chars[keyI]
+            characterIndex = 0
+            chosenKey = kbRows[rowIndex][characterIndex]
 
 def menu(draw, disp, image, choices, GPIO,
           gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
@@ -697,7 +728,7 @@ def menu(draw, disp, image, choices, GPIO,
             pass
         else:
             draw.rectangle([(0, 0), (255, 13)], fill=1, outline=255)
-            draw.text([1,1], caption, font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+            draw.text([8,1], caption, font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
             yCoord += 14
 
         if menuType in menus:

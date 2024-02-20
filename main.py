@@ -24,23 +24,7 @@ try:
     import RPi.GPIO as GPIO
 except ImportError:
     uError("unable to import SH1106 or RPI.GPIO libary")
-    if not pillowDebug:
-        if enableWebServer:
-            uStatus("starting webserver")
-
-            from flask import Flask, Response, send_file, request
-            import core.controlPanel.cpanel as cpanel
-
-            uSuccess("imported webserver")
-
-            cpanel.app.run(host="0.0.0.0", port=80)
-
-        quit()
-    else:
-        uStatus("pillow debug enabled, showing all images to a pillow window")
-        import matplotlib.pyplot as plt
-
-
+    quit() 
 
 class customizable:
     # (mostly) everything is overridden by the config.json
@@ -157,7 +141,7 @@ if __name__ == "__main__":
             listToPrint = b["module"].getItems(plugins.moduleList, vars.currentSelection)
             b["module"].display(draw, disp, image, GPIO, list(listToPrint), plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection, vars.icons)
 
-            screenShow(disp, image, flipped=vars.flipped, stream=True)
+            screenShow(disp, image, flipped=vars.flipped)
         
 
         # button stuff
@@ -201,14 +185,15 @@ if __name__ == "__main__":
                 print("forwarded to "+currentDirectory)
                 fullClear(draw)
                 draw.text((round(128/2), round(64/4)), "loading...")
-                screenShow(disp, image, stream=True)
+                screenShow(disp, image)
+
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
-
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
                 pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./plugins/"+x) and not x.startswith("_")]
                 print(pnd)
 
+                print('finished loading')
                 break
             else: # raw plugin
                 plugins.run(

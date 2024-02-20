@@ -90,6 +90,7 @@ class DuckyScriptInterpreter():
             self.handler.setPercentage(math.floor((index / len(self.fileData)) * 100)) # set percentage
 
         self.handler.addText("finished")
+        
     def STRING(self, splitLine:list):
         ln = ' '.join(splitLine)
         if "![$" in ln:

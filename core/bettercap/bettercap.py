@@ -40,6 +40,7 @@ class Client(object):
         self.password = password
         self.url = "%s://%s:%d/api" % (scheme, hostname, port)
         self.auth = HTTPBasicAuth(username, password)
+        self.successful = None
 
         if start:
             Thread(
@@ -50,7 +51,7 @@ class Client(object):
                 },
             ).start()
 
-        self.successful = self._wait_bettercap()
+        Thread(target=self._wait_bettercap, daemon=True).start()
 
     def session(self):
         r = requests.get("%s/session" % self.url, auth=self.auth)
@@ -157,15 +158,16 @@ class Client(object):
         return aps
 
     def _wait_bettercap(self):
-        for x in range(5):
+        for _ in range(5):
             try:
                 requests.get("%s/session" % self.url, auth=self.auth)
                 uStatus("bettercap avaialble")
-                return True
+                self.successful = True
             except Exception:
                 uStatus("waiting for bettercap API to be available ...")
                 sleep(1)
-        return False
+
+        self.successful = False
 
     def stop(self):
         getoutput("sudo pkill -f bettercap")
