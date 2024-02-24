@@ -1,9 +1,10 @@
 """
 THIS WILL ALWAYS RUN WHEN IDLE
 
-you can also edit the nyan cat frames to show what you wanna show, just edit the bitmap files in ./core/nyanCatIdle
+you can also edit the nyan cat frames to show what you wanna show, just edit the bitmap files in ./core/idleAnimations
 """
 
+import os
 from core.plugin import BasePwnhyvePlugin
 from PIL import ImageFont, Image
 import time
@@ -41,15 +42,17 @@ class Plugin(BasePwnhyvePlugin):
 
             frames = {}
 
-            for x in range(1, 12):
-                bmp = Image.open('./core/nyanCatIdle/frame{}.bmp'.format(x))
+            framesAmnt = len(os.listdir("./core/idleAnimation"))
+
+            for x in range(1, framesAmnt):
+                bmp = Image.open('./core/idleAnimation/frame{}.bmp'.format(x))
                 frames[x] = bmp.resize((vars.displayResX, vars.displayResY))
 
 
             while 1: # wait for key press
                 if checkIfKey(GPIO): break
 
-                if currFrame == 12: currFrame = 1
+                if currFrame == framesAmnt: currFrame = 1
 
                 image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame       
                 image.paste(frames[currFrame])
@@ -60,9 +63,4 @@ class Plugin(BasePwnhyvePlugin):
 
                 time.sleep(vars.nyanCatDelay)
                 
-
-
         return
-
-def functions():
-    return {"setIdle": "set Artremis as idle, and run its idle definition", "icons": {"setIdle": "./core/icons/zzz.bmp"}}

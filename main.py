@@ -6,9 +6,10 @@ gpio code snippets are from waveshare docs
 rest are mine
 """
 import os
+import time
 from PIL import Image, ImageDraw, ImageFont
 from core.SH1106.screen import *
-from core.utils import getChunk, uError, uStatus, uSuccess, config
+from core.utils import config
 from core.plugin import *
 #import json
 #import threading
@@ -20,10 +21,11 @@ enableWebServer = True
 devOptions = False # enable dev options
 
 try:
-    import core.SH1106.SH1106m as SH1106
     import RPi.GPIO as GPIO
+    GPIO.setwarnings(False)
+    import core.SH1106.SH1106m as SH1106
 except ImportError:
-    uError("unable to import SH1106 or RPI.GPIO libary")
+    print("unable to import SH1106 or RPI.GPIO libary")
     quit() 
 
 class customizable:
@@ -85,12 +87,21 @@ if __name__ == "__main__":
         Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
     """
 
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+
+    # setup display driver
+    print("[DISPLAY] initalizing display driver...", end="")
     disp = SH1106.SH1106()
     disp.Init()
     disp.clear()
 
-    GPIO.setmode(GPIO.BCM)
+    image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
+    draw = ImageDraw.Draw(image) # dsiayp
+    print("initalized.\n")
+    # end of display setup
 
+    # load gpio pins
     gpio = { # gpio pins are the buttons, like joystick, side buttons, etc.
         'KEY_UP_PIN': 6,
         'KEY_DOWN_PIN': 19,
@@ -102,21 +113,28 @@ if __name__ == "__main__":
         'KEY3_PIN': 16,
     }
 
+    print("/ [GPIO] initalizing GPIO pins...")
     for gpioPin in gpio: # init gpio
+        print("| [GPIO] initializing GPIO pin {}...".format(gpio[gpioPin]), end="")
         GPIO.setup(gpio[gpioPin],GPIO.IN,pull_up_down=GPIO.PUD_UP)
-
-    image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
-    draw = ImageDraw.Draw(image) # dsiayp
+        print("initalized")
+    print("\\ [GPIO] done initalizing GPIO pins.\n")
+    # end of gpio pin loading
 
     # load plugins
+    print('[PLUGINS] initializing plugins and menus...', end="")
     plugPath = config["plugins"]["pluginsPath"]
+
     plugins = pwnhyvePluginLoader(folder=plugPath.replace("./", ""))
+    menus = pwnhyveDisplayLoader()
+
     plugins.moduleList += ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
     currentDirectory = ""
 
-    menus = pwnhyveDisplayLoader()
+    print("initalized.")
+    # end of plugin load
 
-    currentDirectory = ""
+    print("[MENU] READY. HACK THE PLANET!")
 
     while 1:
 
@@ -138,8 +156,7 @@ if __name__ == "__main__":
         if customizable.screenType in list(menus.modules):
             b = menus.modules[customizable.screenType]
 
-            listToPrint = b["module"].getItems(plugins.moduleList, vars.currentSelection)
-            b["module"].display(draw, disp, image, GPIO, list(listToPrint), plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection, vars.icons)
+            b["module"].display(draw, disp, image, GPIO, plugins.moduleList, vars.currentSelection, vars.icons)
 
             screenShow(disp, image, flipped=vars.flipped)
         
@@ -148,19 +165,12 @@ if __name__ == "__main__":
         #pnd = plugins.moduleList + [x for x in os.listdir("./plugins") if os.path.isdir("./plugins/"+x)]
         pnd = plugins.moduleList
         while True:
-            print('---' * 6)
-            print(pnd)
             key = menu(draw, disp, image, pnd, GPIO, disableBack=currentDirectory=="")
-            print('---' * 6)
-
-            print(key)
 
             if key == None:
                 a = currentDirectory.split("/")
                 currentDirectory = '/'.join(a[:len(a)-1])
                 
-                print("backed to "+currentDirectory)
-
                 if currentDirectory == "": # backed all the way
                     dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
 
@@ -169,7 +179,6 @@ if __name__ == "__main__":
 
                 continue
             
-            print(os.listdir(plugPath+currentDirectory))
             if key in ['/'+x for x in os.listdir(plugPath+currentDirectory) if os.path.isdir("./plugins/"+x)]:
 
                 # example directory structure
@@ -182,23 +191,33 @@ if __name__ == "__main__":
                 #    | c.py
                     
                 currentDirectory += key
-                print("forwarded to "+currentDirectory)
+                print("[MENU] loading "+currentDirectory)
                 fullClear(draw)
-                draw.text((round(128/2), round(64/4)), "loading...")
+                draw.text((round(128/3), round(64/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
                 screenShow(disp, image)
 
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
                 pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./plugins/"+x) and not x.startswith("_")]
-                print(pnd)
 
-                print('finished loading')
+                print('[MENU] finished loading')
+
                 break
             else: # raw plugin
+                print("[MENU] running plugin \"{}\"".format(currentDirectory+"/"+key))
+                print("[MENU] DISCLAIMER: unless this is an official pwnhyve plugin, any errors that come up after this message are NOT ASSOCIATED WITH PWNHYVE. CONTACT THE PLUGIN'S DEVELOPER TO FIX IT.")
+                
+                print("\n" + "/\\"*30)
+
+                startPluginTime = time.time()
                 plugins.run(
                     plugins.getOriginModule(key),
                     key,
                     draw, disp, image, GPIO,
                     )
+                
+                print("/\\"*30)
+
+                print("\n[MENU] ran plugin \"{}\" - took {} seconds".format(currentDirectory+"/"+key, round(time.time()-startPluginTime, 3)))
                 break

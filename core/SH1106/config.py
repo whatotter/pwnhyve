@@ -83,7 +83,7 @@ def module_init():
     # print("module_init")
 
     GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(True)
+    GPIO.setwarnings(False)
     GPIO.setup(RST_PIN, GPIO.OUT)
     GPIO.setup(DC_PIN, GPIO.OUT)
     GPIO.setup(CS_PIN, GPIO.OUT)

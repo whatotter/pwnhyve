@@ -9,7 +9,6 @@ plugins = {}
 
 class BasePwnhyvePlugin:
     def __init__(self):
-        print("initiation")
         return None
 
 class pwnhyveDisplayLoader():
@@ -53,10 +52,6 @@ class pwnhyvePluginLoader():
 
                 importfolder = folder.replace("/", ".")
 
-                print('-' * 30)
-                print(item)
-                print("{}{}".format(importfolder, item))
-
                 FUCK = "{}{}".format(importfolder, item).replace("..", ".")
 
                 plugins[item] = importlib.import_module(FUCK)
@@ -75,8 +70,6 @@ class pwnhyvePluginLoader():
 
         for k,v in self.modules.items():
             self.moduleList += v["functions"]
-
-        print(self.modules)
 
     def run(self, plugin:object, target:str, *args, **kwargs):
         """

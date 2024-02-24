@@ -85,7 +85,10 @@ class PwnagotchiScreen():
 
 class airmon:
     def toggleMonitorMode(iface):
-        try:
+
+        isInMonitorMode = airmon.checkIfMonitorMode(iface)
+        
+        if not isInMonitorMode: # isn't in monitor mode
             a = getoutput("sudo /usr/sbin/airmon-ng start {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
             rmStr = ''.join(a[:2])
             monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
@@ -95,7 +98,7 @@ class airmon:
                 "monitorMode": True
             }
         
-        except:
+        else: # in monitor mode
             a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 station mode\"".format(iface)).strip().split("[phy")[-1]
             rmStr = ''.join(a[:2])
             monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
@@ -107,38 +110,62 @@ class airmon:
         
     def startMonitorMode(iface):
 
+        isInMonitorMode = airmon.checkIfMonitorMode(iface)
+
+        if isInMonitorMode:
+            print("[WIFI] {} was already in monitor mode (first check)".format(iface))
+            
+            return {
+                "interface": iface,
+                "monitorMode": True
+            }
+        
         ifaces = nf.interfaces()
 
         for x in ifaces:
             if iface in x.strip() and x.strip() != iface: # if the interface is in the text, but the text is not the interface (gets "wlan0mon" but not "wlan0")
-                print("{} was already in monitor mode".format(iface))
+                print("[WIFI] {} was already in monitor mode (second check)".format(iface))
                 return {
                     "interface": x.strip(),
                     "monitorMode": True
                 }
 
-        try:
-            a = getoutput("sudo /usr/sbin/airmon-ng start {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
+            print("[WIFI] attempting to set {} in monitor mode".format(iface))
+
+            out = getoutput("sudo /usr/sbin/airmon-ng start {}".format(iface)).split("\n")
+            
+            a = None
+
+            for x in out:
+                if "mac80211 monitor mode" in x:
+                    a = x.strip().split("[phy")[-1]
+                else:
+                    if "ERROR" in x:
+                        a = None
+                        code = x.split(" ")[-1]
+                        print("[WIFI] error putting in monitor mode: {}".format(code))
+
+                        return {
+                            "interface": None, # not changed
+                            "monitorMode": False
+                        }
+
+
             rmStr = ''.join(a[:2])
             monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
+
+            print("[WIFI] success")
 
             return {
                 "interface": monIface,
                 "monitorMode": True
             }
         
-        except:
-            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
-            rmStr = ''.join(a[:2])
-            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
-
-            return {
-                "interface": monIface, # not changed
-                "monitorMode": None
-            }
         
     def stopMonitorMode(iface):
-        try:
+        isInMonitorMode = airmon.checkIfMonitorMode(iface)
+
+        if isInMonitorMode:
             a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
             rmStr = ''.join(a[:2])
             monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
@@ -150,13 +177,21 @@ class airmon:
                 "monitorMode": False
             }
         
-        except:
-            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"stop a device that isn't in monitor mode\"".format(iface))
-            if "stop a device that isn't in monitor mode" in a: # no shit its gonna be there
-                return {
-                    "interface": monIface, # not changed
-                    "monitorMode": None
-                }
+        else:
+            return {
+                "interface": monIface, # not changed
+                "monitorMode": False
+            }
+            
+    def checkIfMonitorMode(iface):
+        out = getoutput("iwconfig {}".format(iface)).split("\n")[1].strip().split(" ")[0] # "Mode:Managed"
+
+        _, mode = out.split(":", 1)
+
+        print("[WIFI] {}'s mode: {}".format(iface, mode))
+
+        return True if mode == "Monitor" else False
+        
 
 class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
     def pwnagotchi(draw, disp, image, GPIO, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:int=10, checkDelay:float=float(1), nextDelay:float=float(10), fileLocation="/home/pwnagotchi/handshakes", debug:bool=False, prettyDebug:bool=True):
@@ -176,10 +211,16 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
         draw.text([4,4], "starting interface and bcap\npress any key to cancel", font=ImageFont.truetype('core/fonts/roboto.ttf', 10))
         screenShow(disp, image)
 
-        if prettyDebug: print("whitelist: {}".format(', '.join(whitelist)))
-        interface = airmon.startMonitorMode(config["wifi"]["interface"])["interface"]
+        print("[PWNAGOTCHI] whitelist: {}".format(', '.join(whitelist)))
+        ifaceStatus = airmon.startMonitorMode(config["wifi"]["interface"])
 
-        print("interface: {}".format(interface))
+        interface = None
+        if ifaceStatus["monitorMode"]:
+            interface = ifaceStatus["interface"]
+        else:
+            return
+
+        print("[PWNAGOTCHI] interface: {}".format(interface))
 
 
         cli = bcap.Client(iface=interface)
@@ -191,7 +232,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
 
             sleep(0.05)
 
-        print("is bcap successful: {}".format(cli.successful))
+        print("[PWNAGOTCHI] is bcap successful: {}".format(cli.successful))
 
         if not cli.successful:
             screen.exited = True

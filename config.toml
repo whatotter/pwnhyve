@@ -2,7 +2,7 @@
 invert = false                          # whether invert the display vertically.
 
 [menu]
-screenType = "minimalistic"             # the theme/screen type to use, must match it's python file name
+screenType = "flipper"             # the theme/screen type to use, must match it's python file name
 disableWrite = false                    # DEBUG
 
 [controls]

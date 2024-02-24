@@ -4,6 +4,7 @@ except ImportError:
     keyboardDisabled = True
 import sys
 import pytoml as toml
+import datetime
 
 config = {}
 
@@ -14,14 +15,22 @@ class redir:
     """
     log = []
 
+    logfile = open("pwnhyve.log", "w")
+
     def write(string):
         global stdout
-        redir.log.append(string)
-        stdout.write(string)
+
+        modstr = string
+
+        redir.log.append(modstr)
+        redir.logfile.write(modstr)
+
+        stdout.write(modstr)
 
     def flush():
         global stdout
         stdout.flush()
+        redir.logfile.flush()
 
 sys.stdout = redir
 
@@ -119,3 +128,4 @@ class fakeGPIO():
         return not keyboard.is_pressed(key)
 
 config = toml.loads(open("./config.toml").read())
+redir.logfile.write("{} log started at {} {}\n\n".format("/\\"* 6, str(datetime.datetime.now()), "/\\" * 6))

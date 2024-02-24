@@ -50,14 +50,12 @@ class sockStream:
         streamSock.setblocking(True)
         threading.Thread(target=sockStream.manageQueue, daemon=True).start()
         while True:
-            print("waiting for connection")
+            print("[VNC] READY FOR CONNECTIONS.")
             try:
                 conn, addr = streamSock.accept()
 
                 conn.sendall(b'\x01\r\n')
                 a = conn.recv(16)
-
-                print('base: {}'.format(a))
 
                 conn.settimeout(30)
                 sockStream.connection = conn
@@ -93,7 +91,7 @@ class sockStream:
                                 if config["vnc"]["vncControl"]:
                                     sockStream.mostRecentButton = dta
                                 else:
-                                    print("vnc client sent a key, but was not parsed")
+                                    print("[VNC] vnc client sent a key, but was not parsed")
 
                                 conn.sendall(b"\x01")#ack
 
@@ -696,7 +694,7 @@ def enterText(draw, disp, image, GPIO, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qw
 
 def menu(draw, disp, image, choices, GPIO,
           gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
-            flipped=False, menuType=config["menu"]["screenType"], menus=screens, caption=None, disableBack=False):
+            flipped=False, icons={"..": "./core/icons/back.bmp"}, menuType=config["menu"]["screenType"], menus=screens, caption=None, disableBack=False):
     xCoord = 5
     yCoord = 5
     currentSelection = 0 # index of programs list
@@ -708,6 +706,9 @@ def menu(draw, disp, image, choices, GPIO,
         choices = ["empty"]
     if "" in choices:
         choices.remove("") # any whitespace
+
+    if not disableBack:
+        choices.insert(0, "..")
 
     while 1:
         yCoordBefore = yCoord
@@ -734,10 +735,7 @@ def menu(draw, disp, image, choices, GPIO,
         if menuType in menus:
             b = menus[menuType]
 
-            listToPrint = b["module"].getItems(choices, currentSelection)
-
-            b["module"].display(draw, disp, image, GPIO, list(listToPrint), choices, yCoord, xCoord, currentSelection, selection, {})
-
+            b["module"].display(draw, disp, image, GPIO, choices, currentSelection, icons)
 
         yCoord = yCoordBefore # set our y coord
 
@@ -748,17 +746,19 @@ def menu(draw, disp, image, choices, GPIO,
         while True:
             key = waitForKey(GPIO, debounce=True)
 
-            print(key)
-
             if key == False: continue
 
             if key == gpioPins['KEY_DOWN_PIN']: # button is released
                 if not flipped:
                     if currentSelection != (len(choices) - 1):
                         currentSelection += 1
+                    else:
+                        currentSelection = 0
                 else:
                     if currentSelection != 0:
                         currentSelection -= 1
+                    else:
+                        currentSelection = len(choices) - 1
                         
                 break
                 #print("down")
@@ -767,14 +767,19 @@ def menu(draw, disp, image, choices, GPIO,
                 if flipped:
                     if currentSelection != (len(choices) - 1):
                         currentSelection += 1
+                    else:
+                        currentSelection = 0
                 else:
                     if currentSelection != 0:
                         currentSelection -= 1
+                    else:
+                        currentSelection = len(choices) - 1
 
                 break
                 #print("Up")
 
             if key == gpioPins['KEY_PRESS_PIN']: # button is released
+                if choices[currentSelection] == "..": return None
                 return choices[currentSelection]
                 #print("center")
 

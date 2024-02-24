@@ -129,6 +129,7 @@ class SH1106(object):
             
             for i in range(0,self.width):#for(int i=0;i<self.width; i++)
                 zb = [~pBuf[i+self.width*page]]
+                print(zb)
                 self.bus.writebytes2(zb); 
 
             #print("| took {}ms to write one page to display".format((time.time_ns() - onepage) / 1_000_000))

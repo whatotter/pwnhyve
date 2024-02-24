@@ -64,7 +64,7 @@ class Client(object):
         return decode(r)
 
     def start(self, iface: str = "wlan0mon"):
-        system('sudo bettercap --iface %s -eval "api.rest on"' % (iface))
+        system('sudo bettercap --iface %s -eval "api.rest on" -no-colors -no-history' % (iface))
 
     def deauth(self, sta, throttle=0):
         try:
@@ -161,10 +161,10 @@ class Client(object):
         for _ in range(5):
             try:
                 requests.get("%s/session" % self.url, auth=self.auth)
-                uStatus("bettercap avaialble")
+                print("[BCAP] bettercap avaialble")
                 self.successful = True
             except Exception:
-                uStatus("waiting for bettercap API to be available ...")
+                print("[BCAP] waiting for bettercap API to be available ...")
                 sleep(1)
 
         self.successful = False
