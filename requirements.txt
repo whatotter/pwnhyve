@@ -7,3 +7,11 @@ scapy
 smbus
 spidev
 pytoml
+bs4
+fleep
+Pillow
+requests
+netifaces
+prettytable
+libarchive-c
+ctypescrypto

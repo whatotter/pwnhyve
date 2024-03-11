@@ -60,7 +60,7 @@ Alternatively, you can use a tool like [Balena Etcher](https://www.balena.io/etc
 To make it headless, you can add a ```wpa_supplicant.conf``` file to the first partition of the microSD card to connect to a wireless network. You can create this file on another Linux system by running: ```wpa_passphrase YOURNETWORK > wpa_supplicant.conf```  [Documentation](https://www.kali.org/docs/arm/raspberry-pi-zero-2-w/)
 3. Power it on and SSH into it (Default Credentials: ```kali/kali```)
 4. Upgrade and update the Pi: ```sudo apt-get update && sudo apt-get upgrade```
-5. Turn Pi into usb gadget mode:
+5. Turn Pi into usb gadget mode / [Documentation](https://learn.adafruit.com/turning-your-raspberry-pi-zero-into-a-usb-gadget/ethernet-gadget):
 
 ```
 echo dtoverlay=dwc2 | sudo tee -a /boot/config.txt
@@ -70,3 +70,7 @@ echo "libcomposite" | sudo tee -a /etc/modules
 ```
 6. Reboot the Pi
 7. Clone the repo and run setup.sh: ```git clone https://github.com/nototter/pwnhyve && cd pwnhyve && bash setup.sh```
+
+## Configuration
+TODO:
+config.toml
