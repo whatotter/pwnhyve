@@ -56,8 +56,23 @@ if you try to use your pi as a ducky usb, it will take (minimum) 25 seconds to b
 
 you could use it without a battery though, just not reccomended
 
-# how install?
-[go into the wiki to install](https://github.com/whatotter/pwnhyve/wiki/installing)
+# How to Install
+
+1. First, download the Kali Linux Raspberry Pi image from the official Kali Linux website. You can get it from [here](https://www.kali.org/get-kali/#kali-arm).
+2. Write the downloaded image to an SD card using the following command in your terminal: ```xzcat kali-linux-2024.1-raspberry-pi-zero-2-w-armhf.img.xz | sudo dd of=/dev/sdX bs=4M status=progress``` 
+Alternatively, you can use a tool like [Balena Etcher](https://www.balena.io/etcher/) to write the image to the SD card.
+To make it headless, you can add a ```wpa_supplicant.conf``` file to the first partition of the microSD card to connect to a wireless network. You can create this file on another Linux system by running: ```wpa_passphrase YOURNETWORK > wpa_supplicant.conf```  [Documentation](https://www.kali.org/docs/arm/raspberry-pi-zero-2-w/)
+3. Power it on and SSH into it (Default Credentials: ```kali/kali```)
+4. Upgrade and update the Pi: ```sudo apt-get update && sudo apt-get upgrade```
+5. Turn Pi into usb gadget mode: 
+```
+echo dtoverlay=dwc2 | sudo tee -a /boot/config.txt
+echo dwc2 | sudo tee -a /etc/modules
+echo dtparam=spi=on | sudo tee -a /boot/config.txt
+echo "libcomposite" | sudo tee -a /etc/modules
+```
+6. Reboot the Pi
+7. Clone the repo and run setup.sh: ```git clone https://github.com/nototter/pwnhyve && cd pwnhyve && bash setup.sh```
 
 # credit
 - 98% of this was made by me
