@@ -1,5 +1,4 @@
 import core.bettercap.bettercap as bcap
-from core.SH1106.screen import *
 from core.utils import *
 from random import choice, randrange,randint
 from PIL import Image, ImageFont
@@ -51,7 +50,7 @@ class PwnagotchiScreen():
 
     def _keythread(self):
         while True:
-            if checkIfKey(self.gpio) or self.exited:
+            if self.disp.checkIfKey(self.gpio) or self.exited:
                 break
             
             sleep(0.05)
@@ -65,7 +64,7 @@ class PwnagotchiScreen():
         Thread(target=self._keythread, daemon=True).start()
 
         while 1:
-            fullClear(self.draw)
+            self.disp.fullClear(self.draw)
 
             self.draw.rectangle([(24, 64), (24, 66)], fill=0, outline=255) # divider
 
@@ -79,7 +78,7 @@ class PwnagotchiScreen():
 
             self.draw.text((2, 48), self.console, fill=0, outline=255, font=self.consoleFont) # console
 
-            screenShow(self.disp, self.image, flipped=self.flipped)
+            self.disp.screenShow(self.disp, self.image, flipped=self.flipped)
 
             sleep(0.25) # minimize writes
 
@@ -207,9 +206,9 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
 
         whitelist = []
 
-        fullClear(draw)
+        disp.fullClear(draw)
         draw.text([4,4], "starting interface and bcap\npress any key to cancel", font=ImageFont.truetype('core/fonts/roboto.ttf', 10))
-        screenShow(disp, image)
+        disp.screenShow(disp, image)
 
         print("[PWNAGOTCHI] whitelist: {}".format(', '.join(whitelist)))
         ifaceStatus = airmon.startMonitorMode(config["wifi"]["interface"])
@@ -227,7 +226,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
 
         while cli.successful is None:
 
-            if checkIfKey(GPIO):
+            if disp.checkIfKey(GPIO):
                 return
 
             sleep(0.05)
@@ -396,7 +395,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         ifaces = nf.interfaces()
 
-        a = menu(draw, disp, image, ifaces, GPIO)
+        a = disp.menu(draw, disp, image, ifaces, GPIO)
 
         if a in nf.interfaces():
 
@@ -408,8 +407,8 @@ class PWN_Essensials(BasePwnhyvePlugin):
         else:
             draw.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
             draw.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
-            waitForKey(GPIO)
-            while checkIfKey(GPIO): pass
+            disp.waitForKey(GPIO)
+            while disp.checkIfKey(GPIO): pass
 
     def beaconSpam(draw, disp, image, GPIO):
 
@@ -423,7 +422,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         ssids = config["wifi"]["apSpam"]
 
-        handler = screenConsole(draw,disp,image) # init handler
+        handler = disp.screenConsole(draw,disp,image) # init handler
         Thread(target=handler.start,daemon=True).start() # start handler
 
         #handler.setPercentage(0)
@@ -467,10 +466,10 @@ class PWN_Essensials(BasePwnhyvePlugin):
                         ssidFrames.append(genFrame(ssid+str(x)))
                         #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
 
-            while checkIfKey(GPIO): sleep(0.1)
+            while disp.checkIfKey(GPIO): sleep(0.1)
 
             while True:
-                if checkIfKey(GPIO): break
+                if disp.checkIfKey(GPIO): break
 
                 sendp(ssidFrames, iface=iface, verbose=1, count=1)
                 framesSent += 1
@@ -522,7 +521,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         except Exception as e:
             draw.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
             disp.ShowImage(disp.getbuffer(image))
-            waitForKey(GPIO)
+            disp.waitForKey(GPIO)
             return
 
         cli.recon()
@@ -538,7 +537,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         while True:
 
             while True:
-                fullClear(draw)
+                disp.fullClear(draw)
 
                 abVars.json = cli.getPairs()
                 #print(abVars.json)
@@ -564,7 +563,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
                 if len(loading) == 24: loading = "."
 
-                screenShow(disp, image, flipped=flipped, stream=True)
+                disp.screenShow(disp, image, flipped=flipped, stream=True)
 
                 sleep(1)
 
@@ -598,10 +597,10 @@ class PWN_Essensials(BasePwnhyvePlugin):
             # TODO: finish this; scroll left and right
             draw.text((3, 16), '\n'.join(compiledJson), fill=0, outline=255, font=font)
 
-            screenShow(disp, image, flipped=flipped, stream=True)
+            disp.screenShow(disp, image, flipped=flipped, stream=True)
 
             while True:
-                key = getKey(GPIO)
+                key = disp.getKey(GPIO)
                 if key == gpioPins["KEY_RIGHT_PIN"]:
                     if ch != len(abVars.stri) - 1:
                         ch += 1

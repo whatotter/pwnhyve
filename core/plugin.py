@@ -4,19 +4,52 @@ plugin loading system
 import os
 import importlib
 from threading import Thread
+from menus.__basemenu__ import BasePwnhyveScreen
   
 plugins = {}
 
 class BasePwnhyvePlugin:
     def __init__(self):
         return None
+    
+class BasePwnhyveScreen(BasePwnhyveScreen):
+    pass
+    
+class pwnhyveScreenLoader():
+    """
+    loads selected screen driver from ./core/screens
 
-class pwnhyveDisplayLoader():
+    folder: folder to load drivers from, defaults to "core/screens"
+    """
+    def __init__(self, driver, folder="core/screens",):
+        r = {}
+
+        self.driver = None
+        for item in os.listdir(f"./{folder}"):
+            if ".py" in item and driver in item:
+                print(item)
+
+                print("[SL] attempting to load display driver \"{}\"".format(item))
+                
+                item = item.replace('.py','')
+                iport = f'{folder.replace("/", ".")}.{item}'
+                print(iport)
+                plugins[item] = importlib.import_module(iport)
+
+                self.driver = plugins[item]
+                print("[SL] loaded")
+                return
+            
+        print("[SL] couldn't find the display driver, none loaded - this WILL cause issues")
+            
+
+
+class pwnhyveMenuLoader():
     """
     loads custom screens from ./menus folder.
     seperate from "pwnhyvePluginLoader" for compatibility and less confusion, even though they're 99% the same
 
-    folder: folder to load displays from, defaults to "menus"
+    folder: folder to load GUIs from, defaults to "menus"
     """
     def __init__(self, folder="menus",):
         r = {}
@@ -28,7 +61,7 @@ class pwnhyveDisplayLoader():
 
                 plugins[item] = importlib.import_module(f'{folder}.{item}')
 
-                z = plugins[item].Screen()
+                z = plugins[item]
                 r[item] = {"module": z}
             
         self.modules = r
@@ -54,6 +87,7 @@ class pwnhyvePluginLoader():
 
                 FUCK = "{}{}".format(importfolder, item).replace("..", ".")
 
+                print("[PL] loading plugin \"{}\"".format(FUCK))
                 plugins[item] = importlib.import_module(FUCK)
 
                 objects = [x for x in dir(plugins[item]) if x.startswith("PWN") or x == "Plugin"]
@@ -62,6 +96,7 @@ class pwnhyvePluginLoader():
                     #z = plugins[item].Plugin()
                     z = getattr(plugins[item], x)
                     r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z}
+                    print("[PL] loading class \"{}\"".format(item+"::"+x))
             
         self.th = enableThreading
 

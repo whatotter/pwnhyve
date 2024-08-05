@@ -1,5 +1,6 @@
 [display]
 invert = false                          # whether invert the display vertically.
+driver = "sh1106"
 
 [menu]
 screenType = "flipper"             # the theme/screen type to use, must match it's python file name

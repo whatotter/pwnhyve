@@ -8,13 +8,12 @@ import os
 from core.plugin import BasePwnhyvePlugin
 from PIL import ImageFont, Image
 import time
-from core.SH1106.screen import waitForKey, checkIfKey, screenShow
 
 class vars:
     font = ImageFont.truetype('core/fonts/Font.ttf', 18)
 
     nyanCat = True # enable meow meow meow meow meow meow 
-    nyanCatDelay = 0.01 # delay inbetween showing new frame
+    nyanCatDelay = 0.05 # delay inbetween showing new frame
     displayResX, displayResY = 128, 64 # your display resolution to display nyan cat correctly
 
 def fullClear(display):
@@ -26,20 +25,14 @@ class Plugin(BasePwnhyvePlugin):
 
         print("now idle")
 
-        fullClear(canvas)
+        #fullClear(canvas)
         #canvas.text((10, 10), "a mimir", fill=0, outline=255, font=vars.font)
 
         if not vars.nyanCat:
-            screenShow(display, image, flipped=False, stream=True)
-
-            waitForKey(GPIO)
+            display.showImage(image)
+            display.waitForKey(GPIO)
         else:
-            screenShow(display, image, flipped=False, stream=True)
-
             currFrame = 1
-
-            image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame
-
             frames = {}
 
             framesAmnt = len(os.listdir("./core/idleAnimation"))
@@ -50,14 +43,11 @@ class Plugin(BasePwnhyvePlugin):
 
 
             while 1: # wait for key press
-                if checkIfKey(GPIO): break
+                if display.checkIfKey(GPIO): return
 
                 if currFrame == framesAmnt: currFrame = 1
 
-                image = Image.new('1', (display.width, display.height), 255)  # 255: clear the frame       
-                image.paste(frames[currFrame])
-
-                screenShow(display, image, flipped=False, stream=True)
+                display.showImage2(frames[currFrame])
 
                 currFrame += 1
 

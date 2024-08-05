@@ -1,0 +1,30 @@
+headless.py
+[SL] attempting to load display driver "headless.py"
+core.screens.headless
+[VNC] READY FOR CONNECTIONS.
+[SL] loaded
+[DISPLAY] initalizing display driver...[DISPLAY] initalizing display driver...initalized.
+
+[PLUGINS] initializing plugins and menus...[PL] loading plugin "plugins.test"
+[PL] loading class "test::PWNTestOne"
+[PL] loading class "test::PWNTestTwo"
+[PL] loading plugin "plugins.onIdle"
+[PL] loading class "onIdle::Plugin"
+initalized.
+[MENU] READY. HACK THE PLANET!
+[VNC] DATA FROM WEBSOCK: "R"
+[VNC] CONNECTION ESTABLISHED
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "down"
+[VNC] DATA FROM WEBSOCK: "press"
+[MENU] loading /Sub-GHz
+[PL] loading plugin "plugins.Sub-GHz.subGhz"
+/home/kali/pwnhyve/core/cc1101/ccrf.py:26: RuntimeWarning: This channel is already in use, continuing anyway.  Use GPIO.setwarnings(False) to disable warnings.
+  GPIO.setup(_GDO0_PIN, GPIO.OUT, initial=GPIO.LOW)
+[PL] loading class "subGhz::PWNsubGhz"
+[MENU] finished loading
+[VNC] DATA FROM WEBSOCK: "down"

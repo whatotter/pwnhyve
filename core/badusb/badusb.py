@@ -6,7 +6,6 @@ from time import sleep
 import os
 from random import randint, gauss
 
-import core.SH1106.screen as scrn
 import jinja2
 import core.badusb.keys as usbKeys
 from core.utils import config
@@ -50,7 +49,7 @@ class DuckyScriptInterpreter():
         self.percentage = 0
         self.printed = ''
 
-        self.handler = scrn.usbRunPercentage(draw,disp,image) # init handler
+        self.handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
         threading.Thread(target=self.handler.start,daemon=True).start() # start handler
         self.handler.setPercentage(0)
 

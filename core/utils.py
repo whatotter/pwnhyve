@@ -9,31 +9,54 @@ import datetime
 config = {}
 
 stdout = sys.stdout
+stderr = sys.stderr
+
+logfile = open("pwnhyve.log", "w")
+
 class redir:
     """
     redirect all prints to a log
     """
     log = []
 
-    logfile = open("pwnhyve.log", "w")
-
     def write(string):
-        global stdout
+        global stdout, logfile
 
         modstr = string
 
         redir.log.append(modstr)
-        redir.logfile.write(modstr)
+        logfile.write(modstr)
 
         stdout.write(modstr)
 
     def flush():
-        global stdout
+        global stdout, logfile
         stdout.flush()
-        redir.logfile.flush()
+        logfile.flush()
+
+class redirERR:
+    """
+    redirect all errors to a log
+    """
+
+
+    def write(string):
+        global stderr, logfile
+
+        modstr = string
+
+        redir.log.append(modstr)
+        logfile.write(modstr)
+
+        stderr.write(modstr)
+
+    def flush():
+        global stderr, logfile
+        stderr.flush()
+        logfile.flush()
 
 sys.stdout = redir
-
+sys.stderr = redirERR
 
 def getChunk(chunkingList, divisor):
     returnList = []
@@ -128,4 +151,4 @@ class fakeGPIO():
         return not keyboard.is_pressed(key)
 
 config = toml.loads(open("./config.toml").read())
-redir.logfile.write("{} log started at {} {}\n\n".format("/\\"* 6, str(datetime.datetime.now()), "/\\" * 6))
+logfile.write("{} log started at {} {}\n\n".format("/\\"* 6, str(datetime.datetime.now()), "/\\" * 6))

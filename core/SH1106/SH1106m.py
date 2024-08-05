@@ -1,5 +1,4 @@
 import core.SH1106.config as config
-import RPi.GPIO as GPIO
 import time
 import numpy as np
 
@@ -14,27 +13,30 @@ class SH1106(object):
         self.width = LCD_WIDTH
         self.height = LCD_HEIGHT
         #Initialize DC RST pin
-        self._dc = config.DC_PIN
-        self._rst = config.RST_PIN
-        self._bl = config.BL_PIN
-        self.Device = config.Device
-        self.bus = config.devbus
+        self.RPI = config.RaspberryPi()
+
+        if Device_SPI == 1:
+            self._dc = self.RPI.GPIO_DC_PIN
+
+        self._rst = self.RPI.GPIO_RST_PIN
+
+        self.Device = self.RPI.Device
 
 
     """    Write register address and data     """
     def command(self, cmd):
         if(self.Device == Device_SPI):
-            GPIO.output(self._dc, GPIO.LOW)
-            config.spi_writebyte([cmd])
+            self.RPI.digital_write(self._dc,False)
+            self.RPI.spi_writebyte([cmd])
         else:
-            config.i2c_writebyte(0x00, cmd)
+            self.RPI.i2c_writebyte(0x80, cmd)
 
     # def data(self, val):
         # GPIO.output(self._dc, GPIO.HIGH)
         # config.spi_writebyte([val])
 
     def Init(self):
-        if (config.module_init() != 0):
+        if (self.RPI.module_init() != 0):
             return -1
         """Initialize dispaly"""    
         self.reset()
@@ -68,11 +70,12 @@ class SH1106(object):
    
     def reset(self):
         """Reset the display"""
-        GPIO.output(self._rst,GPIO.HIGH)
+        #return
+        self.RPI.digital_write(self._rst,True)
         time.sleep(0.1)
-        GPIO.output(self._rst,GPIO.LOW)
+        self.RPI.digital_write(self._rst,False)
         time.sleep(0.1)
-        GPIO.output(self._rst,GPIO.HIGH)
+        self.RPI.digital_write(self._rst,True)
         time.sleep(0.1)
     
     def getbuffer(self, image):
@@ -109,13 +112,9 @@ class SH1106(object):
             # config.spi_writebyte([~Image[i]])
             
     def ShowImage(self, pBuf):
-        fullpage = time.time_ns()
-        #print("|")
-
         for page in range(0,8):
-            onepage = time.time_ns()
             # set page address #
-            self.command(0xB0 + page);
+            self.command(0xB0 + page)
             # set low column address #
             self.command(0x02); 
             # set high column address #
@@ -123,19 +122,13 @@ class SH1106(object):
             # write data #
             # time.sleep(0.01)
             if(self.Device == Device_SPI):
-                GPIO.output(self._dc, GPIO.HIGH);
-            
-            #print("| took {}ms to set commands on one page".format((time.time_ns() - onepage) / 1_000_000))
-            
+                self.RPI.digital_write(self._dc,True)
             for i in range(0,self.width):#for(int i=0;i<self.width; i++)
-                zb = [~pBuf[i+self.width*page]]
-                print(zb)
-                self.bus.writebytes2(zb); 
-
-            #print("| took {}ms to write one page to display".format((time.time_ns() - onepage) / 1_000_000))
-            #print("(--------------------)")
-
-        #print("\\ took {}ms to write all 8 pages to display".format((time.time_ns() - fullpage) / 1_000_000))
+                if(self.Device == Device_SPI):
+                    self.RPI.spi_writebyte([~pBuf[i+self.width*page]]); 
+                else :
+                    self.RPI.i2c_writebyte(0x40, ~pBuf[i+self.width*page])
+                    
                     
 
 	

@@ -8,7 +8,6 @@ rest are mine
 import os
 import time
 from PIL import Image, ImageDraw, ImageFont
-from core.SH1106.screen import *
 from core.utils import config
 from core.plugin import *
 #import json
@@ -20,13 +19,6 @@ enableWebServer = True
 
 devOptions = False # enable dev options
 
-try:
-    import RPi.GPIO as GPIO
-    GPIO.setwarnings(False)
-    import core.SH1106.SH1106m as SH1106
-except ImportError:
-    print("unable to import SH1106 or RPI.GPIO libary")
-    quit() 
 
 class customizable:
     # (mostly) everything is overridden by the config.json
@@ -87,46 +79,32 @@ if __name__ == "__main__":
         Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
     """
 
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
-
     # setup display driver
-    print("[DISPLAY] initalizing display driver...", end="")
-    disp = SH1106.SH1106()
-    disp.Init()
-    disp.clear()
+    menus = pwnhyveMenuLoader()
 
-    image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
-    draw = ImageDraw.Draw(image) # dsiayp
+    selectedMenu = menus.modules[customizable.screenType]["module"]
+
+    driverLoader = pwnhyveScreenLoader(config["display"]["driver"])
+
+    if driverLoader.driver == None:
+        driverLoader = pwnhyveScreenLoader("headless")
+
+    dispDriver = driverLoader.driver
+        
+
+    print("[DISPLAY] initalizing display driver...", end="")
+
+    disp = driverLoader.driver.DisplayDriver(selectedMenu)
+    GPIO, image, draw = disp.GPIO, disp.image, disp.draw
+
     print("initalized.\n")
     # end of display setup
-
-    # load gpio pins
-    gpio = { # gpio pins are the buttons, like joystick, side buttons, etc.
-        'KEY_UP_PIN': 6,
-        'KEY_DOWN_PIN': 19,
-        'KEY_LEFT_PIN': 5,
-        'KEY_RIGHT_PIN': 26,
-        'KEY_PRESS_PIN': 13,
-        'KEY1_PIN': 21,
-        'KEY2_PIN': 20,
-        'KEY3_PIN': 16,
-    }
-
-    print("/ [GPIO] initalizing GPIO pins...")
-    for gpioPin in gpio: # init gpio
-        print("| [GPIO] initializing GPIO pin {}...".format(gpio[gpioPin]), end="")
-        GPIO.setup(gpio[gpioPin],GPIO.IN,pull_up_down=GPIO.PUD_UP)
-        print("initalized")
-    print("\\ [GPIO] done initalizing GPIO pins.\n")
-    # end of gpio pin loading
 
     # load plugins
     print('[PLUGINS] initializing plugins and menus...', end="")
     plugPath = config["plugins"]["pluginsPath"]
 
     plugins = pwnhyvePluginLoader(folder=plugPath.replace("./", ""))
-    menus = pwnhyveDisplayLoader()
 
     plugins.moduleList += ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
     currentDirectory = ""
@@ -136,6 +114,7 @@ if __name__ == "__main__":
 
     print("[MENU] READY. HACK THE PLANET!")
 
+    pnd = plugins.moduleList
     while 1:
 
         # interface for batteries n stuff
@@ -145,41 +124,30 @@ if __name__ == "__main__":
         # TODO: make battery icons # finished
 
 
-        try: # check if selection is out of range
-            selection = plugins.moduleList[vars.currentSelection]
-        except IndexError: # if it is
-            vars.currentSelection -= 1 # failsafe
-            selection = plugins.moduleList[vars.currentSelection - 1] # go back 1 (TODO: maybe remove)
-
-        fullClear(draw)
-
-        if customizable.screenType in list(menus.modules):
-            b = menus.modules[customizable.screenType]
-
-            b["module"].display(draw, disp, image, GPIO, plugins.moduleList, vars.currentSelection, vars.icons)
-
-            screenShow(disp, image, flipped=vars.flipped)
-        
+        selection = 0
+        disp.fullClear(draw)
 
         # button stuff
         #pnd = plugins.moduleList + [x for x in os.listdir("./plugins") if os.path.isdir("./plugins/"+x)]
-        pnd = plugins.moduleList
         while True:
-            key = menu(draw, disp, image, pnd, GPIO, disableBack=currentDirectory=="")
+            key = disp.gui.menu(pnd, disableBack=currentDirectory=="")
 
             if key == None:
                 a = currentDirectory.split("/")
                 currentDirectory = '/'.join(a[:len(a)-1])
                 
-                if currentDirectory == "": # backed all the way
-                    dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
+                #if currentDirectory == "": # backed all the way
+                dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
 
-                    plugins = pwnhyvePluginLoader(folder=dire)
-                    pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
 
+                plugins = pwnhyvePluginLoader(folder=dire)
+                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
+
+                #print("LDIR: {}".format(currentDirectory))
                 continue
             
-            if key in ['/'+x for x in os.listdir(plugPath+currentDirectory) if os.path.isdir("./plugins/"+x)]:
+            pt = (plugPath+currentDirectory).replace("//", "/")
+            if key in ['/'+x for x in os.listdir(pt) if os.path.isdir(os.path.join(pt,x))]:
 
                 # example directory structure
 
@@ -192,14 +160,15 @@ if __name__ == "__main__":
                     
                 currentDirectory += key
                 print("[MENU] loading "+currentDirectory)
-                fullClear(draw)
-                draw.text((round(128/3), round(64/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
-                screenShow(disp, image)
+                disp.fullClear(draw)
+                disp.draw.text((round(128/3), round(64/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+                disp.screenShow()
 
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
+                
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
-                pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./plugins/"+x) and not x.startswith("_")]
+                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
 
                 print('[MENU] finished loading')
 

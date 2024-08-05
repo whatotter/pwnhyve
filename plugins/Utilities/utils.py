@@ -2,7 +2,6 @@ from PIL import ImageFont
 import subprocess
 import os
 import random, string
-from core.SH1106.screen import *
 from threading import Thread
 from time import sleep
 import netifaces as ni
@@ -47,7 +46,7 @@ class PWN_Storage(BasePwnhyvePlugin):
             os.mkdir(extractPoint)
         except: pass
 
-        handler = usbRunPercentage(draw,disp,image) # init handler
+        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
         Thread(target=handler.start,daemon=True).start() # start handler
 
         handler.addText("creating mountdir")
@@ -79,7 +78,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
             if output is None: continue
 
-            if checkIfKey(GPIO):
+            if disp.checkIfKey(GPIO):
                 handler.addText("quitting")
                 handler.exit()
                 sleep(1)
@@ -99,7 +98,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
                     print("sudo mount %s %s" % (output[0].split(" ")[0], MOUNT_DIR))
 
-                    waitForKey(GPIO)
+                    disp.waitForKey(GPIO)
                     handler.exit()
 
                     return
@@ -135,7 +134,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
         handler.addText("done")
         handler.setPercentage(100)
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
         sleep(0.25) # rebound
 
         # just for easier reading
@@ -145,7 +144,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
         handler.text = "total files: {}\ntarget\n{}\nextract to {}".format(b, output[0].split(" ")[0], extractPoint)
 
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
 
         handler.exit()
         
@@ -195,24 +194,24 @@ class PWN_System(BasePwnhyvePlugin):
 
         name, value = None, None
         
-        choice = menu(draw, disp, image, ["set variable name", "set variable value"], GPIO)
+        choice = disp.menu(draw, disp, image, ["set variable name", "set variable value"], GPIO)
 
         if choice == None: return
         elif choice == "set variable name":
-            name = enterText(draw, disp, image, GPIO)
+            name = disp.enterText(draw, disp, image, GPIO)
         elif choice == "set variable value":
-            value = enterText(draw, disp, image, GPIO)
+            value = disp.enterText(draw, disp, image, GPIO)
 
         while True:
-            choice = menu(draw, disp, image,
+            choice = disp.menu(draw, disp, image,
                         ["name: {}".format(name) if name != None else "set variable name", "value: {}".format(value) if value != None else "set variable value", "set"], #wtf
                             GPIO)
             
             if choice == None or choice == "set": break
             elif choice == "set variable name":
-                name = enterText(draw, disp, image, GPIO)
+                name = disp.enterText(draw, disp, image, GPIO)
             elif choice == "set variable value":
-                value = enterText(draw, disp, image, GPIO)
+                value = disp.enterText(draw, disp, image, GPIO)
             
         os.environ[name] = value
 
@@ -222,7 +221,7 @@ class PWN_System(BasePwnhyvePlugin):
     def shutdown(draw, disp, image, GPIO):
 
         fullClear(draw)
-        screenShow(disp, image, flipped=False, stream=True)
+        disp.screenShow(disp, image, flipped=False, stream=True)
 
         print("shutdown thingy")
         print(subprocess.getoutput("sudo shutdown now"))
@@ -237,14 +236,14 @@ class PWN_System(BasePwnhyvePlugin):
 
     def system_info(draw, disp, image, GPIO):
 
-        z = screenConsole(draw, disp, image)
+        z = disp.screenConsole(draw, disp, image)
 
         Thread(target=z.start, daemon=True).start()
 
         ifaces = {}
         jumbled = ""
 
-        while checkIfKey(GPIO): pass
+        while disp.checkIfKey(GPIO): pass
 
         for x in ni.interfaces():
             print(x)
@@ -267,7 +266,7 @@ class PWN_System(BasePwnhyvePlugin):
         sleep(1)
 
         z.exit()
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
         while checkIfKey(GPIO): pass
 
 
@@ -285,7 +284,7 @@ def connectWifi(draw, disp, image, GPIO):
         return ssids
     
     def selectNetwork(ssids=findNetworks()):
-        return menu(draw, disp, image, ssids, GPIO)
+        return disp.menu(draw, disp, image, ssids, GPIO)
 
 
     ssid = selectNetwork()
@@ -300,7 +299,7 @@ def connectWifi(draw, disp, image, GPIO):
     pwd = None
     
     while True:
-        choice = menu(draw, disp, image,
+        choice = disp.menu(draw, disp, image,
                        ["ssid: {}".format(ssid), "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password", "connect"], #wtf
                          GPIO)
         
@@ -308,7 +307,7 @@ def connectWifi(draw, disp, image, GPIO):
         elif choice == "ssid: {}".format(ssid):
             ssid = selectNetwork()
         elif choice == "enter password" or choice == "password: {}".format(''.join(["*" for _ in pwd])):
-            pwd = enterText(draw, disp, image, GPIO, secret=True)
+            pwd = disp.enterText(draw, disp, image, GPIO, secret=True)
     
     subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
     
