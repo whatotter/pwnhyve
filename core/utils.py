@@ -4,10 +4,15 @@ except ImportError:
     keyboardDisabled = True
 import sys
 import pytoml as toml
+import datetime
 
 config = {}
 
 stdout = sys.stdout
+stderr = sys.stderr
+
+logfile = open("pwnhyve.log", "w")
+
 class redir:
     """
     redirect all prints to a log
@@ -15,16 +20,43 @@ class redir:
     log = []
 
     def write(string):
-        global stdout
-        redir.log.append(string)
-        stdout.write(string)
+        global stdout, logfile
+
+        modstr = string
+
+        redir.log.append(modstr)
+        logfile.write(modstr)
+
+        stdout.write(modstr)
 
     def flush():
-        global stdout
+        global stdout, logfile
         stdout.flush()
+        logfile.flush()
+
+class redirERR:
+    """
+    redirect all errors to a log
+    """
+
+
+    def write(string):
+        global stderr, logfile
+
+        modstr = string
+
+        redir.log.append(modstr)
+        logfile.write(modstr)
+
+        stderr.write(modstr)
+
+    def flush():
+        global stderr, logfile
+        stderr.flush()
+        logfile.flush()
 
 sys.stdout = redir
-
+sys.stderr = redirERR
 
 def getChunk(chunkingList, divisor):
     returnList = []
@@ -119,3 +151,4 @@ class fakeGPIO():
         return not keyboard.is_pressed(key)
 
 config = toml.loads(open("./config.toml").read())
+logfile.write("{} log started at {} {}\n\n".format("/\\"* 6, str(datetime.datetime.now()), "/\\" * 6))

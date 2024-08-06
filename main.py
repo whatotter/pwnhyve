@@ -6,9 +6,9 @@ gpio code snippets are from waveshare docs
 rest are mine
 """
 import os
+import time
 from PIL import Image, ImageDraw, ImageFont
-from core.SH1106.screen import *
-from core.utils import getChunk, uError, uStatus, uSuccess, config
+from core.utils import config
 from core.plugin import *
 #import json
 #import threading
@@ -18,28 +18,6 @@ pillowDebug = False # very not reliable, also laggy
 enableWebServer = True
 
 devOptions = False # enable dev options
-
-try:
-    import core.SH1106.SH1106m as SH1106
-    import RPi.GPIO as GPIO
-except ImportError:
-    uError("unable to import SH1106 or RPI.GPIO libary")
-    if not pillowDebug:
-        if enableWebServer:
-            uStatus("starting webserver")
-
-            from flask import Flask, Response, send_file, request
-            import core.controlPanel.cpanel as cpanel
-
-            uSuccess("imported webserver")
-
-            cpanel.app.run(host="0.0.0.0", port=80)
-
-        quit()
-    else:
-        uStatus("pillow debug enabled, showing all images to a pillow window")
-        import matplotlib.pyplot as plt
-
 
 
 class customizable:
@@ -101,39 +79,42 @@ if __name__ == "__main__":
         Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
     """
 
-    disp = SH1106.SH1106()
-    disp.Init()
-    disp.clear()
+    # setup display driver
+    menus = pwnhyveMenuLoader()
 
-    GPIO.setmode(GPIO.BCM)
+    selectedMenu = menus.modules[customizable.screenType]["module"]
 
-    gpio = { # gpio pins are the buttons, like joystick, side buttons, etc.
-        'KEY_UP_PIN': 6,
-        'KEY_DOWN_PIN': 19,
-        'KEY_LEFT_PIN': 5,
-        'KEY_RIGHT_PIN': 26,
-        'KEY_PRESS_PIN': 13,
-        'KEY1_PIN': 21,
-        'KEY2_PIN': 20,
-        'KEY3_PIN': 16,
-    }
+    driverLoader = pwnhyveScreenLoader(config["display"]["driver"])
 
-    for gpioPin in gpio: # init gpio
-        GPIO.setup(gpio[gpioPin],GPIO.IN,pull_up_down=GPIO.PUD_UP)
+    if driverLoader.driver == None:
+        driverLoader = pwnhyveScreenLoader("headless")
 
-    image = Image.new('1', (disp.width, disp.height), "WHITE") # init display
-    draw = ImageDraw.Draw(image) # dsiayp
+    dispDriver = driverLoader.driver
+        
+
+    print("[DISPLAY] initalizing display driver...", end="")
+
+    disp = driverLoader.driver.DisplayDriver(selectedMenu)
+    GPIO, image, draw = disp.GPIO, disp.image, disp.draw
+
+    print("initalized.\n")
+    # end of display setup
 
     # load plugins
+    print('[PLUGINS] initializing plugins and menus...', end="")
     plugPath = config["plugins"]["pluginsPath"]
+
     plugins = pwnhyvePluginLoader(folder=plugPath.replace("./", ""))
+
     plugins.moduleList += ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
     currentDirectory = ""
 
-    menus = pwnhyveDisplayLoader()
+    print("initalized.")
+    # end of plugin load
 
-    currentDirectory = ""
+    print("[MENU] READY. HACK THE PLANET!")
 
+    pnd = plugins.moduleList
     while 1:
 
         # interface for batteries n stuff
@@ -143,50 +124,30 @@ if __name__ == "__main__":
         # TODO: make battery icons # finished
 
 
-        try: # check if selection is out of range
-            selection = plugins.moduleList[vars.currentSelection]
-        except IndexError: # if it is
-            vars.currentSelection -= 1 # failsafe
-            selection = plugins.moduleList[vars.currentSelection - 1] # go back 1 (TODO: maybe remove)
-
-        fullClear(draw)
-
-        if customizable.screenType in list(menus.modules):
-            b = menus.modules[customizable.screenType]
-
-            listToPrint = b["module"].getItems(plugins.moduleList, vars.currentSelection)
-            b["module"].display(draw, disp, image, GPIO, list(listToPrint), plugins, vars.yCoord, vars.xCoord, vars.currentSelection, selection, vars.icons)
-
-            screenShow(disp, image, flipped=vars.flipped, stream=True)
-        
+        selection = 0
+        disp.fullClear(draw)
 
         # button stuff
         #pnd = plugins.moduleList + [x for x in os.listdir("./plugins") if os.path.isdir("./plugins/"+x)]
-        pnd = plugins.moduleList
         while True:
-            print('---' * 6)
-            print(pnd)
-            key = menu(draw, disp, image, pnd, GPIO, disableBack=currentDirectory=="")
-            print('---' * 6)
-
-            print(key)
+            key = disp.gui.menu(pnd, disableBack=currentDirectory=="")
 
             if key == None:
                 a = currentDirectory.split("/")
                 currentDirectory = '/'.join(a[:len(a)-1])
                 
-                print("backed to "+currentDirectory)
+                #if currentDirectory == "": # backed all the way
+                dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
 
-                if currentDirectory == "": # backed all the way
-                    dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
 
-                    plugins = pwnhyvePluginLoader(folder=dire)
-                    pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
+                plugins = pwnhyvePluginLoader(folder=dire)
+                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
 
+                #print("LDIR: {}".format(currentDirectory))
                 continue
             
-            print(os.listdir(plugPath+currentDirectory))
-            if key in ['/'+x for x in os.listdir(plugPath+currentDirectory) if os.path.isdir("./plugins/"+x)]:
+            pt = (plugPath+currentDirectory).replace("//", "/")
+            if key in ['/'+x for x in os.listdir(pt) if os.path.isdir(os.path.join(pt,x))]:
 
                 # example directory structure
 
@@ -198,22 +159,34 @@ if __name__ == "__main__":
                 #    | c.py
                     
                 currentDirectory += key
-                print("forwarded to "+currentDirectory)
-                fullClear(draw)
-                draw.text((round(128/2), round(64/4)), "loading...")
-                screenShow(disp, image, stream=True)
+                print("[MENU] loading "+currentDirectory)
+                disp.fullClear(draw)
+                disp.draw.text((round(128/3), round(64/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+                disp.screenShow()
+
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
-
+                
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
-                pnd = plugins.moduleList + ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./plugins/"+x) and not x.startswith("_")]
-                print(pnd)
+                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
+
+                print('[MENU] finished loading')
 
                 break
             else: # raw plugin
+                print("[MENU] running plugin \"{}\"".format(currentDirectory+"/"+key))
+                print("[MENU] DISCLAIMER: unless this is an official pwnhyve plugin, any errors that come up after this message are NOT ASSOCIATED WITH PWNHYVE. CONTACT THE PLUGIN'S DEVELOPER TO FIX IT.")
+                
+                print("\n" + "/\\"*30)
+
+                startPluginTime = time.time()
                 plugins.run(
                     plugins.getOriginModule(key),
                     key,
                     draw, disp, image, GPIO,
                     )
+                
+                print("/\\"*30)
+
+                print("\n[MENU] ran plugin \"{}\" - took {} seconds".format(currentDirectory+"/"+key, round(time.time()-startPluginTime, 3)))
                 break

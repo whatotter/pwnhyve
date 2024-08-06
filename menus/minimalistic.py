@@ -9,36 +9,16 @@ class vars:
 class Screen(BasePwnhyvePlugin):
     def getItems(self, plugins, currentSelection):
 
-        print(plugins)
-
-        if currentSelection >= vars.maxLNprint: # if current selection index is equal or more than max line print
-            if currentSelection != vars.currentSelOld: # and if current selection isnt the same as old index
-                vars.cleanScrollNum += 1 # increase scroll
-        else: # if it's smaller
-            if currentSelection != vars.currentSelOld: # and it isnt the same as old index
-                vars.cleanScrollNum -= 1 # decrease scroll
-
-        vars.currentSelOld = currentSelection
-
-        a = list(plugins) # turn our plugins dict into a list
-        listToPrint = [] # clean list to print
-
-        for _ in range(currentSelection): # iter over current selection (i dont understand this)
-            if vars.cleanScrollNum != 0:
-                a.pop(0)
-
-        for i in a: # iter over our plugin
-            listToPrint = a[:5] # add 5 items every time
-
         listToPrint = plugins[currentSelection:currentSelection+5]
         
         return listToPrint
 
 
-    def display(self, draw, disp, image,
-                 GPIO, listToPrint, plugins,
-                   yCoord, xCoord, currentSelection,
-                     selection, icons):
+    def display(self, draw, disp, image, GPIO, moduleList, currentSelection, icons):
+        listToPrint = self.getItems(moduleList, currentSelection)
+        selection = moduleList[currentSelection]
+
+        xCoord = 0
 
         for text in list(listToPrint): # do draw
             if selection != text: # if our selection isnt the text iter gave us

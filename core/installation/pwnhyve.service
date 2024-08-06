@@ -1,8 +1,9 @@
 [Unit]
-Description=pwnhyve startup 
+Description=pwnhyve startup
+Before=usb-gadget.target
 
 [Service]
 ExecStart=/bin/pwnhyveStart
 
 [Install]
-WantedBy=multi-user.target
+RequiredBy=usb-gadget.target

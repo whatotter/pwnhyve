@@ -1,7 +1,6 @@
 from PIL import ImageFont
 from time import sleep
 from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
-from core.SH1106.screen import menu, fullClear, usbRunPercentage, waitForKey
 from core.utils import config
 import os
 
@@ -25,12 +24,12 @@ usb = BadUSB()
 class Plugin(BasePwnhyvePlugin):
     def fileExfil(draw, disp, image, GPIO):
         global usb
-        handler = usbRunPercentage(draw,disp,image) # init handler
+        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
         Thread(target=handler.start,daemon=True).start() # start handler
 
         handler.addText("hit any key to run payload\nfile: $env:tmp/z")
 
-        waitForKey(GPIO, debounce=True)
+        disp.waitForKey(GPIO, debounce=True)
 
         usb.run("powershell")
         sleep(0.125)
@@ -94,13 +93,15 @@ class Plugin(BasePwnhyvePlugin):
         global usb
         # args: [draw, disp, image]
 
+        print("abcd")
+
         payloads = os.listdir("./payloads/")
 
         vars.payloadList["back"] = '0'
 
         sleep(0.5)
 
-        a = menu(draw, disp, image, payloads, GPIO, menuType=config["menu"]["screenType"])
+        a = disp.gui.menu(payloads)
 
         if a == "back":
             return
@@ -115,11 +116,11 @@ class Plugin(BasePwnhyvePlugin):
         dsi.handler.addText("press any key..")
         dsi.handler.exit()
 
-        waitForKey(GPIO)
+        disp.waitForKey()
 
     def wxHoaxShell(draw, disp, image, GPIO):
         global usb
-        handler = usbRunPercentage(draw,disp,image) # init handler
+        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
         Thread(target=handler.start,daemon=True).start() # start handler
 
         #payload = vil.payloadGen("windows", "wlan0", scramble=0)
@@ -158,7 +159,7 @@ class Plugin(BasePwnhyvePlugin):
 
         handler.addText("finished")
 
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
 
         handler.exit()
 
@@ -173,7 +174,7 @@ class Plugin(BasePwnhyvePlugin):
             # theres definitely a better way of doin this
             ####
 
-            folder = menu(draw, disp, image, [x if os.path.isdir(x) else "" for x in os.listdir("./core/LOLBAS")], GPIO)
+            folder = disp.menu(draw, disp, image, [x if os.path.isdir(x) else "" for x in os.listdir("./core/LOLBAS")], GPIO)
 
             if folder == None: return
 
@@ -181,7 +182,7 @@ class Plugin(BasePwnhyvePlugin):
 
             ###
 
-            script = menu(draw, disp, image, [x.replace(".txt", "") for x in os.listdir(directory)], GPIO)
+            script = disp.menu(draw, disp, image, [x.replace(".txt", "") for x in os.listdir(directory)], GPIO)
 
             if script == None: directory = basedir; continue
 
@@ -199,7 +200,7 @@ class Plugin(BasePwnhyvePlugin):
         dsi.handler.addText("press any key..")
         dsi.handler.exit()
 
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
 
 
 
@@ -209,7 +210,7 @@ class Plugin(BasePwnhyvePlugin):
 
         port = randint(2500,30000)
 
-        handler = usbRunPercentage(draw,disp,image)
+        handler = disp.gui.usbRunPercentage(draw,disp,image)
         Thread(target=handler.start,daemon=True).start()
         handler.clearText()
 
@@ -259,9 +260,9 @@ class Plugin(BasePwnhyvePlugin):
         usb.close()
         fakeHTTP.tcp.close()
 
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
         sleep(0.125) # button rebound
         handler.text = "1:{0}\n2:{1}\n3:{2}\n4:{3}".format(*client[0].split(".")) # best formatting ever 2
-        waitForKey(GPIO)
+        disp.waitForKey(GPIO)
 
         handler.exit()

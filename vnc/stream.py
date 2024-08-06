@@ -14,12 +14,12 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import Qt, QByteArray, QPoint
 import base64
 
+import asyncio
+from websockets.sync.client import connect
 
-ip = sys.argv[1]
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(1)
-s.connect((ip, 11198))
-s.settimeout(0.25)
+
+
+ip = input("ip: ") if len(sys.argv) == 1 else sys.argv[1]
 #s.setblocking(False)
 
 clog = []
@@ -39,7 +39,7 @@ def dumpAndOpenLog():
 class VideoWindow(QWidget):
     buttonQ = []
     def __init__(self, paddingX=4, paddingY=4):
-        global s
+        s = True
         super().__init__()
         self.setWindowTitle("Video Display")
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -133,6 +133,9 @@ class VideoWindow(QWidget):
         self.recentMouseCoords = (0, 0)
 
         self.sleeptime = round(1000/120, ndigits=1) / 1000
+
+        self.pixmap = QPixmap()
+        #self.label.setPixmap(self.pixmap.scaled(128*2, 64*2))
 
         if s:
             self.status.setText("CONNECTED.")
@@ -233,129 +236,92 @@ class VideoWindow(QWidget):
         }
 
         if keys.get(event.key(), False):
-            print(keys.get(event.key()))
-            self.buttonQ.append(keys.get(event.key()))
+            key = keys.get(event.key())
+            print(key)
+            if key not in self.buttonQ:
+                self.buttonQ.append(key)
+                print('button add: {}'.format(self.buttonQ))
+
 
         super().keyReleaseEvent(event)
 
     def display_frame(self): 
-        global s
+        global ip
+
+        haveibeenfucked = False
+
         while True:
-            if self.serverExited:
-                try:
-                    s.connect((sys.argv[1], 11198))
-                    s.settimeout(0.25)
-                    time.sleep(2.5)
-                    self.status.setText("RECONNECTED.")
-                    self.serverExited = False
-                except (TimeoutError, ConnectionAbortedError, ConnectionRefusedError):
-                    print('failed reconnection')
-                    time.sleep(1)
+            try:
+                with connect("ws://{}:8765".format(ip)) as websocket:
+                    if haveibeenfucked:
+                        self.status.setText("RECONNECTED.")
+                        haveibeenfucked = False
 
-                continue
-            else:
-                try:
-                    frame = s.recv(32)
-                except (TimeoutError):
-                    frame = None
-                except:
-                    s.close()
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.status.setText("SERVER EXITED. ATTEMPTING RECONNECT...")
-                    self.serverExited = True
-                    continue
-                #ret, frame = True, self.cap.read()
-
-                print(frame)
-                if frame != None:
-                    if frame == b"\x01\r\n":
-                        print("client hello")
-                        s.sendall(b'\x02')
-                        continue
-                    else:
-                        print(frame)
-                        if frame == b'':
-                            print('server exited')
-                            self.status.setText("SERVER EXITED. ATTEMPTING RECONNECT...")
-                            s.close()
-
-                            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            s.settimeout(1)
-
-                            self.serverExited = True
+                    websocket.send("R")
+                    while True:
+                        if len(self.buttonQ) != 0:
+                            for x in self.buttonQ:
+                                websocket.send(x)
+                                time.sleep(0.01)
                             
-                        if "L:" in frame.decode('ascii'):
-                            # for fragmentation
-                            buffer = int(frame.decode('ascii').replace("L:", "")) # me when i refuse to use regex
-                            print("bufsize: {}".format(buffer*2))
-                            s.sendall(b'\x01')
-                            print('sent x01')
+                            self.buttonQ.clear()
 
-                            data = b''
-                            while len(data) != buffer:
-                                try:
-                                    z = s.recv(buffer)
-                                except:
-                                    continue # broken frame
-                                data += z
+                        try:
+                            rawresp = websocket.recv(0)
+                        except TimeoutError:
+                            continue
+                        except:
+                            self.status.setText("DISCONNECTED. ATTEMPTING RECONNECT..")
+                            haveibeenfucked = True
+                            break
 
-                            assert len(data) == buffer
-                            
-                            array = json.loads(data.decode('ascii'))
+                        rsp = json.loads(rawresp)
 
-                            frame = array["frame"].encode('ascii')
-                            log = base64.b64decode(array['log'].encode('ascii')).decode('ascii')
+                        frame = rsp["frame"].encode('ascii')
+                        log = base64.b64decode(rsp['log'].encode('ascii')).decode('ascii')
 
-                            if log.strip() != "":
-                                clog.append(log.strip())
-                                print(log)
+                        if log.strip() != "":
+                            clog.append(log.strip())
 
-                            print("{} = {}".format(len(frame), buffer))
+                        ret = True
+                        if frame is None:
+                            ret = False
 
-                    ret = True
-                    if frame is None:
-                        ret = False
+                        if ret:
+                            ba = QByteArray.fromBase64(frame)
+                            if self.pixmap.loadFromData(ba, "JPEG"):
+                                self.label.setPixmap(self.pixmap.scaled(128*2, 64*2))
+                                pass
 
-                    if ret:
-                        ba = QByteArray.fromBase64(frame)
-                        pixmap = QPixmap()
-                        if pixmap.loadFromData(ba, "JPEG"):
-                            self.label.setPixmap(pixmap.scaled(128*2, 64*2))
+                            #self.update()  # Trigger PyQt window update
 
-                        self.update()  # Trigger PyQt window update
+                            #time.sleep(self.sleeptime/2)
 
-                        #time.sleep(self.sleeptime/2)
+                        #await rawresp
 
-                if len(self.buttonQ) != 0:
-                    for x in self.buttonQ:
-                        s.sendall(x.encode('ascii'))
-                        if s.recv(16) == b"\x01":
-                            print('sent key {}'.format(x))
-
-                    self.buttonQ.clear()
-                else:
-                    s.sendall(b'\x00')
+                        time.sleep(0.001)
+            except:
+                print("failed to recconect")
+                time.sleep(1)
+            
 
 
-def sendStream(key):
-    print("keypress")
-    if key in ["up", "left", "right", "down", "1", "2", "3", "press"]:
-        print("sent")
-        s.sendall(key.encode('utf-8'))
-        return True
-    else:
-        print("not sent")
-        return None
+async def main():
+    app = QApplication([])
+    z = QFontDatabase.addApplicationFont("haxrcorp-4089.ttf")
 
-app = QApplication([])
-z = QFontDatabase.addApplicationFont("haxrcorp-4089.ttf")
+    padding = 14
 
-padding = 14
+    stream = VideoWindow(paddingX=round(padding/2), paddingY=round(padding/2))
+    stream.resize(581+padding,335+padding)
+    stream.show()
 
-stream = VideoWindow(paddingX=round(padding/2), paddingY=round(padding/2))
-stream.resize(581+padding,335+padding)
-stream.show()
+    threading.Thread(target=stream.display_frame,daemon=True).start()
 
-threading.Thread(target=stream.display_frame, daemon=True).start()
-while True:
-    app.processEvents()  # Handle PyQt events
+    try:
+        while True:
+            app.processEvents()  # Handle PyQt events
+    except KeyboardInterrupt:
+        pass
+
+asyncio.run(main())

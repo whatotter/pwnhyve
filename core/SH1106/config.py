@@ -1,11 +1,11 @@
 # /*****************************************************************************
 # * | File        :	  config.py
 # * | Author      :   Waveshare team
-# * | Function    :   Hardware underlying interface,for Jetson nano
+# * | Function    :   Hardware underlying interface,for Raspberry pi
 # * | Info        :
 # *----------------
 # * | This version:   V1.0
-# * | Date        :   2019-06-06
+# * | Date        :   2020-06-17
 # * | Info        :   
 # ******************************************************************************/
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,92 +27,95 @@
 # THE SOFTWARE.
 #
 
-import RPi.GPIO as GPIO
+
 import time
 from smbus import SMBus
 import spidev
-
 import ctypes
+import RPi.GPIO as GPIO
 
 # Pin definition
-RST_PIN         = 25
-DC_PIN          = 24
-CS_PIN          = 8
-BL_PIN          = 18
+RST_PIN        = 7
+CS_PIN         = 24
+DC_PIN         = 18
 
-Device_SPI = 1
-Device_I2C = 0
-devbus = None
+#GPIO define
+KEY_UP_PIN     = 31 
+KEY_DOWN_PIN   = 35
+KEY_LEFT_PIN   = 29
+KEY_RIGHT_PIN  = 37
+KEY_PRESS_PIN  = 33
 
-if(Device_SPI == 1):
-    Device = Device_SPI
+KEY1_PIN       = 40
+KEY2_PIN       = 38
+KEY3_PIN       = 36
 
-    while True:
-        try:
-            spi = spidev.SpiDev(0, 0)
-            devbus = spi
-            #spi.max_speed_hz = 10000000
-            #spi.mode = 0b00
-            break
-        except FileNotFoundError:
-            time.sleep(0.5)
-else :
-    Device = Device_I2C
-    address         = 0x3C
-    bus = SMBus(1)
-    devbus = bus
+Device_SPI = 0
+Device_I2C = 1
 
-def digital_write(pin, value):
-    GPIO.output(pin, value)
+class RaspberryPi:
+    def __init__(self,spi=None,spi_freq=40000000,rst = 27,dc = 25,bl = 18,bl_freq=1000,i2c=None):
+        self.INPUT = False
+        self.OUTPUT = True
+        
+        if(Device_SPI == 1):
+            self.Device = Device_SPI
+            self.spi = spi
+            self.GPIO_DC_PIN = self.gpio_mode(DC_PIN,self.OUTPUT)
+        else :
+            self.Device = Device_I2C
+            self.address = 0x3c
+            self.bus = SMBus(1)
+        
+        self.GPIO_RST_PIN = self.gpio_mode(RST_PIN,self.OUTPUT)
 
-def digital_read(pin):
-    return GPIO.input(BUSY_PIN)
 
-def delay_ms(delaytime):
-    time.sleep(delaytime / 1000.0)
 
-def spi_writebyte(data):
-    # SPI.writebytes(data)
-    spi.writebytes2([data[0]])
 
-def i2c_writebyte(reg, value):
-    bus.write_byte_data(address, reg, value)
+    def delay_ms(self,delaytime):
+        time.sleep(delaytime / 1000.0)
+
+    def gpio_mode(self,Pin,Mode,pull_up = None,active_state = True):
+        if Mode:
+            GPIO.setup(Pin, GPIO.OUT)
+        else:
+            GPIO.setup(Pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        return Pin
+
+
+    def gpio_pwm(self,Pin):
+        return PWMOutputDevice(Pin,frequency = 10000)
+
+    def set_pwm_Duty_cycle(self,Pin,value):
+        Pin.value = value
+
+    def digital_write(self, Pin, value):
+        GPIO.output(Pin, value)
+
+    def digital_read(self, Pin):
+        return GPIO.input(Pin)
+
+    def spi_writebyte(self,data):
+        self.spi.writebytes([data[0]])
+
+    def i2c_writebyte(self,reg, value):
+        self.bus.write_byte_data(self.address, reg, value)
     
-    # time.sleep(0.01)
-def module_init():
-    # print("module_init")
+    def module_init(self): 
+        self.digital_write(self.GPIO_RST_PIN,False)
+        if(self.Device == Device_SPI):
+            self.spi.max_speed_hz = 1000000
+            self.spi.mode = 0b11  
+            #self.digital_write(self.GPIO_DC_PIN,False)
+        # CS_PIN.off()
+        return 0
 
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(True)
-    GPIO.setup(RST_PIN, GPIO.OUT)
-    GPIO.setup(DC_PIN, GPIO.OUT)
-    GPIO.setup(CS_PIN, GPIO.OUT)
-    GPIO.setup(BL_PIN, GPIO.OUT)
-
-    
-    # SPI.max_speed_hz = 2000000
-    # SPI.mode = 0b00
-    # i2c_writebyte(0xff,0xff)
-    if(Device == Device_SPI):
-        # spi.SYSFS_software_spi_begin()
-        # spi.SYSFS_software_spi_setDataMode(0);
-        # spi.SYSFS_software_spi_setClockDivider(1);
-        spi.max_speed_hz = int(0.8 * 1000000)
-        spi.mode = 0b00
-    
-    GPIO.output(CS_PIN, 0)
-    GPIO.output(BL_PIN, 1)
-    GPIO.output(DC_PIN, 0)
-    return 0
-
-def module_exit():
-    if(Device == Device_SPI):
-        spi.SYSFS_software_spi_end()
-    else :
-        bus.close()
-    GPIO.output(RST_PIN, 0)
-    GPIO.output(DC_PIN, 0)
-    
-    
+    def module_exit(self):
+        if(self.Device == Device_SPI):
+            self.spi.close()
+            self.digital_write(self.GPIO_RST_PIN,False)
+            #self.digital_write(self.GPIO_DC_PIN,False)
+        else :
+            self.bus.close()
 
 ### END OF FILE ###

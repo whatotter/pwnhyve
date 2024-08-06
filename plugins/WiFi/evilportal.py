@@ -1,4 +1,3 @@
-from core.SH1106.screen import *
 from flask import Flask, request, abort, send_file, render_template
 from subprocess import getoutput
 import os, json, datetime, shutil
@@ -88,12 +87,12 @@ class Plugin(BasePwnhyvePlugin):
         ssid = os.environ.get("ssid", "FreeWiFi").strip()
 
         # set page
-        page = menu(draw, disp, image, os.listdir("./core/evil portal/pages"), GPIO, caption="select page")
+        page = disp.menu(draw, disp, image, os.listdir("./core/evil portal/pages"), GPIO, caption="select page")
         shutil.copy("./core/evil portal/pages/{}".format(page), "./core/evil portal/site/index.html")
         
 
         # start console thread
-        console = screenConsole(draw, disp, image)
+        console = disp.screenConsole(draw, disp, image)
         console.clearText()
         threading.Thread(target=console.start, daemon=True).start()
 
@@ -151,7 +150,7 @@ class Plugin(BasePwnhyvePlugin):
         while True:
             time.sleep(0.1)
 
-            if checkIfKey(GPIO):
+            if disp.checkIfKey(GPIO):
                 console.clearText()
                 console.addText("stopping services...")
                 

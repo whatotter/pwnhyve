@@ -7,8 +7,8 @@ echo 0x0104 > idProduct # Multifunction Composite Gadget
 echo 0x0100 > bcdDevice # v1.0.0
 echo 0x0200 > bcdUSB # USB2
 mkdir -p strings/0x409
-echo "pwnhyve01" > strings/0x409/serialnumber
-echo "otterco" > strings/0x409/manufacturer
+echo "thefedsareafterme" > strings/0x409/serialnumber
+echo "otterwrks.co" > strings/0x409/manufacturer
 echo "pwnhyve" > strings/0x409/product
 mkdir -p configs/c.1/strings/0x409
 echo "Config 1: ECM network" > configs/c.1/strings/0x409/configuration
