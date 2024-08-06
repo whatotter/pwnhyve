@@ -395,7 +395,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         ifaces = nf.interfaces()
 
-        a = disp.menu(draw, disp, image, ifaces, GPIO)
+        a = disp.gui.menu(ifaces)
 
         if a in nf.interfaces():
 
@@ -407,6 +407,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         else:
             draw.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
             draw.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
+            disp.screenShow()
             disp.waitForKey(GPIO)
             while disp.checkIfKey(GPIO): pass
 

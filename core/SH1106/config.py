@@ -33,6 +33,7 @@ from smbus import SMBus
 import spidev
 import ctypes
 import RPi.GPIO as GPIO
+import pytoml as toml
 
 # Pin definition
 RST_PIN        = 7
@@ -50,8 +51,10 @@ KEY1_PIN       = 40
 KEY2_PIN       = 38
 KEY3_PIN       = 36
 
-Device_SPI = 0
-Device_I2C = 1
+cfg = toml.loads(open("./config.toml").read())
+
+Device_SPI = cfg["driver_options"]["spi"]
+Device_I2C = not cfg["driver_options"]["spi"]
 
 class RaspberryPi:
     def __init__(self,spi=None,spi_freq=40000000,rst = 27,dc = 25,bl = 18,bl_freq=1000,i2c=None):

@@ -2,6 +2,9 @@
 invert = false                          # whether invert the display vertically.
 driver = "sh1106"
 
+[driver_options] # supposed to be like an argument type of thing for display drivers
+spi = true
+
 [menu]
 screenType = "flipper"             # the theme/screen type to use, must match it's python file name
 disableWrite = false                    # DEBUG
