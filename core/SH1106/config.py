@@ -63,7 +63,7 @@ class RaspberryPi:
         
         if(Device_SPI == 1):
             self.Device = Device_SPI
-            self.spi = spi
+            self.spi = spidev.SpiDev(0, 0)
             self.GPIO_DC_PIN = self.gpio_mode(DC_PIN,self.OUTPUT)
         else :
             self.Device = Device_I2C
@@ -109,15 +109,15 @@ class RaspberryPi:
         if(self.Device == Device_SPI):
             self.spi.max_speed_hz = 1000000
             self.spi.mode = 0b11  
-            #self.digital_write(self.GPIO_DC_PIN,False)
-        # CS_PIN.off()
+            self.digital_write(self.GPIO_DC_PIN,False)
+            CS_PIN.off()
         return 0
 
     def module_exit(self):
         if(self.Device == Device_SPI):
             self.spi.close()
             self.digital_write(self.GPIO_RST_PIN,False)
-            #self.digital_write(self.GPIO_DC_PIN,False)
+            self.digital_write(self.GPIO_DC_PIN,False)
         else :
             self.bus.close()
 
