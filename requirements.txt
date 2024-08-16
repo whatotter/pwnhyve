@@ -7,3 +7,4 @@ scapy
 smbus
 spidev
 pytoml
+pybluez
