@@ -88,5 +88,5 @@ class PWNble(BasePwnhyvePlugin):
                 print(f"An error occurred: {e}")
                 cmd_pkt = struct.pack("<B", 0x00)
                 bluez.hci_send_cmd(sock, 0x08, 0x000A, cmd_pkt)
-            finally:
-                print("iPhone BLE finished!")
+        finally:
+            print("iPhone BLE finished!")
