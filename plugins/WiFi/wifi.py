@@ -16,7 +16,7 @@ class vars:
     framesSent = 0
 
 class PwnagotchiScreen():
-    def __init__(self, canvas, disp, image, GPIO, headerFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), faceFont=ImageFont.truetype('core/fonts/hack.ttf', 18), consoleFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), flipped=False) -> None:
+    def __init__(self, canvas, disp, image, headerFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), faceFont=ImageFont.truetype('core/fonts/hack.ttf', 18), consoleFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), flipped=False) -> None:
         self.console = ""
         self.handshakes = 0
         self.aps = 0
@@ -26,7 +26,6 @@ class PwnagotchiScreen():
         self.draw = canvas
         self.disp = disp
         self.image = image
-        self.gpio = GPIO
         self.headerFont = headerFont
         self.faceFont = faceFont
         self.consoleFont = consoleFont
@@ -50,7 +49,7 @@ class PwnagotchiScreen():
 
     def _keythread(self):
         while True:
-            if self.disp.checkIfKey(self.gpio) or self.exited:
+            if self.disp.checkIfKey() or self.exited:
                 break
             
             sleep(0.05)
@@ -391,11 +390,11 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
                 sleep(nextDelay)
 
 class PWN_Essensials(BasePwnhyvePlugin):
-    def setInterfaces(draw, disp, image, GPIO):
+    def setInterfaces(tpil):
 
         ifaces = nf.interfaces()
 
-        a = disp.gui.menu(ifaces)
+        a = tpil.gui.menu(ifaces)
 
         if a in nf.interfaces():
 
@@ -405,13 +404,13 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 f.write(toml.dumps(config))
                 f.flush()
         else:
-            draw.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
-            draw.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
-            disp.screenShow()
-            disp.waitForKey(GPIO)
-            while disp.checkIfKey(GPIO): pass
+            tpil.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+            tpil.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
+            tpil.show()
+            tpil.waitForKey()
+            while tpil.checkIfKey(): pass
 
-    def beaconSpam(draw, disp, image, GPIO):
+    def beaconSpam(tpil):
 
         framesSent = 0
 
@@ -423,9 +422,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         ssids = config["wifi"]["apSpam"]
 
-        handler = disp.screenConsole(draw,disp,image) # init handler
-        Thread(target=handler.start,daemon=True).start() # start handler
-
+        handler = tpil.screenConsole(tpil) # init handler
         #handler.setPercentage(0)
 
         try:
@@ -467,10 +464,10 @@ class PWN_Essensials(BasePwnhyvePlugin):
                         ssidFrames.append(genFrame(ssid+str(x)))
                         #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
 
-            while disp.checkIfKey(GPIO): sleep(0.1)
+            while tpil.checkIfKey(): sleep(0.1)
 
             while True:
-                if disp.checkIfKey(GPIO): break
+                if tpil.checkIfKey(): break
 
                 sendp(ssidFrames, iface=iface, verbose=1, count=1)
                 framesSent += 1
@@ -493,7 +490,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         sleep(0.5)
 
-    def rssiReader(draw, disp, image, GPIO):
+    def rssiReader(tpil):
 
         flipped =False
 
@@ -520,9 +517,9 @@ class PWN_Essensials(BasePwnhyvePlugin):
             cli = bcap.Client(iface=iface)
             if not cli.successful: raise Exception("b") # why the fuck did i do this
         except Exception as e:
-            draw.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
-            disp.ShowImage(disp.getbuffer(image))
-            disp.waitForKey(GPIO)
+            tpil.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
+            tpil.show()
+            tpil.waitForKey()
             return
 
         cli.recon()
@@ -538,7 +535,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         while True:
 
             while True:
-                disp.fullClear(draw)
+                tpil.clear()
 
                 abVars.json = cli.getPairs()
                 #print(abVars.json)
@@ -559,24 +556,24 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 if len(abVars.stri) != 0:
                     break
 
-                draw.text((3, 16), loading, fill=0, outline=255, font=None)
+                tpil.text((3, 16), loading, fill=0, outline=255, font=None)
                 loading += "."
 
                 if len(loading) == 24: loading = "."
 
-                disp.screenShow(disp, image, flipped=flipped, stream=True)
+                tpil.show()
 
                 sleep(1)
 
         
 
-            draw.rectangle([(0, 0), (200, 14)], fill=0, outline=255)
+            tpil.rect([(0, 0), (200, 14)], fill=0, outline=255)
 
             try:
-                draw.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]), fill=1, outline=255, font=None)
+                tpil.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]), fill=1, outline=255, font=None)
             except:
-                draw.text((3, 1), "n/a", fill=1, outline=255, font=None)
-            draw.text((100, 1), "{}/{}".format(abVars.stri.index(abVars.stri[ch]), len(abVars.stri) - 1), fill=1, outline=255, font=font)
+                tpil.text((3, 1), "n/a", fill=1, outline=255, font=None)
+            tpil.text((100, 1), "{}/{}".format(abVars.stri.index(abVars.stri[ch]), len(abVars.stri) - 1), fill=1, outline=255, font=font)
 
             compiledJson = []
 
@@ -596,12 +593,12 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 compiledJson.pop(0)
 
             # TODO: finish this; scroll left and right
-            draw.text((3, 16), '\n'.join(compiledJson), fill=0, outline=255, font=font)
+            tpil.text((3, 16), '\n'.join(compiledJson), fill=0, outline=255, font=font)
 
-            disp.screenShow(disp, image, flipped=flipped, stream=True)
+            tpil.show()
 
             while True:
-                key = disp.getKey(GPIO)
+                key = tpil.getKey()
                 if key == gpioPins["KEY_RIGHT_PIN"]:
                     if ch != len(abVars.stri) - 1:
                         ch += 1

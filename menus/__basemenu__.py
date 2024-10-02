@@ -1,19 +1,22 @@
+import threading
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from time import sleep    
 
+# this is accessed as .gui
 class BasePwnhyveScreen():
-    def __init__(self, draw:ImageDraw, disp, image:Image, GPIO):
+    def __init__(self, draw:ImageDraw, disp, image:Image):
 
         self.disp = disp
         self.draw = draw
-        self.GPIO = GPIO
         self.image = image
 
         return None
     
     class setFloat:
-        def __init__(self, draw:ImageDraw, disp, image:ImageDraw, GPIO, caption:str,
+        def __init__(self, tpil, caption:str,
                       _min:float=100.000, start:str="314.314", _max:float=500.000, wholePlaces=3, decimalPlaces=3) -> None:
+            draw,disp,image = tpil.__getDDI__()
+            
             self.caption = caption
             self.min = _min
             self.max = _max
@@ -23,7 +26,6 @@ class BasePwnhyveScreen():
             self.draw = draw
             self.disp = disp
             self.image = image
-            self.GPIO = GPIO
 
             self.whole = [x for x in start.split(".")[0]]
             self.deci = [x for x in start.split(".")[1]]
@@ -154,8 +156,10 @@ class BasePwnhyveScreen():
                     return self.ttF()
     
     class slider:
-        def __init__(self, draw:ImageDraw, disp, image:ImageDraw, GPIO, caption:str,
+        def __init__(self, tpil, caption:str,
                       min_:int=0, start:int=50, max_:int=100, _step=1) -> None:
+            draw,disp,image = tpil.__getDDI__()
+
             self.caption = caption
             self.min = min_
             self.max = max_
@@ -167,7 +171,6 @@ class BasePwnhyveScreen():
             self.draw = draw
             self.disp = disp
             self.image = image
-            self.GPIO = GPIO
 
             self._bigFont = ImageFont.truetype('core/fonts/roboto.ttf', 12)
             self.captFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 12)
@@ -182,7 +185,7 @@ class BasePwnhyveScreen():
 
                 pointerX, pointerY = 12+self.value, 20
                 self.draw.rectangle([(12, 23), (116, 24)])
-                self.draw.rectangle([(pointerX, pointerY), (pointerX+4, pointerY+8)], fill=0)
+                self.draw.rectangle([(pointerX, pointerY), (pointerX+4, pointerY+8)], fill='WHITE')
 
                 self.draw.text([64, 16], str(self.value), font=self._bigFont, anchor="ms") #value
 
@@ -218,11 +221,13 @@ class BasePwnhyveScreen():
                     return self.value
 
     class usbRunPercentage:
-        def __init__(self, draw, disp, image,
+        def __init__(self, tpil,
                 consoleFont=ImageFont.truetype('core/fonts/roboto.ttf', 10),
                 percentageFont=ImageFont.truetype('core/fonts/roboto.ttf', 12),
                 flipped=False
             ):
+            draw,disp,image = tpil.__getDDI__()
+
             self.percentage = 0
             self.text = "..."
             self.close = False
@@ -357,10 +362,13 @@ class BasePwnhyveScreen():
             self.update()
 
     class screenConsole:
-        def __init__(self, draw, disp, image,
+        def __init__(self, tpil,
                 consoleFont=None,
                 flipped=False, autoUpdate=True
             ):
+
+            draw,disp,image = tpil.__getDDI__()
+
             self.text = ""
             self.close = False
             self.draw = draw
@@ -369,13 +377,15 @@ class BasePwnhyveScreen():
             self.image = image
             self.updateBool = False
 
-            self.cFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 16)
+            self.cFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', round(self.disp.height / 8))
             self.flipped = flipped
 
-            print("flipped:{}".format(self.flipped))
             self.stopWriting = False
 
             self.oldText = ""
+            self.started = False
+
+            threading.Thread(target=self.start, daemon=True).start()
 
         def update(self):
             self.updateBool = True
@@ -387,6 +397,10 @@ class BasePwnhyveScreen():
         def start(self, divisor:int=32, maxRows=6):
             textOld = None
             tempText = []
+
+            if self.started: print("[+] screenConsole thread was called after being already being started"); return
+
+            self.started = True
 
             while 1:
                 if open("./core/temp/threadQuit", "r").read().strip() == "1": self.close = True; open("./core/temp/threadQuit", "w").write("0")
@@ -476,7 +490,7 @@ class BasePwnhyveScreen():
 
                 if self.text != self.oldText:
                     self.disp.fullClear(self.draw)
-                    self.draw.text((2, 1), self.text, fill=0, outline=255, font=self.cFont, spacing=1) # console
+                    self.draw.text((2, 1), self.text, fill='WHITE', font=self.cFont, spacing=1) # console
                     self.disp.screenShow(flipped=self.flipped, stream=True)
                 
                 self.oldText = self.text
@@ -539,12 +553,12 @@ class BasePwnhyveScreen():
 
             self.disp.fullClear(self.draw) # clear
 
-            self.draw.rectangle([(0, 14), (128, 16)], fill=0, outline=255) # draw the line spliting the text and the keyboard
+            self.draw.rectangle([(0, 14), (128, 16)], fill='WHITE', outline=255) # draw the line spliting the text and the keyboard
 
             if not secret:
-                self.draw.text((2,2), compiledStri, fill=0, outline=255, font=font)
+                self.draw.text((2,2), compiledStri, fill='WHITE', outline=255, font=font)
             else:
-                self.draw.text((2,2), ''.join(["*" for _ in compiledStri]), fill=0, outline=255, font=font)
+                self.draw.text((2,2), ''.join(["*" for _ in compiledStri]), fill='WHITE', outline=255, font=font)
 
 
             ### draws the kb
@@ -560,11 +574,11 @@ class BasePwnhyveScreen():
                     textY += 12 # \n
 
                 if x != chosenKey: # if this character we're writing isn't chosen..
-                    self.draw.text((textX, textY), x, fill=0, outline=255, font=font) # write it normally
+                    self.draw.text((textX, textY), x, fill='WHITE', outline=255, font=font) # write it normally
 
                 else: # if it is chosen...
-                    self.draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill=0, outline=255) # write it with inverted colors..
-                    self.draw.text((textX, textY), x, fill=1, outline=255, font=font) # .. and with a box around it 
+                    self.draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill='BLACK', outline=255) # write it with inverted colors..
+                    self.draw.text((textX, textY), x, fill='WHITE', outline=255, font=font) # .. and with a box around it 
 
                 textX += 10 # move right for our next character
 
@@ -656,10 +670,10 @@ class BasePwnhyveScreen():
         for text in list(listToPrint): # do draw
             if selection != text: # if our selection isnt the text iter gave us
                 #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill=0, outline=255, font=font) # draw black text over rectangle
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
             else: # it is our selection
-                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill=0, outline=255) # draw colored rectangle first
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill=1, outline=255, font=font) # draw black text over rectangle
+                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
 
                     
             yCoord += 14
@@ -678,10 +692,35 @@ class BasePwnhyveScreen():
         for text in list(listToPrint): # do draw
             if selection != text: # if our selection isnt the text iter gave us
                 #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill=0, outline=255, font=font) # draw black text over rectangle
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
             else: # it is our selection
-                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill=0, outline=255) # draw colored rectangle first
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill=1, outline=255, font=font) # draw black text over rectangle
+                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
 
                     
             yCoord += 14
+
+    def resizeCoordinate2Res(self, coordinate, axis='x'):
+        # for displays that aren't 128x64
+
+        if axis.lower() == 'x':
+            return round(coordinate*(self.disp.width) / 128)
+        elif axis.lower() == 'y':
+            return round(coordinate*(self.disp.height) / 64)
+        else:
+            raise ValueError("axis \"{}\" is not 'x' or 'y'".format(axis))
+        
+    def resizeCoords2Res(self, xy):
+        # resize both x and y from a list
+        return (
+            self.resizeCoordinate2Res(xy[0]),
+            self.resizeCoordinate2Res(xy[1])
+        )
+    
+    def rzxyr(self, *args, **kwargs):
+        # shorthand for resizeCoords2Res
+        return self.resizeCoords2Res(*args, **kwargs)
+    
+    def rzc2r(self, *args, **kwargs):
+        # shorthand for resizeCoordinate2Res
+        return self.resizeCoordinate2Res(*args, **kwargs)

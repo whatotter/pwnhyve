@@ -3,7 +3,7 @@ try:
 except ImportError:
     keyboardDisabled = True
 import sys
-import pytoml as toml
+import toml
 import datetime
 
 config = {}

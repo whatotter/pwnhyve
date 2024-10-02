@@ -4,16 +4,10 @@ from core.utils import redir, config
 from core.plugin import pwnhyveMenuLoader
 from io import BytesIO
 import base64
-from core.screens.sh1106 import *
 import gpiozero as gpioz
 import core.screens.__helper__ as h
 
-import core.disp_drivers.SH1106.SH1106m as SH1106
-
-#GPIO define
-RST_PIN        = 22
-CS_PIN         = 24
-DC_PIN         = 18
+import core.disp_drivers.ST7789.ST7789 as ST
 
 KEY_UP_PIN     = 6 
 KEY_DOWN_PIN   = 19
@@ -44,37 +38,34 @@ class DisplayDriver():
             '3': KEY3_PIN, # key3
         }
 
-        self.gpiodev = {
-            
-        }
+        self.gpiodev = {}
 
-        self.disp = SH1106.SH1106()
+        self.disp = ST.ST7789()
         self.disp.Init()
         self.disp.clear()
 
-        self.image = Image.new('1', (self.disp.width, self.disp.height), "WHITE") # init display
+        self.disp.bl_DutyCycle(50)
+
+        self.image = Image.new('RGB', (self.disp.width, self.disp.height), "WHITE") # init display
         self.draw = ImageDraw.Draw(self.image) # dsiayp
 
-        # properties of display
-        self.hasColor = False
-        self.invertedColor = True
+        self.keysBeingHeld = []
+
+        self.hasColor = True
+        self.invertedColor = False
         self.width = self.disp.width
         self.height = self.disp.height
-        self.name = "SH1106"
-        # these are variables due to PPI differences
-        self.recommendedFontSize = 16 # font size for decent readability
-        self.iconSize = 8
-
-        self.keysBeingHeld = []
+        self.name = "ST7789"
+        self.recommendedFontSize = 36
+        self.iconSize = 24
 
         print("/ [GPIO] initalizing GPIO pins...")
         for gpioPin in self.pinout: # init gpio
             print("| [GPIO] initializing GPIO pin {}...".format(self.pinout[gpioPin]), end="")
 
             self.gpiodev[self.pinout[gpioPin]] = gpioz.DigitalInputDevice(self.pinout[gpioPin], pull_up=True, active_state=None)
-
+            
             print("initalized")
-
         print("\\ [GPIO] done initalizing GPIO pins.\n")
 
         self.gui = screen.Screen(self.draw, self, self.image)
@@ -148,7 +139,7 @@ class DisplayDriver():
             downcycles = 0
             while self.dgRead(b):
                 downcycles += 1
-                if downcycles >= 250:
+                if downcycles >= 125:
                     self.keysBeingHeld.append(a)
                     return a # it's being held down for a reason
                 
@@ -156,7 +147,7 @@ class DisplayDriver():
 
         return a
 
-    def checkIfKey(self, key=False):
+    def checkIfKey(self, debounce=True, key=False):
         """check if there is a key being pressed"""
 
         if key != False:
@@ -215,9 +206,9 @@ class DisplayDriver():
         self.fullClear(self.draw)
         bmp = Image.open(directory)
 
-        invbmp = ImageOps.invert(bmp.convert('L'))
+        rbmp = bmp.resize((self.disp.width, self.disp.height))
 
-        self.image.paste(invbmp, (0,0))
+        self.image.paste(rbmp, (0,0))
         self.screenShow()
 
     def showImage2(self, rawImage):
@@ -226,7 +217,7 @@ class DisplayDriver():
         self.screenShow()
 
     def fullClear(self, draw):
-        draw.rectangle((0, 0, 200, 100), fill=1)
+        draw.rectangle((0, 0, 256, 256), fill=1)
         return True
 
     def screenShow(self, *args, flipped=False, stream=True):
@@ -244,11 +235,10 @@ class DisplayDriver():
             h.sockStream.mostRecentImage = img_str
 
         if not config["menu"]["disableWrite"]:
-            
             if flipped:
                 a = ImageOps.flip(self.image)
-                self.disp.ShowImage(self.disp.getbuffer(a.transpose(Image.FLIP_LEFT_RIGHT)))
+                self.disp.ShowImage(self.image)
             else:
-                self.disp.ShowImage(self.disp.getbuffer(self.image))
+                self.disp.ShowImage(self.image)
 
-        return self.disp.getbuffer(self.image)
+        return self.image

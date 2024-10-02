@@ -17,40 +17,41 @@ class vars:
     displayResX, displayResY = 128, 64 # your display resolution to display nyan cat correctly
 
 def fullClear(display):
-    display.rectangle((0, 0, 200, 100), fill=1)
+    display.rectangle((0, 0, 300,300), fill=1)
     return True
 
 class Plugin(BasePwnhyvePlugin):
-    def setIdle(canvas, display, image, GPIO):
+    def setIdle(tpil):
 
         print("now idle")
 
         #fullClear(canvas)
         #canvas.text((10, 10), "a mimir", fill=0, outline=255, font=vars.font)
 
-        if not vars.nyanCat:
-            display.showImage(image)
-            display.waitForKey(GPIO)
-        else:
-            currFrame = 1
-            frames = {}
+        currFrame = 1
+        frames = {}
 
-            framesAmnt = len(os.listdir("./core/idleAnimation"))
+        framesAmnt = len(os.listdir("./core/idleAnimation"))
 
-            for x in range(1, framesAmnt):
-                bmp = Image.open('./core/idleAnimation/frame{}.bmp'.format(x))
-                frames[x] = bmp.resize((vars.displayResX, vars.displayResY))
+        for x in range(1, framesAmnt):
+            bmp = Image.open('./core/idleAnimation/frame{}.bmp'.format(x))
+            if tpil.disp.height == tpil.disp.width: # when 1:1 ratio
+                h = round(tpil.disp.height/2)
+            else:
+                h = tpil.disp.height
+
+            frames[x] = bmp.resize((tpil.disp.width, h))
 
 
-            while 1: # wait for key press
-                if display.checkIfKey(GPIO): return
+        while 1: # wait for key press
+            if tpil.checkIfKey(): return
 
-                if currFrame == framesAmnt: currFrame = 1
+            if currFrame == framesAmnt: currFrame = 1
 
-                display.showImage2(frames[currFrame])
+            tpil.pasteImage(frames[currFrame])
 
-                currFrame += 1
+            currFrame += 1
 
-                time.sleep(vars.nyanCatDelay)
+            time.sleep(vars.nyanCatDelay)
                 
         return

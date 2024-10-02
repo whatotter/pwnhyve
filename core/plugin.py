@@ -10,6 +10,7 @@ plugins = {}
 
 class BasePwnhyvePlugin:
     def __init__(self):
+        self.icon = None
         return None
     
 class BasePwnhyveScreen(BasePwnhyveScreen):
@@ -75,6 +76,7 @@ class pwnhyvePluginLoader():
     """
     def __init__(self, folder:str="plugins", enableThreading:bool=True):
         r = {}
+        allIcons = {}
 
         for item in os.listdir(f"./{folder}"):
             if ".py" in item:
@@ -94,14 +96,23 @@ class pwnhyvePluginLoader():
 
                 for x in objects:
                     #z = plugins[item].Plugin()
-                    z = getattr(plugins[item], x)
-                    r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z}
+                    z = getattr(plugins[item], x) # plugin class
+
+                    try:
+                        icons = getattr(z, 'icons')
+                    except:
+                        icons = {}
+                    print(icons)
+
+                    r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z, "icons": icons}
+                    allIcons.update(icons)
                     print("[PL] loading class \"{}\"".format(item+"::"+x))
             
         self.th = enableThreading
 
         self.modules = r
         self.moduleList = []
+        self.icons = allIcons
 
         for k,v in self.modules.items():
             self.moduleList += v["functions"]

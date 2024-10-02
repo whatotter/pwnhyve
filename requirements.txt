@@ -1,9 +1,9 @@
 netifaces
-RPi.GPIO
+gpiozero
 requests
 pillow
 numpy
 scapy
 smbus
 spidev
-pytoml
+toml

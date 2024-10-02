@@ -1,4 +1,4 @@
-import core.SH1106.config as config
+import core.disp_drivers.SH1106.config as config
 import time
 import numpy as np
 
@@ -14,12 +14,8 @@ class SH1106(object):
         self.height = LCD_HEIGHT
         #Initialize DC RST pin
         self.RPI = config.RaspberryPi()
-
-        if Device_SPI == 1:
-            self._dc = self.RPI.GPIO_DC_PIN
-
+        self._dc = self.RPI.GPIO_DC_PIN
         self._rst = self.RPI.GPIO_RST_PIN
-
         self.Device = self.RPI.Device
 
 
@@ -29,7 +25,7 @@ class SH1106(object):
             self.RPI.digital_write(self._dc,False)
             self.RPI.spi_writebyte([cmd])
         else:
-            self.RPI.i2c_writebyte(0x80, cmd)
+            self.RPI.i2c_writebyte(0x00, cmd)
 
     # def data(self, val):
         # GPIO.output(self._dc, GPIO.HIGH)
@@ -70,7 +66,6 @@ class SH1106(object):
    
     def reset(self):
         """Reset the display"""
-        #return
         self.RPI.digital_write(self._rst,True)
         time.sleep(0.1)
         self.RPI.digital_write(self._rst,False)

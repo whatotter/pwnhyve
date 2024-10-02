@@ -22,14 +22,13 @@ class vars:
 usb = BadUSB()
 
 class Plugin(BasePwnhyvePlugin):
-    def fileExfil(draw, disp, image, GPIO):
+    def fileExfil(tpil):
         global usb
-        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
-        Thread(target=handler.start,daemon=True).start() # start handler
+        handler = tpil.gui.usbRunPercentage(tpil) # init handler
 
         handler.addText("hit any key to run payload\nfile: $env:tmp/z")
 
-        disp.waitForKey(GPIO, debounce=True)
+        tpil.waitForKey(debounce=True)
 
         usb.run("powershell")
         sleep(0.125)
@@ -89,7 +88,7 @@ class Plugin(BasePwnhyvePlugin):
 
         handler.exit()
 
-    def payloads(draw, disp, image, GPIO):
+    def payloads(tpil):
         global usb
         # args: [draw, disp, image]
 
@@ -101,7 +100,7 @@ class Plugin(BasePwnhyvePlugin):
 
         sleep(0.5)
 
-        a = disp.gui.menu(payloads)
+        a = tpil.gui.menu(payloads)
 
         if a == "back":
             return
@@ -109,6 +108,7 @@ class Plugin(BasePwnhyvePlugin):
         if a == None:
             return
 
+        draw,disp,image = tpil.__getDDI__()
         dsi = DuckyScriptInterpreter(usb, "./payloads/{}".format(a), draw, disp, image)
 
         dsi.parse()
@@ -116,12 +116,11 @@ class Plugin(BasePwnhyvePlugin):
         dsi.handler.addText("press any key..")
         dsi.handler.exit()
 
-        disp.waitForKey()
+        tpil.waitForKey()
 
-    def wxHoaxShell(draw, disp, image, GPIO):
+    def wxHoaxShell(tpil):
         global usb
-        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
-        Thread(target=handler.start,daemon=True).start() # start handler
+        handler = tpil.gui.usbRunPercentage(tpil) # init handler
 
         #payload = vil.payloadGen("windows", "wlan0", scramble=0)
 
@@ -159,13 +158,13 @@ class Plugin(BasePwnhyvePlugin):
 
         handler.addText("finished")
 
-        disp.waitForKey(GPIO)
+        tpil.waitForKey()
 
         handler.exit()
 
         return
 
-    def lolbas(draw, disp, image, GPIO):
+    def lolbas(tpil):
 
         basedir = "./core/LOLBAS/"
         directory = basedir
@@ -174,7 +173,7 @@ class Plugin(BasePwnhyvePlugin):
             # theres definitely a better way of doin this
             ####
 
-            folder = disp.menu(draw, disp, image, [x if os.path.isdir(x) else "" for x in os.listdir("./core/LOLBAS")], GPIO)
+            folder = tpil.gui.menu([x if os.path.isdir(x) else "" for x in os.listdir("./core/LOLBAS")])
 
             if folder == None: return
 
@@ -182,7 +181,7 @@ class Plugin(BasePwnhyvePlugin):
 
             ###
 
-            script = disp.menu(draw, disp, image, [x.replace(".txt", "") for x in os.listdir(directory)], GPIO)
+            script = tpil.menu([x.replace(".txt", "") for x in os.listdir(directory)])
 
             if script == None: directory = basedir; continue
 
@@ -192,6 +191,7 @@ class Plugin(BasePwnhyvePlugin):
 
             ###
 
+        draw,disp,image = tpil.__getDDI__()
         dsi = DuckyScriptInterpreter(usb, directory,
                                       draw, disp, image)
 
@@ -200,18 +200,14 @@ class Plugin(BasePwnhyvePlugin):
         dsi.handler.addText("press any key..")
         dsi.handler.exit()
 
-        disp.waitForKey(GPIO)
+        tpil.waitForKey()
 
-
-
-
-    def pullIP(draw, disp, image, GPIO):
+    def pullIP(tpil):
         global usb
 
         port = randint(2500,30000)
 
-        handler = disp.gui.usbRunPercentage(draw,disp,image)
-        Thread(target=handler.start,daemon=True).start()
+        handler = tpil.gui.usbRunPercentage(tpil)
         handler.clearText()
 
         handler.addText("starting fake tcp-http")
@@ -260,9 +256,8 @@ class Plugin(BasePwnhyvePlugin):
         usb.close()
         fakeHTTP.tcp.close()
 
-        disp.waitForKey(GPIO)
-        sleep(0.125) # button rebound
+        tpil.waitForKey()
         handler.text = "1:{0}\n2:{1}\n3:{2}\n4:{3}".format(*client[0].split(".")) # best formatting ever 2
-        disp.waitForKey(GPIO)
+        tpil.waitForKey()
 
         handler.exit()

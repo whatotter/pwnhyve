@@ -9,15 +9,13 @@ from json import loads
 from core.plugin import BasePwnhyvePlugin
 from core.utils import config
 
+# TODO: revamp whole thing
+
 class vars:
     font = ImageFont.truetype('core/fonts/roboto.ttf', 14)
     usbMounted = True
     usbUDCDisabled = False
     kernelGadgetDir = "/sys/kernel/config/usb_gadget/isticktoit/"
-
-def fullClear(display):
-    display.rectangle((0, 0, 200, 100), fill=1)
-    return True
 
 def isManaged(iface):
     a = loads(subprocess.getoutput("ip -j a show {}".format(iface)))
@@ -29,14 +27,14 @@ def isManaged(iface):
 
 class PWN_Storage(BasePwnhyvePlugin):
 
-    def pMountUSB(draw, disp, image, GPIO):
+    def pMountUSB(draw, disp, image):
         subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
         subprocess.getoutput("mount /piusb.bin /mnt/otterusb")
 
-    def pUMountUSB(draw, disp, image, GPIO):
+    def pUMountUSB(draw, disp, image):
         subprocess.getoutput("umount /piusb.bin -l") # lazy unmount
 
-    def usbSteal(draw, disp, image, GPIO):
+    def usbSteal(tpil):
         """auto mount from https://gist.github.com/slobdell/7d052e01fed005f387b1c8e4994cd6d1"""
         fileSearch = config["badusb"]["exfilFiles"]
 
@@ -46,8 +44,7 @@ class PWN_Storage(BasePwnhyvePlugin):
             os.mkdir(extractPoint)
         except: pass
 
-        handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
-        Thread(target=handler.start,daemon=True).start() # start handler
+        handler = tpil.gui.usbRunPercentage(tpil) # init handler
 
         handler.addText("creating mountdir")
 
@@ -78,7 +75,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
             if output is None: continue
 
-            if disp.checkIfKey(GPIO):
+            if tpil.checkIfKey():
                 handler.addText("quitting")
                 handler.exit()
                 sleep(1)
@@ -98,7 +95,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
                     print("sudo mount %s %s" % (output[0].split(" ")[0], MOUNT_DIR))
 
-                    disp.waitForKey(GPIO)
+                    tpil.waitForKey()
                     handler.exit()
 
                     return
@@ -134,8 +131,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
         handler.addText("done")
         handler.setPercentage(100)
-        disp.waitForKey(GPIO)
-        sleep(0.25) # rebound
+        tpil.waitForKey()
 
         # just for easier reading
         b = 0
@@ -144,7 +140,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
         handler.text = "total files: {}\ntarget\n{}\nextract to {}".format(b, output[0].split(" ")[0], extractPoint)
 
-        disp.waitForKey(GPIO)
+        tpil.waitForKey()
 
         handler.exit()
         
@@ -153,7 +149,7 @@ class PWN_Storage(BasePwnhyvePlugin):
             subprocess.getoutput("sudo rm -rf {}".format(MOUNT_DIR))
         except Exception as e: print("couldn't remove mount dir: {}".format(str(e))); subprocess.getoutput("sudo rm -rf {}".format(MOUNT_DIR))
 
-    def hostUmountUSB(draw, disp, image, GPIO):
+    def hostUmountUSB(draw, disp, image):
         """i dont even know how i found this"""
 
         binFile = "/piusb.bin"
@@ -165,7 +161,7 @@ class PWN_Storage(BasePwnhyvePlugin):
 
         vars.usbMounted = not vars.usbMounted
 
-    def hostHideUSB(draw, disp, image, GPIO):
+    def hostHideUSB(draw, disp, image):
         """i dont even know how i found this v2"""
 
 
@@ -189,39 +185,40 @@ class PWN_Storage(BasePwnhyvePlugin):
         subprocess.getoutput("ls /sys/class/udc > {}UDC".format(vars.kernelGadgetDir))
         
 class PWN_System(BasePwnhyvePlugin):
+    icons = {
+        "setEnviroVars": "./core/icons/skullemit.bmp"
+    }
 
-    def setEnviroVars(draw, disp, image, GPIO):
+    def setEnviroVars(tpil):
 
         name, value = None, None
         
-        choice = disp.menu(draw, disp, image, ["set variable name", "set variable value"], GPIO)
+        choice = tpil.disp.menu(["set variable name", "set variable value"])
 
         if choice == None: return
         elif choice == "set variable name":
-            name = disp.enterText(draw, disp, image, GPIO)
+            name = tpil.disp.enterText()
         elif choice == "set variable value":
-            value = disp.enterText(draw, disp, image, GPIO)
+            value = tpil.disp.enterText()
 
         while True:
-            choice = disp.menu(draw, disp, image,
-                        ["name: {}".format(name) if name != None else "set variable name", "value: {}".format(value) if value != None else "set variable value", "set"], #wtf
-                            GPIO)
+            choice = tpil.disp.menu(["name: {}".format(name) if name != None else "set variable name", "value: {}".format(value) if value != None else "set variable value", "set"])
             
             if choice == None or choice == "set": break
             elif choice == "set variable name":
-                name = disp.enterText(draw, disp, image, GPIO)
+                name = tpil.disp.enterText()
             elif choice == "set variable value":
-                value = disp.enterText(draw, disp, image, GPIO)
+                value = tpil.disp.enterText()
             
         os.environ[name] = value
 
         return
 
 
-    def shutdown(draw, disp, image, GPIO):
+    def shutdown(tpil):
 
-        fullClear(draw)
-        disp.screenShow(disp, image, flipped=False, stream=True)
+        tpil.clear()
+        tpil.show()
 
         print("shutdown thingy")
         print(subprocess.getoutput("sudo shutdown now"))
@@ -230,20 +227,16 @@ class PWN_System(BasePwnhyvePlugin):
 
         return
 
-    def reboot(draw, disp, image, GPIO):
+    def reboot(draw, disp, image):
         subprocess.getoutput("sudo reboot")
         return
 
-    def system_info(draw, disp, image, GPIO):
+    def system_info(tpil):
 
-        z = disp.screenConsole(draw, disp, image)
-
-        Thread(target=z.start, daemon=True).start()
+        z = tpil.gui.screenConsole(tpil)
 
         ifaces = {}
         jumbled = ""
-
-        while disp.checkIfKey(GPIO): pass
 
         for x in ni.interfaces():
             print(x)
@@ -263,17 +256,14 @@ class PWN_System(BasePwnhyvePlugin):
 
         z.text = "{}".format(jumbled)
 
-        sleep(1)
-
+        tpil.waitForKey()
         z.exit()
-        disp.waitForKey(GPIO)
-        while checkIfKey(GPIO): pass
 
 
     
-def connectWifi(draw, disp, image, GPIO):
+def connectWifi(tpil):
 
-    fullClear(draw)
+    tpil.clear()
 
     def findNetworks():
         ssids = []
@@ -284,7 +274,7 @@ def connectWifi(draw, disp, image, GPIO):
         return ssids
     
     def selectNetwork(ssids=findNetworks()):
-        return disp.menu(draw, disp, image, ssids, GPIO)
+        return tpil.gui.menu(ssids)
 
 
     ssid = selectNetwork()
@@ -299,15 +289,13 @@ def connectWifi(draw, disp, image, GPIO):
     pwd = None
     
     while True:
-        choice = disp.menu(draw, disp, image,
-                       ["ssid: {}".format(ssid), "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password", "connect"], #wtf
-                         GPIO)
+        choice = tpil.gui.menu(["ssid: {}".format(ssid), "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password", "connect"])
         
         if choice == None or choice == "connect": break
         elif choice == "ssid: {}".format(ssid):
             ssid = selectNetwork()
         elif choice == "enter password" or choice == "password: {}".format(''.join(["*" for _ in pwd])):
-            pwd = disp.enterText(draw, disp, image, GPIO, secret=True)
+            pwd = tpil.gui.enterText(secret=True)
     
     subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
     
@@ -317,10 +305,3 @@ def fixInterfaces():
         subprocess.getoutput("sudo airmon-ng stop {}".format(x))
         subprocess.getoutput("sudo ifconfig {} up".format(x))
     subprocess.getoutput("sudo systemctl restart NetworkManager")
-
-def functions():
-
-    if os.path.exists("{}configs/c.1/mass_storage.usb0".format(vars.kernelGadgetDir)): vars.usbUDCDisabled = False
-    else: vars.usbUDCDisabled = True
-
-    return vars.config

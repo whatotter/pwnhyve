@@ -3,7 +3,7 @@ my lil ui playground
 """
 from core.plugin import BasePwnhyvePlugin
 import threading
-import random, time
+import random
 from core.plugin import BasePwnhyvePlugin 
 
 
@@ -27,20 +27,19 @@ def scText(text, caption, maxln=6):
     return '\n'.join(s)
 
 class PWNTestOne(BasePwnhyvePlugin):
-    def screenConsole(draw, disp, image, GPIO):
-        a = disp.gui.screenConsole(draw, disp, image, GPIO, "abcd")
-        threading.Thread(target=a.start, daemon=True).start()
+    def screenConsole(tpil):
+        a = tpil.gui.screenConsole(tpil)
 
         a.text = "hello world!" + "\n" + "text and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it"
 
-        disp.waitForKey()
+        tpil.waitForKey()
 
         a.text = ""
         while True:
             a.addText("i am ticket #{}. woohoo!".format(random.randint(10,99)))
             
-            z = disp.waitWhileChkKey(1)
-            if z == disp.pinout["KEY_LEFT_PIN"]:
+            z = tpil.waitWhileChkKey(1)
+            if z == tpil.pinout["left"]:
                 a.text = ""
             elif z == False:
                 pass
@@ -50,12 +49,12 @@ class PWNTestOne(BasePwnhyvePlugin):
 
         a.exit()
 
-    def screenConsole2(draw,disp,image,GPIO):
+    def screenConsole2(tpil):
 
-        a = disp.gui.screenConsole(draw, disp, image, GPIO, "abcd")
+        a = tpil.gui.screenConsole(tpil)
         threading.Thread(target=a.start, daemon=True).start()
         
         a.text = (scText("i like lucki\nand fornite\n and roblox\n12345678", "@{}hz | ASYNC-OOK".format("303.91")))
 
-        disp.waitForKey()
+        tpil.waitForKey()
         a.exit()

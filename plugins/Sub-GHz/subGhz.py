@@ -1,5 +1,4 @@
 import os
-import threading
 import time
 import core.cc1101.ccrf as ccrf
 import core.cc1101.binary as binTranslate
@@ -35,13 +34,17 @@ def scText(text, caption, maxln=6):
     return '\n'.join(s)
 
 class PWNsubGhz(BasePwnhyvePlugin):
-    def Read_Raw(draw, disp, image, GPIO):
+
+    icons = {
+        "Read_Raw": "./core/icons/skullemit.bmp"
+    }
+    
+    def Read_Raw(tpil):
         global freq, rbyt
 
         transceiver.rst()
 
-        a = disp.gui.screenConsole(draw, disp, image)
-        threading.Thread(target=a.start, daemon=True).start()
+        a = tpil.gui.screenConsole(tpil)
         
         a.text = (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq)))
 
@@ -60,7 +63,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         a.text = scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq))
 
-        disp.waitForKey()
+        tpil.waitForKey()
 
         a.text = scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq))
 
@@ -68,7 +71,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         bits = []
         #disp.getKey()
         for bit in transceiver.rawRecv3(uslp=1):
-            if disp.checkIfKey(key='p'):
+            if tpil.checkIfKey(key='p'):
                 break
             
             bits.append(bit)
@@ -99,7 +102,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         transceiver.csn(0)
 
         while True:
-            mnu = disp.gui.menu(["continue", "save to file", "retry", "view", "discard"], disableBack=True)
+            mnu = tpil.gui.menu(["continue", "save to file", "retry", "view", "discard"], disableBack=True)
 
             if mnu == "save to file":
 
@@ -109,7 +112,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 hexs = binTranslate.bytesToHex(byts)
 
-                with open("./subghz/"+disp.gui.enterText(suffix=".sub"), "w") as f:
+                with open("./subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
                     fdata = (
                         "Filetype: Flipper SubGhz RAW File",
                         "Version: 1",
@@ -124,7 +127,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     )
                     f.write("\n".join(fdata))
             elif mnu == "retry":
-                PWNsubGhz.Read_Raw(draw,disp,image,GPIO) # kids, don't do this
+                PWNsubGhz.Read_Raw(tpil) # kids, don't do this
                 return
             
             elif mnu == "view":
@@ -135,8 +138,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 hexs = binTranslate.bytesToHex(byts)
 
-                a = disp.gui.screenConsole(draw, disp, image)
-                threading.Thread(target=a.start, daemon=True).start()
+                a = tpil.gui.screenConsole(tpil)
 
                 lines = []
                 curline = []
@@ -181,7 +183,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                     a.text = '\n'.join(selectedLines)
 
-                    z = disp.waitForKey()
+                    z = tpil.waitForKey()
 
                     if z == "d":
                         offset += 1 if selectedLines[0] != "EOF." else 0
@@ -202,16 +204,16 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         pass
 
-    def Set_Power(draw, disp, image, GPIO):
-        a = disp.gui.slider(draw, disp, image, GPIO, "OOK power", max_=255, start=0xc6).start()
+    def Set_Power(tpil):
+        a = tpil.gui.slider(tpil, "OOK power", max_=255, start=0xc6).start()
         transceiver.adjustOOKSensitivity(0, a)
 
         print('[CC1101] set OOK power to {}'.format(a))
 
-    def Replay_Data(draw,disp,image,GPIO):
+    def Replay_Data(tpil):
         global strfrq, freq
 
-        fle = disp.gui.menu(["from memory"] + os.listdir("./subghz"))
+        fle = tpil.gui.menu(["from memory"] + os.listdir("./subghz"))
 
         if fle != "from memory":
             fsubData = fsub.flipperConv("./subghz/"+fle)
@@ -222,8 +224,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
             print("loading bits from memory, @ same mhz")
             rawBits = rbyt["data"]
 
-        a = disp.gui.screenConsole(draw, disp, image)
-        threading.Thread(target=a.start, daemon=True).start()
+        a = tpil.gui.screenConsole(tpil)
 
         a.addText("preparing..")
         
@@ -235,7 +236,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
             a.text = scText("press dpad to play data\ndpad left to exit\nup, down to edit bit delay", "{}hz | bit-delay: {} | TX".format(strfrq, slpval))
             a.forceUpdate()
 
-            key = disp.waitForKey(debounce=True)
+            key = tpil.waitForKey(debounce=True)
 
             if key == 'p':
                 a.text = scText("transmitting..", "{}hz | bit-delay: {} | TX".format(strfrq, slpval))
@@ -251,7 +252,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     transceiver.rawTransmit2(rawBits, delayms=slpval)
                     repeats += 1
                     
-                    if disp.checkIfKey(key="press"):
+                    if tpil.checkIfKey(key="press"):
                         continue
                     else:
                         break

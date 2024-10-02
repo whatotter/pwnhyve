@@ -2,7 +2,7 @@ import logging
 import os
 import time
 
-from RPi import GPIO
+import gpiozero as gpioz
 
 import cc1101
 from cc1101.options import (
@@ -19,13 +19,12 @@ from cc1101.addresses import (
 
 logging.basicConfig(level=logging.INFO)
 
-_GDO0_PIN = 18  # GPIO24
-GDO2 = 22
-CSN = 12
+_GDO0_PIN = 24  # GPIO24
+GDO2 = 25
+CSN = 18
 
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(_GDO0_PIN, GPIO.OUT, initial=GPIO.LOW)
-GPIO.setup(GDO2, GPIO.IN)
+GDO0Device = gpioz.DigitalOutputDevice(_GDO0_PIN, active_high = True, initial_value =False)
+GDO2Device = gpioz.DigitalInputDevice(GDO2, active_state=True)
 
 # you know what i just found out at 3am? that the NON REALTIME OPERATING SYSTEM LINUX cannot sleep for 1uS! WOW! WHO WOULD'VE KNOWN!!!!
 #usleep = lambda x: time.sleep(x/1000000.0)
@@ -118,21 +117,12 @@ class pCC1101():
         #self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN,   [0x00]);
     
     def close(self):
-        GPIO.output(_GDO0_PIN, 1)
+        GDO0Device.value = 1
         self.rst()
         self.trs._command_strobe(StrobeAddress.SIDLE)
 
     def csn(self, value):
         return
-        if value:
-            GPIO.cleanup(CSN)
-            print("csn up")
-        else:
-            print('csn down')
-            GPIO.setup(CSN, GPIO.IN)
-            time.sleep(0.5)
-            GPIO.setup(CSN, GPIO.OUT)
-            GPIO.output(CSN, 1)
 
     def setFreq(self, val, rst=True):
 
@@ -147,18 +137,20 @@ class pCC1101():
             self._setDefaults() # TODO: figure out why the fuck 303.91mhz turns into 1.04mhz in the cc1101 # i figured it out its cause it wasn't in SIDLE
 
     def _csnRst(self):
-        csn = 12
 
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(csn, GPIO.IN)
+        # turn CSn into a sink
+        csnIN = gpioz.DigitalInputDevice(CSN)
 
         time.sleep(1)
 
-        GPIO.setup(csn, GPIO.OUT)
-        GPIO.output(csn, 1)
+        csnIN.close() # close sink
+        
+        # turn it back into an output
+        CSNDevice = gpioz.DigitalOutputDevice(CSN)
+
         time.sleep(0.5)
 
-        GPIO.cleanup(csn)
+        CSNDevice.close()
 
     def rawTransmit(self, bt:bytes, delayms=10) -> None:
         """
@@ -172,13 +164,13 @@ class pCC1101():
 
             for bit in bits:
                 if bit == "1":
-                    GPIO.output(_GDO0_PIN, GPIO.HIGH)
+                    GDO0Device.on()
                 else:
-                    GPIO.output(_GDO0_PIN, GPIO.LOW)
+                    GDO0Device.off()
 
                 usleep(delayms)
 
-        GPIO.output(_GDO0_PIN, self.snval)
+        GDO0Device.value = self.snval
 
         #self._command_strobe(StrobeAddress.SIDLE)
 
@@ -191,16 +183,14 @@ class pCC1101():
         #with self.trs.asynchronous_transmission():
 
         bits = [int(x) for x in lbt]
-        output = GPIO.output
-        gdoPin = _GDO0_PIN
 
         for bit in bits:
-            output(gdoPin, bit)
+            GDO0Device.value = bit
 
             if delayms != 0:
                 usleep(delayms)
 
-        output(gdoPin, self.snval)
+        GDO0Device.value = self.snval
 
     def rawRecv(self, bits:int, uslp=1) -> list:
         """
@@ -212,11 +202,7 @@ class pCC1101():
         recvd = []
 
         for x in range(bits*8):
-            a = GPIO.input(GDO2)
-            if a:
-                recvd.append(1)
-            else:
-                recvd.append(0)
+            recvd.append(GDO2Device.value)
             usleep(uslp)
 
         return recvd
@@ -232,7 +218,7 @@ class pCC1101():
         sending = False
 
         while True:
-            a = GPIO.input(GDO2)
+            a = GDO2Device.value
 
             if not sending:
                 if a:
@@ -261,11 +247,8 @@ class pCC1101():
         This method yields every bit. Nothing special.
         """
 
-        inp = GPIO.input
-        gdo = GDO2
-
         while 1:
-            yield inp(gdo)
+            yield GDO2Device.value
 
             if uslp != 0:
                 usleep(uslp)
@@ -335,11 +318,11 @@ class pCC1101():
                 break
     
     def _setGDO0(self, val):
-        GPIO.output(_GDO0_PIN, val)
+        GDO2Device.value = val
 
     def _setGDO2(self, val):
-        GPIO.setup(GDO2, GPIO.OUT, initial=GPIO.LOW)
-        GPIO.output(GDO2, val)
+        """depreciated"""
+        return
 
     def setRxBW(self, f):
         global m4RxBw
@@ -578,6 +561,7 @@ class pCC1101():
         elif val == "fifo":
             self.trs._set_transceive_mode(_TransceiveMode.FIFO)
 
+"""
 if __name__ == "__main__":
     with cc1101.CC1101(spi_bus=1) as transceiver:
         transceiver.set_base_frequency_hertz(303.91e6)
@@ -615,4 +599,4 @@ if __name__ == "__main__":
         transceiver.unlock_spi_device()
         transceiver._spi.close()
         time.sleep(0.25)
-#"""
+"""

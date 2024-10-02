@@ -10,6 +10,7 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 from core.utils import config
 from core.plugin import *
+from core.pil_simplify import tinyPillow
 #import json
 #import threading
 #import socket
@@ -95,7 +96,8 @@ if __name__ == "__main__":
     print("[DISPLAY] initalizing display driver...", end="")
 
     disp = driverLoader.driver.DisplayDriver(selectedMenu)
-    GPIO, image, draw = disp.GPIO, disp.image, disp.draw
+    image, draw = disp.image, disp.draw
+    tinypil = tinyPillow(draw, disp, image)
 
     print("initalized.\n")
     # end of display setup
@@ -117,22 +119,18 @@ if __name__ == "__main__":
     pnd = plugins.moduleList
     while 1:
 
-        # interface for batteries n stuff
-        #draw.text((6,0), "CPU:000", font=vars.microFont)
-        #draw.text((16,0), "M:WL0", font=vars.microFont)
-        #draw.text((24,0), "AP:SOLO0", font=vars.microFont)
-        # TODO: make battery icons # finished
-
-
         selection = 0
         disp.fullClear(draw)
 
         # button stuff
         #pnd = plugins.moduleList + [x for x in os.listdir("./plugins") if os.path.isdir("./plugins/"+x)]
+        fontSize = round(disp.height / 8)
         while True:
-            key = disp.gui.menu(pnd, disableBack=currentDirectory=="")
+            key = disp.gui.menu(pnd, disableBack=currentDirectory=="", icons=plugins.icons)
 
             if key == None:
+                # go back one folder in the directory path
+
                 a = currentDirectory.split("/")
                 currentDirectory = '/'.join(a[:len(a)-1])
                 
@@ -161,14 +159,14 @@ if __name__ == "__main__":
                 currentDirectory += key
                 print("[MENU] loading "+currentDirectory)
                 disp.fullClear(draw)
-                disp.draw.text((round(128/3), round(64/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+                disp.draw.text((round(disp.width/3), round(disp.height/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', fontSize))
                 disp.screenShow()
 
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
                 
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
-                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
+                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire+"/"+x) and not x.startswith("_") and ".py" not in x]
 
                 print('[MENU] finished loading')
 
@@ -183,7 +181,7 @@ if __name__ == "__main__":
                 plugins.run(
                     plugins.getOriginModule(key),
                     key,
-                    draw, disp, image, GPIO,
+                    tinypil
                     )
                 
                 print("/\\"*30)

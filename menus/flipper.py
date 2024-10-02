@@ -4,14 +4,13 @@ from time import sleep
 
 
 class Screen(BasePwnhyveScreen):
-    def getItems(self, plugins, currentSelection):
+    def getItems(self, plugins, currentSelection, amount=5):
     
-        listToPrint = plugins[currentSelection:currentSelection+5]
+        listToPrint = plugins[currentSelection:currentSelection+amount]
 
         return listToPrint
 
     def menu(self, choices,
-            gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,},
             flipped=False, icons={"..": "./core/icons/back.bmp"}, caption=None, disableBack=False):
         xCoord = 5
         yCoord = 5
@@ -49,7 +48,12 @@ class Screen(BasePwnhyveScreen):
                 pass
             else:
                 self.draw.rectangle([(0, 0), (255, 13)], fill=1, outline=255)
-                self.draw.text([8,1], caption, font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
+                self.draw.text(
+                    self.resizeCoords2Res([8,1]), 
+                    caption, 
+                    font=ImageFont.truetype('core/fonts/tahoma.ttf', 11)
+                    )
+                
                 yCoord += 14
 
             self.display(choices, currentSelection, icons)
@@ -65,7 +69,7 @@ class Screen(BasePwnhyveScreen):
 
                 if key == False: continue
 
-                if key == 'd': # button is released
+                if key == 'down': # button is released
                     if not flipped:
                         if currentSelection != (len(choices) - 1):
                             currentSelection += 1
@@ -80,7 +84,7 @@ class Screen(BasePwnhyveScreen):
                     break
                     #print("down")
 
-                if key == 'u': # button is released
+                if key == 'up': # button is released
                     if flipped:
                         if currentSelection != (len(choices) - 1):
                             currentSelection += 1
@@ -95,7 +99,7 @@ class Screen(BasePwnhyveScreen):
                     break
                     #print("Up")
 
-                if key == 'p': # button is released
+                if key == 'press': # button is released
                     if choices[currentSelection] == "..": return None
                     return choices[currentSelection]
                     #print("center")
@@ -110,44 +114,59 @@ class Screen(BasePwnhyveScreen):
 
     def display(self, moduleList, currentSelection, icons):
 
-        listToPrint = self.getItems(moduleList, currentSelection)
+        listToPrint = self.getItems(moduleList, currentSelection, amount=10)
+        
         selection = moduleList[currentSelection]
 
         yCoord = 2
+        iconSize = self.disp.iconSize
+        fontSize = self.disp.recommendedFontSize
+        iconSizePadding = 4 if self.disp.height == 64 else 8
 
-        unselectedFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 16)
-        selectedFont   = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 16)
+        white = 'WHITE' if not self.disp.invertedColor else 'BLACK'
+        black = 'BLACK' if not self.disp.invertedColor else 'WHITE'
+
+        unselectedFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', fontSize)
+        selectedFont   = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', fontSize)
         flipperSelection = Image.open('./core/fonts/selection.bmp')
 
+
         for text in list(listToPrint): # do draw
-            rIcoX, rIcoY = 2, 0
+            rIcoX, rIcoY = 2 + (2 if self.disp.width == 128 else 0), 1
 
             icofile = icons.get(text, "./core/icons/missing.bmp")
-            rico = Image.open(icofile).convert('1')
+            rico = Image.open(icofile)
+
+            if self.disp.invertedColor:
+                rico = ImageOps.invert(rico.convert('L'))
 
             if selection != text: # if our selection isnt the text iter gave us
-                self.draw.text((18, yCoord), text.replace("_", " "), fill=0, outline=255, font=unselectedFont) # draw black text over rectangle
+                self.draw.text(
+                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord),
+                      text.replace("_", " "), fill=white, outline=white, 
+                      font=unselectedFont) # draw black text over rectangle
                 
-                ico = rico.resize((12,12))
             else: # it is our selection
-                self.draw.rounded_rectangle([(-4, yCoord-2), (120, 12 + yCoord)], fill=0, outline=255, radius=3) # draw colored rectangle first
-                self.draw.text((18, yCoord), text.replace("_", " "), fill=1, outline=255, font=selectedFont) # draw black text over rectangle
-                
-                ico = ImageOps.invert(rico).resize((12,12))
+                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-2)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
+                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
+            
 
+            ico = rico.resize((iconSize,iconSize))
             self.image.paste(ico, (rIcoX, rIcoY+yCoord))
 
-            yCoord += 13
+            yCoord += (iconSize) + 6
 
         yCoord = 3
 
-        while 60 >= yCoord:
-            self.draw.rectangle(((124, yCoord), (124, yCoord)), fill=0)
+        while self.disp.height >= yCoord:
+            self.draw.rectangle((
+                self.rzxyr((124, yCoord)), self.rzxyr((124, yCoord))),
+                fill=white)
             yCoord += 3
 
-        selBoxY = (round(64 / len(moduleList)) * currentSelection)
-        selBoxHeight = round(64 / len(moduleList))
-        selBox = self.draw.rectangle(((123, selBoxY), (125, selBoxY+selBoxHeight)), fill=0)
+        selBoxY = (round(self.disp.height / len(moduleList)) * currentSelection)
+        selBoxHeight = round(self.disp.height / len(moduleList))
+        selBox = self.draw.rectangle(((self.rzc2r(123), selBoxY), (self.rzc2r(125), selBoxY+selBoxHeight)), fill=white, outline=white)
 
 def createSelection(display, text, xCoord, yCoord, selected=0, **kwargs):
     coords = (xCoord, yCoord)
