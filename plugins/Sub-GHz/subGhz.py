@@ -66,17 +66,14 @@ class PWNsubGhz(BasePwnhyvePlugin):
         tpil.waitForKey()
 
         a.text = scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq))
-
         
-        bits = []
-        #disp.getKey()
-        for bit in transceiver.rawRecv3(uslp=1):
+        transceiver.recvInf() # start reading
+
+        while True:
             if tpil.checkIfKey(key='p'):
                 break
-            
-            bits.append(bit)
 
-
+        bits = transceiver.recvStop()
         rbyt["data"] = bits
 
         #print(hexs)
@@ -106,7 +103,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
             if mnu == "save to file":
 
-                byts = binTranslate.bitsToBytes(
+                byts = binTranslate.bitsToOctet(
                     binTranslate.deleteTrailingNull(bits)
                 )
 
@@ -132,7 +129,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
             
             elif mnu == "view":
 
-                byts = binTranslate.bitsToBytes(
+                byts = binTranslate.bitsToOctet(
                     binTranslate.deleteTrailingNull(bits)
                 )
 
@@ -213,16 +210,12 @@ class PWNsubGhz(BasePwnhyvePlugin):
     def Replay_Data(tpil):
         global strfrq, freq
 
-        fle = tpil.gui.menu(["from memory"] + os.listdir("./subghz"))
+        fle = tpil.gui.menu(os.listdir("./subghz"))
 
-        if fle != "from memory":
-            fsubData = fsub.flipperConv("./subghz/"+fle)
-            rawBits = fsubData.rawDataToBits()
-            print(".sub file frequency is at {}".format(fsubData["Frequency"]))
-            transceiver.currentFreq = float(fsubData["Frequency"])
-        else:
-            print("loading bits from memory, @ same mhz")
-            rawBits = rbyt["data"]
+        fsubData = fsub.flipperConv("./subghz/"+fle)
+        print(".sub file frequency is at {}".format(fsubData["Frequency"]))
+        transceiver.currentFreq = float(fsubData["Frequency"])
+        RAW_Data = fsubData["RAW_Data"]
 
         a = tpil.gui.screenConsole(tpil)
 
@@ -249,7 +242,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 repeats = 0
                 while True:
                     print("on transmission repeat {}".format(repeats))
-                    transceiver.rawTransmit2(rawBits, delayms=slpval)
+                    transceiver.flipperTransmit(RAW_Data)
                     repeats += 1
                     
                     if tpil.checkIfKey(key="press"):

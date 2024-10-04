@@ -3,6 +3,7 @@ import os
 import time
 
 import gpiozero as gpioz
+from core.pio.fastio import FastIO
 
 import cc1101
 from cc1101.options import (
@@ -19,16 +20,14 @@ from cc1101.addresses import (
 
 logging.basicConfig(level=logging.INFO)
 
-_GDO0_PIN = 24  # GPIO24
-GDO2 = 25
+GDO0 = 12  # BCM12
+GDO2 = 23
 CSN = 18
 
-GDO0Device = gpioz.DigitalOutputDevice(_GDO0_PIN, active_high = True, initial_value =False)
-GDO2Device = gpioz.DigitalInputDevice(GDO2, active_state=True)
+#GDO0Device = gpioz.DigitalOutputDevice(_GDO0_PIN, active_high = True, initial_value =False)
+#GDO2Device = gpioz.DigitalInputDevice(GDO2, active_state=True)
 
-# you know what i just found out at 3am? that the NON REALTIME OPERATING SYSTEM LINUX cannot sleep for 1uS! WOW! WHO WOULD'VE KNOWN!!!!
-#usleep = lambda x: time.sleep(x/1000000.0)
-usleep = lambda ms: 1 if 1 > ms else [x for x in range(ms*3)]
+fio = FastIO()
 
 def deleteTrailingNull(bits):
     _bytes = []
@@ -117,7 +116,7 @@ class pCC1101():
         #self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN,   [0x00]);
     
     def close(self):
-        GDO0Device.value = 1
+        #GDO0Device.value = 1
         self.rst()
         self.trs._command_strobe(StrobeAddress.SIDLE)
 
@@ -152,29 +151,20 @@ class pCC1101():
 
         CSNDevice.close()
 
-    def rawTransmit(self, bt:bytes, delayms=10) -> None:
+    def rawTransmit(self, bt:bytes) -> None:
         """
-        Turn hexadecimal bytes (```\x0F```) into binary, and send bits to the CC1101.
+        Turn hexadecimal bytes (```\\x0F```) into binary, and send bits to the CC1101.
 
-        e.g. ```rawTransmit(b"\x02\x0F\xFF")```
+        e.g. ```rawTransmit(b"\\x02\\x0F\\xFF")```
         """
         
-        for byte in bt:
-            bits = bin(byte)[2:]
+        with open('fastio.bin', "wb") as f:
+            f.write(bt)
+            f.flush()
 
-            for bit in bits:
-                if bit == "1":
-                    GDO0Device.on()
-                else:
-                    GDO0Device.off()
+        fio.send(GDO0, "fastio.bin")
 
-                usleep(delayms)
-
-        GDO0Device.value = self.snval
-
-        #self._command_strobe(StrobeAddress.SIDLE)
-
-    def rawTransmit2(self, lbt, delayms=1, inverse=False) -> None:
+    def rawTransmit2(self, lbt) -> None:
         """
         Play bits through the CC1101 via a list.
 
@@ -182,76 +172,45 @@ class pCC1101():
         """
         #with self.trs.asynchronous_transmission():
 
-        bits = [int(x) for x in lbt]
+        fio.send(GDO0, [int(x) for x in lbt])
 
-        for bit in bits:
-            GDO0Device.value = bit
-
-            if delayms != 0:
-                usleep(delayms)
-
-        GDO0Device.value = self.snval
-
-    def rawRecv(self, bits:int, uslp=1) -> list:
+    def flipperTransmit(self, RAW_Data) -> None:
         """
-        Recieve data through the GDO2 pin.
+        Play flipper RAW_Data.
+
+        e.g. ```flipperTransmit("100 -100 100 -100...")```
+        """
+        #with self.trs.asynchronous_transmission():
+
+        fio.flipperSend(GDO0, RAW_Data)
+
+    def recvSamples(self, bits:int) -> list:
+        """
+        Recieve bits through the GDO2 pin.
         This sends no data to the CC1101.
 
         Returns a list of bits.
         """
-        recvd = []
-
-        for x in range(bits*8):
-            recvd.append(GDO2Device.value)
-            usleep(uslp)
-
-        return recvd
+        return fio.readSamples(GDO2, bits)
     
-    def rawRecv2(self, uslp=1):
+    def recvInf(self) -> None:
         """
-        Recieve data through the GDO2 pin.
-        This sends no data to the CC1101.
+        Recieve bits through the GDO2 pin.
+        This runs infinitely in the background, until you call recvStop()
 
-        This method waits for a high bit, then starts yielding the data.
-        """
-        zerosInARow = 0
-        sending = False
-
-        while True:
-            a = GDO2Device.value
-
-            if not sending:
-                if a:
-                    sending = True
-                    yield 1
-                else:
-                    yield -1
-            else:
-                if zerosInARow == 200:
-                    break
-
-                if a:
-                    zerosInARow = 0
-                    yield 1
-                else:
-                    zerosInARow += 1
-                    yield 0
-
-            usleep(uslp)
-
-    def rawRecv3(self, uslp=1):
-        """
-        Recieve data through the GDO2 pin.
-        This sends no data to the CC1101.
-
-        This method yields every bit. Nothing special.
+        Returns None.
         """
 
-        while 1:
-            yield GDO2Device.value
+        fio.infread(GDO2)
 
-            if uslp != 0:
-                usleep(uslp)
+    def recvStop(self) -> list:
+        """
+        Stops recvInf (if running)
+
+        Returns bits read, as a list.
+        """
+
+        return fio.close()
 
     def flipperRecv(self):
         """

@@ -5,12 +5,15 @@ package main
 // ball up top though
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/akamensky/argparse"
@@ -61,15 +64,45 @@ func dump(binfile string) {
 	write(l, binfile)
 }
 
+func SampleGen(filePath string) (<-chan string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan string)
+
+	go func() {
+		defer file.Close()
+		defer close(ch)
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := scanner.Text()
+			words := strings.Fields(line) // Split the line into words
+
+			for _, word := range words {
+				ch <- word // Yield each word
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Println("Error reading file:", err)
+		}
+	}()
+
+	return ch, nil
+}
+
 func main() {
 
 	// argparse init
-	parser := argparse.NewParser("fastio", "this does io faster than python's IO - in an executable")
+	parser := argparse.NewParser("fastio", "this does io faster than python's IO - in an executable\nflipper mode must have --file set and must be RAW_Data only")
 	samples := parser.Int("s", "samples", &argparse.Options{Required: false, Help: "samples to record", Default: -1})
-	binfile := parser.String("o", "output", &argparse.Options{Required: false, Help: "output file", Default: "samples.bin"})
+	binfile := parser.String("f", "file", &argparse.Options{Required: false, Help: "file to use for operations", Default: "samples.bin"})
 
 	pinNum := parser.Int("p", "pin", &argparse.Options{Required: true, Help: "pin to use"})
-	pmode := parser.String("m", "mode", &argparse.Options{Required: true, Help: "pin mode (rx or tx)"})
+	pmode := parser.String("m", "mode", &argparse.Options{Required: true, Help: "pin mode (rx or tx or flp (flipper))"})
 	ns := parser.Int("n", "sleep", &argparse.Options{Required: false, Help: "nanoseconds to sleep between each read (already 500ns delay between each read)", Default: 7500})
 
 	err := parser.Parse(os.Args)
@@ -116,15 +149,19 @@ func main() {
 				readAndAdd(pin, *ns)
 			}
 		}
+
+		dump(*binfile)
+
 	} else if *pmode == "tx" { // send bytes
+		fmt.Println("tx")
 		pin.Output()
 
 		// Open the file
 		file, err := os.Open(*binfile)
 		if err != nil {
+			fmt.Println("err")
 			log.Fatal(err)
 		}
-		defer file.Close()
 
 		buffer := make([]byte, 1)
 
@@ -134,6 +171,7 @@ func main() {
 			if err != nil {
 				// if eof
 				if err.Error() == "EOF" {
+					fmt.Println("eof")
 					break
 				}
 				log.Fatal(err)
@@ -141,10 +179,13 @@ func main() {
 
 			// no bytes were read
 			if n == 0 {
+				fmt.Println("no bytes")
 				break
 			}
 
 			bin := byte2Bin(buffer[0])
+
+			fmt.Println("bin len: ", len(bin))
 
 			for i := 0; i < len(bin); i++ {
 				bit := bin[i]
@@ -154,10 +195,37 @@ func main() {
 				} else {
 					pin.Write(rpio.Low)
 				}
+
+				time.Sleep(time.Duration(*ns))
 			}
 		}
+
+		file.Close()
+		pin.Write(rpio.Low)
+	} else if *pmode == "flp" { // send bytes, the flipper way
+		fmt.Println("tx flipper")
+		pin.Output()
+
+		samples, err := SampleGen(*binfile)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		for sample := range samples {
+			sampleInt, _ := strconv.Atoi(sample)
+
+			if 0 > sampleInt { // negative value, pin goes down
+				pin.Write(rpio.Low)
+				time.Sleep(time.Duration((sampleInt * -1) * int(time.Microsecond))) // invert sample int as it's negative, then sleep
+			} else { // positive value, pin goes up
+				pin.Write(rpio.High)
+				time.Sleep(time.Duration(sampleInt * int(time.Microsecond))) // sleep as normal
+			}
+		}
+
+		pin.Write(rpio.Low)
 	}
 
-	dump(*binfile)
 	os.Exit(1)
 }

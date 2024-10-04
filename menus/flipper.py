@@ -65,7 +65,7 @@ class Screen(BasePwnhyveScreen):
             # button stuff
 
             while True:
-                key = self.disp.waitForKey(debounce=True)
+                key = self.disp.waitForKey()
 
                 if key == False: continue
 

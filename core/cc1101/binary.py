@@ -1,6 +1,6 @@
 import struct
 
-def bitsToBytes(bits):
+def bitsToOctet(bits):
     _bytes = []
 
     for x in range(0, len(bits), 8):
@@ -14,6 +14,9 @@ def bitsToBytes(bits):
             _bytes[-1] += "0"
     
     return _bytes
+
+def bitToByte(byte):
+    return format(byte, '08b')
 
 def deleteTrailingNull(bits):
     return bits # debug

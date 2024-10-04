@@ -11,28 +11,14 @@ from PIL import Image, ImageDraw, ImageFont
 from core.utils import config
 from core.plugin import *
 from core.pil_simplify import tinyPillow
-#import json
-#import threading
-#import socket
-
-pillowDebug = False # very not reliable, also laggy
-enableWebServer = True
-
-devOptions = False # enable dev options
-
 
 class customizable:
-    # (mostly) everything is overridden by the config.json
-    # !!!!!!!!!!!!!!!!!!!!!! DO NOT EDIT !!!!!!!!!!!!!!!!!!! because of ^
-
     disableKeys = False # disable keys from socket
-    # ^ can be disabled just in case, disables all socket info
-
 
 class vars:
     xCoord = 5
     yCoord = 5
-    currentSelection = 0 # index of programs list
+    currentSelection = 0 
     flipped = False
     icons = {}
 
@@ -46,39 +32,7 @@ class vars:
 
 if __name__ == "__main__":
 
-    # villain setuo
-    #Thread(target=opsys, args=("cd ./core/villain && sudo python3 villain.py &",), daemon=True).start()
-    #print("[!] started villain; use fg to bring it to console")
-
-    # 240x240 display with hardware SPI:
-
-    #customizable.cleanScroll = a["cleanScroll"]
-    #customizable.onlyPrefix = a["onlyPrefix"]
-    #customizable.selectionBackgroundWidth = a["selectionBackgroundWidth"]
-    #customizable.idleCycles = a["idleCycles"]
-    #customizable.selectedPrefix = a["selectedPrefix"]
-    #customizable.disableIdle = a["disableIdle"]
-
     customizable.screenType = config["menu"]["screenType"]
-
-    # types of screens
-    # "original": the original display i made
-    # "flipper": the display based off a flipper zero
-    # "minimalistic": the display based off the classic deauth watch - also really minimalistic, personal favorite
-
-    """
-    if a["enableWebServer"]:
-        uStatus("starting webserver")
-
-        #from flask import Flask, Response, send_file, request
-        import core.controlPanel.cpanel as cpanel
-
-        uSuccess("imported webserver")
-
-        #cpanel.app.run(host="0.0.0.0", port=80)
-
-        Thread(target=cpanel.run, args=("0.0.0.0",7979,), daemon=True).start()
-    """
 
     # setup display driver
     menus = pwnhyveMenuLoader()

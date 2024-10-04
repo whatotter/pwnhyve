@@ -111,7 +111,7 @@ class DisplayDriver():
         # this makes holding down a key like how it does on a usb keyboard, if you hold it down it'll send the key once, \
         # then wait a bit (around a quarter of a second/half a second), then repeatedly send it while it's held down
         for x in self.keysBeingHeld.copy():
-            c = self.checkIfKey(debounce=False, key=x)
+            c = self.checkIfKey(key=x)
             if c:
                 sleep(0.1)
                 return x
