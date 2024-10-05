@@ -58,3 +58,14 @@ class PWNTestOne(BasePwnhyvePlugin):
 
         tpil.waitForKey()
         a.exit()
+
+    def legend(tpil):
+        a = tpil.gui.keyLegend(tpil, {"right": "next", "press": "ok", "left": "back", "1": "record"})
+
+        tpil.clear()
+
+        a.draw()
+
+        tpil.show()
+
+        tpil.waitForKey()

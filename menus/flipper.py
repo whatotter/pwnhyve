@@ -126,8 +126,8 @@ class Screen(BasePwnhyveScreen):
         white = 'WHITE' if not self.disp.invertedColor else 'BLACK'
         black = 'BLACK' if not self.disp.invertedColor else 'WHITE'
 
-        unselectedFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', fontSize)
-        selectedFont   = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', fontSize)
+        unselectedFont = ImageFont.truetype('core/fonts/monospace.ttf', fontSize)
+        selectedFont   = ImageFont.truetype('core/fonts/monospace.ttf', fontSize)
         flipperSelection = Image.open('./core/fonts/selection.bmp')
 
 

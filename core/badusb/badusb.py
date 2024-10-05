@@ -15,14 +15,12 @@ class DuckyScriptInterpreter():
     """
     a crude, shitty duckyscript implementation
     """
-    def __init__(self, usb, file, draw, disp, image):
+    def __init__(self, usb, file, tpil):
         self.usb = usb
         self.file = file
         self.fileData = open(file, "r").read().split("\n")
 
-        self.draw = draw
-        self.disp = disp
-        self.image = image
+        self.draw, self.disp, self.image = tpil.__getDDI__()
 
         self.key = { # key for things
             "STRING": self.STRING,
@@ -49,7 +47,7 @@ class DuckyScriptInterpreter():
         self.percentage = 0
         self.printed = ''
 
-        self.handler = disp.gui.usbRunPercentage(draw,disp,image) # init handler
+        self.handler = tpil.gui.usbRunPercentage(tpil) # init handler
         threading.Thread(target=self.handler.start,daemon=True).start() # start handler
         self.handler.setPercentage(0)
 

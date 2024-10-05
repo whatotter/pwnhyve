@@ -109,7 +109,7 @@ class Plugin(BasePwnhyvePlugin):
             return
 
         draw,disp,image = tpil.__getDDI__()
-        dsi = DuckyScriptInterpreter(usb, "./payloads/{}".format(a), draw, disp, image)
+        dsi = DuckyScriptInterpreter(usb, "./payloads/{}".format(a), tpil)
 
         dsi.parse()
 
@@ -193,7 +193,7 @@ class Plugin(BasePwnhyvePlugin):
 
         draw,disp,image = tpil.__getDDI__()
         dsi = DuckyScriptInterpreter(usb, directory,
-                                      draw, disp, image)
+                                      tpil)
 
         dsi.parse()
 

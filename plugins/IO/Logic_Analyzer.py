@@ -22,6 +22,25 @@ def localizeHZ(hz):
 
     return "{}{}".format(hz/div, val)
 
+def samplesToCSV(channel1:list, channel2:list, filename:str="samples.csv"):
+    """
+    turn captured samples into CSV format for sigrok
+    """
+
+    csv = open(filename, "w")
+
+    length = len(channel1) if len(channel1) >= len(channel2) else len(channel2) # pick whichever is bigger (samples should be the same length anyways)
+    for index in range(length):
+        s1, s2 = channel1[index], channel2[index]
+        
+        csv.write("{},{}".format(s1,s2))
+
+    csv.flush()
+
+    return filename
+
+
+
 class PWNLA(BasePwnhyvePlugin):
     def Logic_Analyzer(tpil:tinyPillow):
         global xCoord, previousBit
@@ -31,6 +50,8 @@ class PWNLA(BasePwnhyvePlugin):
 
         CH2_HIGH = tpil.resizeCoordinate2Res(24)
         CH2_LOW = tpil.resizeCoordinate2Res(CH2_HIGH + 10)
+
+        keyLegends = tpil.gui.keyLegend(tpil, {"left": "", "right": "", "up": "+", "down": "-", "1": "REC"})
 
         previousBit = None
 
@@ -52,6 +73,7 @@ class PWNLA(BasePwnhyvePlugin):
         }
 
         samplesPopped = 0
+        
 
         def drawLine(bit:bool, lineLength, channel="ch1"):
             global xCoord, previousBit
@@ -72,8 +94,8 @@ class PWNLA(BasePwnhyvePlugin):
 
             # timing dot
             tpil.rect(
-                (xCoord, lowCoord+4),
-                (xCoord+2, lowCoord+6)
+                (xCoord, lowCoord),
+                (xCoord, lowCoord+1)
             )
                 
             xCoord += lineLength
@@ -81,6 +103,8 @@ class PWNLA(BasePwnhyvePlugin):
 
         while True:
             tpil.clear()
+
+            keyLegends.draw()
 
             for channel, sp in samples.items(): # for every channel we set exists, and it's corresponding samples
                 for bit in sp: # draw the samples on the screen for that channel
@@ -90,9 +114,9 @@ class PWNLA(BasePwnhyvePlugin):
                 xCoord = startX
 
             tpil.text(
-                [round(tpil.disp.width/2), tpil.resizeCoordinate2Res(56)], 
+                [round(tpil.disp.width/2), tpil.resizeCoordinate2Res(48)], 
                 "{}ns / {}".format(bitTime, localizeHZ(calcHZ(bitTime))),
-                fontSize=tpil.disp.recommendedFontSize/2, anchor="mm")
+                fontSize=tpil.disp.recommendedFontSize, anchor="mm")
 
             tpil.show()
             key = tpil.waitForKey()

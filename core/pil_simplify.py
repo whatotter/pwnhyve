@@ -10,7 +10,7 @@ class tinyPillow:
         self.pinout = self.disp.pinout
 
         self.instantDraw = False
-        self.font = ImageFont.truetype('core/fonts/roboto.ttf', 12)
+        self.font = ImageFont.truetype('core/fonts/monospace.ttf', 12)
 
         return
     
@@ -36,7 +36,7 @@ class tinyPillow:
         if font != None:
             wfont = font
         if fontSize != None:
-            wfont = ImageFont.truetype('core/fonts/roboto.ttf', fontSize)
+            wfont = ImageFont.truetype('core/fonts/monospace.ttf', fontSize)
 
         color = self.__manageInvColor__(color)
 
@@ -86,25 +86,24 @@ class tinyPillow:
         """
         return self.disp.waitWhileChkKey(*args, **kwargs)
     
-    def loadImage(self, bitmap, coords:list=[0,0]):
+    def loadImage(self, bitmapPath:str, coords:list=[0,0], inverted:bool=False):
         """
         paste an image at XY coords
         """
 
-        self.clear()
-        bmp = Image.open(bitmap)
+        bmp = Image.open(bitmapPath)
+
+        if inverted:
+            bmp = ImageOps.invert(bmp.convert('L'))
 
         self.image.paste(bmp, coords)
-        self.show()
 
-    def pasteImage(self, image, coords:list=[0,0]):
+    def pasteImage(self, imageObject:Image, coords:list=[0,0]):
         """
         paste an image at XY coords
         """
 
-        self.clear()
-        self.image.paste(image, coords)
-        self.show()
+        self.image.paste(imageObject, coords)
 
     def show(self):
         """

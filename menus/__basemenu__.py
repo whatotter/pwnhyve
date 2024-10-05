@@ -1,6 +1,9 @@
+import math
+import os
 import threading
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from time import sleep    
+from time import sleep
+from core.pil_simplify import tinyPillow
 
 # this is accessed as .gui
 class BasePwnhyveScreen():
@@ -12,6 +15,43 @@ class BasePwnhyveScreen():
 
         return None
     
+    class keyLegend:
+        def __init__(self, tpil:tinyPillow, legend:dict) -> None:
+            """
+            create a key legend at the bottom of the screen (takes 10 pixels)
+
+            Parameters:
+                legend: a dictionary of keys, and what they do
+                      e.g. {"left": "back", "press": "ok", "right": "next"}
+            """
+            
+            self.legend = legend
+            self.tpil = tpil
+            self.height = tpil.disp.height
+            self.width = tpil.disp.width
+            self.YCoord = self.height - round(self.height/6)
+
+        def draw(self):
+            y = self.YCoord # Y coord we're gonna be working with
+            x = 0 # X coord we're gonna be working with
+
+            self.tpil.rect((0, self.YCoord), (self.width, self.YCoord), color='WHITE') # draw line
+            
+            y += 1
+
+            # draw each legend
+            for key, legendText in self.legend.items():
+                if key+".bmp" in os.listdir("./core/icons/buttons"):
+                    self.tpil.loadImage("./core/icons/buttons/{}.bmp".format(key), [x,y+2],
+                                        inverted=self.tpil.disp.invertedColor)
+                    
+                    x += 12 # move X by 12
+                    self.tpil.text((x, y), legendText,
+                                fontSize=self.tpil.disp.recommendedFontSize)
+                    
+                    x += (5 * len(legendText)) + 6
+                    #x += 6*len(legendText) # X padding
+
     class setFloat:
         def __init__(self, tpil, caption:str,
                       _min:float=100.000, start:str="314.314", _max:float=500.000, wholePlaces=3, decimalPlaces=3) -> None:
@@ -173,7 +213,7 @@ class BasePwnhyveScreen():
             self.image = image
 
             self._bigFont = ImageFont.truetype('core/fonts/roboto.ttf', 12)
-            self.captFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 12)
+            self.captFont = ImageFont.truetype('core/fonts/monospace.ttf', 12)
 
             self.alive = True
             pass
@@ -377,7 +417,7 @@ class BasePwnhyveScreen():
             self.image = image
             self.updateBool = False
 
-            self.cFont = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', round(self.disp.height / 8))
+            self.cFont = ImageFont.truetype('core/fonts/monospace.ttf', round(self.disp.height / 8))
             self.flipped = flipped
 
             self.stopWriting = False
@@ -540,7 +580,7 @@ class BasePwnhyveScreen():
         rowIndex = 0
         characterIndex = 0
 
-        font = ImageFont.truetype('core/fonts/haxrcorp-4089.ttf', 16)
+        font = ImageFont.truetype('core/fonts/monospace.ttf', 16)
 
         while True:
 

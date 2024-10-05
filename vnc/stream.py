@@ -308,7 +308,7 @@ class VideoWindow(QWidget):
 
 async def main():
     app = QApplication([])
-    z = QFontDatabase.addApplicationFont("haxrcorp-4089.ttf")
+    z = QFontDatabase.addApplicationFont("monospace.ttf")
 
     padding = 14
 
