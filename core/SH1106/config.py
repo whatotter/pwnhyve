@@ -36,9 +36,9 @@ import RPi.GPIO as GPIO
 import pytoml as toml
 
 # Pin definition
-RST_PIN        = 7
-CS_PIN         = 24
-DC_PIN         = 18
+RST_PIN        = 25
+CS_PIN         = 8
+DC_PIN         = 24
 
 #GPIO define
 KEY_UP_PIN     = 31 
@@ -62,10 +62,12 @@ class RaspberryPi:
         self.OUTPUT = True
         
         if(Device_SPI == 1):
+            print("{+} display is in SPI mode")
             self.Device = Device_SPI
             self.spi = spidev.SpiDev(0, 0)
             self.GPIO_DC_PIN = self.gpio_mode(DC_PIN,self.OUTPUT)
         else :
+            print("{+} display is in I2C mode")
             self.Device = Device_I2C
             self.address = 0x3c
             self.bus = SMBus(1)
@@ -110,7 +112,7 @@ class RaspberryPi:
             self.spi.max_speed_hz = 1000000
             self.spi.mode = 0b11  
             self.digital_write(self.GPIO_DC_PIN,False)
-            CS_PIN.off()
+            #CS_PIN.off()
         return 0
 
     def module_exit(self):
