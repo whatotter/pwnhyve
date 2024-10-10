@@ -99,7 +99,7 @@ class Screen(BasePwnhyveScreen):
                     break
                     #print("Up")
 
-                if key == 'press': # button is released
+                if key == 'press' or key == 'right': # button is released
                     if choices[currentSelection] == "..": return None
                     return choices[currentSelection]
                     #print("center")
@@ -110,7 +110,7 @@ class Screen(BasePwnhyveScreen):
                     #print("center")
 
                 if not disableBack:
-                    if key == 'l': return None
+                    if key == 'left': return None
 
     def display(self, moduleList, currentSelection, icons):
 
