@@ -45,12 +45,12 @@ def hexToBytes(hexa):
         _bytes.append(bin2(int(x, 0)))
     return _bytes
 
-def bytesToHex(_bytes):
+def octetsToHex(octets):
     hexa = []
     foundData = False
 
-    for x in _bytes:
-        a = "0x%X" % int(''.join(x), base=2)
+    for x in octets:
+        a = "0x%X" % int(''.join([str(y) for y in x]), base=2)
         hexa.append(a)
 
     while True:

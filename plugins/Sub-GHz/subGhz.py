@@ -70,11 +70,10 @@ class PWNsubGhz(BasePwnhyvePlugin):
         transceiver.recvInf() # start reading
 
         while True:
-            if tpil.checkIfKey(key='p'):
+            if tpil.checkIfKey():
                 break
 
         bits = transceiver.recvStop()
-        rbyt["data"] = bits
 
         #print(hexs)
 
@@ -103,13 +102,13 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
             if mnu == "save to file":
 
-                byts = binTranslate.bitsToOctet(
-                    binTranslate.deleteTrailingNull(bits)
+                octets = binTranslate.bitsToOctet(
+                    bits
                 )
 
-                hexs = binTranslate.bytesToHex(byts)
+                hexs = binTranslate.octetsToHex(octets)
 
-                with open("./subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
+                with open("./subghz/"+tpil.gui.enterText(tpil, suffix=".sub"), "w") as f:
                     fdata = (
                         "Filetype: Flipper SubGhz RAW File",
                         "Version: 1",
@@ -120,9 +119,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
                             ' '.join([str(x) for x in fsub.bitsToRawData(bits)])
                             ),
                         "HEX_Data: {}".format(" ".join(hexs)),
-                        "BIT_Data: {}".format("".join(bits))
+                        "BIT_Data: {}".format(' '.join([str(x) for x in bits]))
                     )
                     f.write("\n".join(fdata))
+                    f.flush()
+
             elif mnu == "retry":
                 PWNsubGhz.Read_Raw(tpil) # kids, don't do this
                 return
@@ -182,30 +183,31 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                     z = tpil.waitForKey()
 
-                    if z == "d":
+                    if z == "down":
                         offset += 1 if selectedLines[0] != "EOF." else 0
-                    elif z == "u":
+                    elif z == "up":
                         offset -= 1 if offset != 0 else 0
-                    elif z == "l":
+                    elif z == "left":
                         break
 
 
                 a.exit()
             
-            elif mnu == "discard":
-                #rbyt.pop("data")
+            elif mnu == "continue" or mnu == "discard":
+                transceiver.sleepMode()
                 return
-            
-            elif mnu == "continue":
-                return
-
-        pass
 
     def Set_Power(tpil):
-        a = tpil.gui.slider(tpil, "OOK power", max_=255, start=0xc6).start()
-        transceiver.adjustOOKSensitivity(0, a)
+        powerStrings = []
 
-        print('[CC1101] set OOK power to {}'.format(a))
+        for registerValue, dBm in transceiver.patable:
+            powerStrings.append(
+                "{} / {}".format(hex(registerValue), dBm)
+            )
+
+        registerValue = int(tpil.gui.menu(powerStrings).split(" ")[0], base=16)
+
+        transceiver.adjustOOKSensitivity(0, registerValue)
 
     def Replay_Data(tpil):
         global strfrq, freq
@@ -214,25 +216,32 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         fsubData = fsub.flipperConv("./subghz/"+fle)
         print(".sub file frequency is at {}".format(fsubData["Frequency"]))
+
         transceiver.currentFreq = float(fsubData["Frequency"])
-        RAW_Data = fsubData["RAW_Data"]
+        transceiver.trs.set_base_frequency_hertz(transceiver.currentFreq)
+
+        bitData = fsubData.rawDataToBits()
+
 
         a = tpil.gui.screenConsole(tpil)
 
         a.addText("preparing..")
         
-        transceiver.rst()
+        transceiver.setupRawTransmission()
 
-        slpval = 5
+
+        ########### calculate bin file ############
+        binfile = ccrf.fio.calcBinFile(bitData, "/tmp/CC1101_TX.bin")
+
         while True:
             print('waiting...')
-            a.text = scText("press dpad to play data\ndpad left to exit\nup, down to edit bit delay", "{}hz | bit-delay: {} | TX".format(strfrq, slpval))
+            a.text = scText("press dpad to play data\ndpad left to exit\nup, down to edit bit delay", "{}hz | TX".format(strfrq))
             a.forceUpdate()
 
             key = tpil.waitForKey(debounce=True)
 
-            if key == 'p':
-                a.text = scText("transmitting..", "{}hz | bit-delay: {} | TX".format(strfrq, slpval))
+            if key == 'press':
+                a.text = scText("transmitting..", "{}hz | TX".format(strfrq))
                 a.forceUpdate()
 
                 time.sleep(0.25) # just for GPIO to\ finish writes
@@ -242,25 +251,31 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 repeats = 0
                 while True:
                     print("on transmission repeat {}".format(repeats))
-                    transceiver.flipperTransmit(RAW_Data)
+                    transceiver.rawTransmitBin(binfile)
                     repeats += 1
+
+                    transceiver.setFreq(
+                        float(fsubData["Frequency"]) + (2500 * repeats),
+                        doCalc = False
+                    )
                     
-                    if tpil.checkIfKey(key="press"):
+                    if tpil.checkIfKey() == 'press':
                         continue
                     else:
                         break
 
                 print("done transmitting")
 
-            elif key == 'l':
+            elif key == 'left':
                 break
 
-            elif key == 'u':
+            elif key == 'up':
                 slpval += 1
-            elif key == 'd':
+            elif key == 'down':
                 slpval -= 1 if slpval != 0 else 0
 
         a.quit()
+        transceiver.sleepMode()
 
         #transceiver.setFreq(beforefreq)
         #freq = beforefreq
@@ -274,23 +289,6 @@ class PWNsubGhz(BasePwnhyvePlugin):
                               #    ^ round the float into an int       ^ then add THREE place values
                               ).start()
 
-        print(a)
-        freq2 = round(a, 2) 
-        freqmath = eval("{}e6".format(freq2))
-        print("{} vs {}".format(freq, freqmath))
-        
-        transceiver.currentFreq = freqmath
-        transceiver.rst()
-
-        freq = transceiver.currentFreq
-        strfrq = str(freq)[:3]
+        transceiver.setFreq(a)
 
         print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
-
-    def Reset(draw,disp,image,GPIO):
-        global freq, strfrq
-
-        transceiver.rst()
-
-        #freq = transceiver.trs.get_base_frequency_hertz()
-        #strfrq = str(freq)[:3]

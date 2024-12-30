@@ -148,7 +148,7 @@ class DisplayDriver():
             downcycles = 0
             while self.dgRead(b):
                 downcycles += 1
-                if downcycles >= 250:
+                if downcycles >= 100:
                     self.keysBeingHeld.append(a)
                     return a # it's being held down for a reason
                 
@@ -186,30 +186,34 @@ class DisplayDriver():
 
         return False
 
-    def getKey(self):
+    def getKey(self, debounce=False):
         """return current key pressed"""
 
         a = h.checkSocketINput()
         if a:
             return a
 
-        if self.dgRead(KEY_UP_PIN): return KEY_UP_PIN
+        keyPressed = False
+        if self.dgRead(KEY_UP_PIN): keyPressed = 'up'
+        if self.dgRead(KEY_LEFT_PIN): keyPressed = 'left'
+        if self.dgRead(KEY_RIGHT_PIN): keyPressed = 'right'
+        if self.dgRead(KEY_DOWN_PIN): keyPressed = 'down'
+        if self.dgRead(KEY_PRESS_PIN): keyPressed = 'press'
+        if self.dgRead(KEY1_PIN): keyPressed = '1'
+        if self.dgRead(KEY2_PIN): keyPressed = '2'
+        if self.dgRead(KEY3_PIN): keyPressed = '3'
 
-        if self.dgRead(KEY_LEFT_PIN): return KEY_LEFT_PIN
-            
-        if self.dgRead(KEY_RIGHT_PIN): return KEY_RIGHT_PIN
-            
-        if self.dgRead(KEY_DOWN_PIN): return KEY_DOWN_PIN
+        if debounce and keyPressed:
+            downcycles = 0
+            while self.dgRead(self.pinout[keyPressed]):
+                downcycles += 1
+                if downcycles >= 100:
+                    self.keysBeingHeld.append(a)
+                    return a # it's being held down for a reason
+                
+                sleep(0.005)
 
-        if self.dgRead(KEY_PRESS_PIN): return KEY_PRESS_PIN
-            
-        if self.dgRead(KEY1_PIN): return KEY1_PIN
-            
-        if self.dgRead(KEY2_PIN): return KEY2_PIN
-            
-        if self.dgRead(KEY3_PIN): return KEY3_PIN
-
-        return False
+        return keyPressed
         
     def showImage(self, directory):
         self.fullClear(self.draw)

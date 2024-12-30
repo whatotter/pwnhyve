@@ -1,0 +1,13 @@
+in chrono. order
+
+- tool integrations
+    - EAPhammer
+    - remote cracking with implementation of PSKracker (https://github.com/andrewjlamarche/PSKracker)
+    - MITM6 (https://github.com/dirkjanm/mitm6)
+
+- implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
+    
+- implement network functions correctly, then implement these tools:
+    - https://github.com/vanhoefm/macstealer
+
+- CC1101 FM transmission

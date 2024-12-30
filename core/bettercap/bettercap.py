@@ -1,5 +1,7 @@
 """
 based off of pwnagotchi's bettercap system but slightly modified (i am too lazy to write anything, thank you evilsocket)
+
+TODO: probably get it to use one instance of bettercap running in the BG
 """
 from core.utils import uStatus, uError
 import requests
@@ -21,6 +23,8 @@ def decode(r):
             raise Exception(err)
         return r.text
 
+def startBCAP(iface: str = "wlan0mon"):
+    getoutput('sudo bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
 
 class Client(object):
     def __init__(
@@ -30,8 +34,6 @@ class Client(object):
         port=8081,
         username="user",
         password="pass",
-        iface="wlan0mon",
-        start=True,
     ):
         self.hostname = hostname
         self.scheme = scheme
@@ -42,16 +44,8 @@ class Client(object):
         self.auth = HTTPBasicAuth(username, password)
         self.successful = None
 
-        if start:
-            Thread(
-                target=self.start,
-                daemon=True,
-                kwargs={
-                    "iface": iface,
-                },
-            ).start()
-
-        Thread(target=self._wait_bettercap, daemon=True).start()
+        if self._wait_bettercap() == False: # bcap wasn't started
+            raise TimeoutError("bettercap never started")
 
     def session(self):
         r = requests.get("%s/session" % self.url, auth=self.auth)
@@ -62,9 +56,6 @@ class Client(object):
             "%s/session" % self.url, auth=self.auth, json={"cmd": command}
         )
         return decode(r)
-
-    def start(self, iface: str = "wlan0mon"):
-        system('sudo bettercap --iface %s -eval "api.rest on" -no-colors -no-history' % (iface))
 
     def deauth(self, sta, throttle=0):
         try:
@@ -156,18 +147,27 @@ class Client(object):
             ]
 
         return aps
+    
+    def restartBCAP(self, interface="wlan0mon"):
+        self.stop()
+        startBCAP(iface=interface)
+        self._wait_bettercap(tries=30) # 30 seconds
 
-    def _wait_bettercap(self):
-        for _ in range(5):
+    def _wait_bettercap(self, tries=5):
+        for _ in range(tries):
             try:
                 requests.get("%s/session" % self.url, auth=self.auth)
-                print("[BCAP] bettercap avaialble")
+                print("[BCAP] bettercap available\r")
                 self.successful = True
+
+                return True
+            
             except Exception:
                 print("[BCAP] waiting for bettercap API to be available ...")
                 sleep(1)
 
         self.successful = False
+        return False
 
     def stop(self):
         getoutput("sudo pkill -f bettercap")
@@ -178,3 +178,18 @@ class Client(object):
             except:
                 return True
             sleep(1)
+
+    def bleRecon(self, status):
+        self.run("ble.recon {}".format(status.split(" ")[0]))
+
+    def getBluetoothClients(self):
+        r = requests.get("%s/session/ble" % self.url, auth=self.auth)
+        return decode(r)
+    
+Thread(
+    target=startBCAP,
+    daemon=True,
+    kwargs={
+        "iface": "wlan0",
+    },
+).start()

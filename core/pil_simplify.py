@@ -29,7 +29,7 @@ class tinyPillow:
         else: # not 1bit display or inverted color
             return color # return normal color
     
-    def text(self, coords:list, text:str, color='WHITE', font=None, fontSize=None, anchor="la"):
+    def text(self, coords:list, text:str, color='WHITE', font=None, fontSize=None, **kwargs):
         """draw text"""
 
         wfont = self.font
@@ -43,7 +43,7 @@ class tinyPillow:
         return self.draw.text(coords, text,
                         font=wfont,
                         fill=color,
-                        anchor=anchor
+                        **kwargs
                         )
     
     def rect(self, topleft:list, bottomright:list, color='WHITE'):
@@ -53,7 +53,6 @@ class tinyPillow:
         return self.draw.rectangle([topleft, bottomright],
                         fill=color
                         )
-    
     def clear(self):
         return self.disp.fullClear(self.draw)
 
@@ -105,11 +104,12 @@ class tinyPillow:
 
         self.image.paste(imageObject, coords)
 
-    def show(self):
+    def show(self, clear=True):
         """
         show compiled image to display
         """
         self.disp.screenShow()
+        if clear: self.clear()
 
         
 

@@ -184,21 +184,21 @@ class DisplayDriver():
         if a:
             return a
 
-        if self.dgRead(KEY_UP_PIN): return KEY_UP_PIN
+        if self.dgRead(KEY_UP_PIN): return 'up'
 
-        if self.dgRead(KEY_LEFT_PIN): return KEY_LEFT_PIN
+        if self.dgRead(KEY_LEFT_PIN): return 'left'
             
-        if self.dgRead(KEY_RIGHT_PIN): return KEY_RIGHT_PIN
+        if self.dgRead(KEY_RIGHT_PIN): return 'right'
             
-        if self.dgRead(KEY_DOWN_PIN): return KEY_DOWN_PIN
+        if self.dgRead(KEY_DOWN_PIN): return 'down'
 
-        if self.dgRead(KEY_PRESS_PIN): return KEY_PRESS_PIN
+        if self.dgRead(KEY_PRESS_PIN): return 'press'
             
-        if self.dgRead(KEY1_PIN): return KEY1_PIN
+        if self.dgRead(KEY1_PIN): return '1'
             
-        if self.dgRead(KEY2_PIN): return KEY2_PIN
+        if self.dgRead(KEY2_PIN): return '2'
             
-        if self.dgRead(KEY3_PIN): return KEY3_PIN
+        if self.dgRead(KEY3_PIN): return '3'
 
         return False
         

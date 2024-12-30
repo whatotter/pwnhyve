@@ -7,38 +7,19 @@ rest are mine
 """
 import os
 import time
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 from core.utils import config
 from core.plugin import *
 from core.pil_simplify import tinyPillow
 
-class customizable:
-    disableKeys = False # disable keys from socket
-
-class vars:
-    xCoord = 5
-    yCoord = 5
-    currentSelection = 0 
-    flipped = False
-    icons = {}
-
-    font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
-    flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16)
-    flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16)
-    flipperSelection = Image.open('./core/fonts/selection.bmp')
-    microFont = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono8.ttf', 5)
-
-
 
 if __name__ == "__main__":
 
-    customizable.screenType = config["menu"]["screenType"]
+    screenType = config["menu"]["screenType"]
 
     # setup display driver
     menus = pwnhyveMenuLoader()
-
-    selectedMenu = menus.modules[customizable.screenType]["module"]
-
+    selectedMenu = menus.modules[screenType]["module"]
     driverLoader = pwnhyveScreenLoader(config["display"]["driver"])
 
     if driverLoader.driver == None:

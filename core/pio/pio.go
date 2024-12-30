@@ -20,8 +20,6 @@ import (
 	"github.com/stianeikeland/go-rpio/v4"
 )
 
-var boolSlice = []bool{}
-
 func bits2Bytes(boolList []bool) []byte {
 	// turns bits into bytes
 
@@ -45,23 +43,28 @@ func byte2Bin(b byte) string {
 	return fmt.Sprintf("%08b", b)
 }
 
-func readAndAdd(pin rpio.Pin, ns int) {
-	r := pin.Read()
+func readAndAdd(pinObject rpio.Pin, slice []bool) []bool {
+	r := pinObject.Read()
 
 	// this isn't right, but idc
 	if r == rpio.High {
-		boolSlice = append(boolSlice, true)
+		slice = append(slice, true)
 	} else {
-		boolSlice = append(boolSlice, false)
+		slice = append(slice, false)
 	}
 
-	time.Sleep(time.Duration(ns))
+	return slice
 }
 
-func dump(binfile string) {
-	l := bits2Bytes(boolSlice)
+func dump(binfile string, bigSampleMap map[rpio.Pin][]bool, pinNames map[rpio.Pin]int) {
+	for pinObject, samples := range bigSampleMap {
+		pinName := pinNames[pinObject]
 
-	write(l, binfile)
+		write(
+			bits2Bytes(samples),
+			binfile+"-"+strconv.Itoa(pinName)+".bin",
+		)
+	}
 }
 
 func SampleGen(filePath string) (<-chan string, error) {
@@ -101,7 +104,7 @@ func main() {
 	samples := parser.Int("s", "samples", &argparse.Options{Required: false, Help: "samples to record", Default: -1})
 	binfile := parser.String("f", "file", &argparse.Options{Required: false, Help: "file to use for operations", Default: "samples.bin"})
 
-	pinNum := parser.Int("p", "pin", &argparse.Options{Required: true, Help: "pin to use"})
+	pinsNum := parser.IntList("p", "pin", &argparse.Options{Required: true, Help: "pin(s) to use"})
 	pmode := parser.String("m", "mode", &argparse.Options{Required: true, Help: "pin mode (rx or tx or flp (flipper))"})
 	ns := parser.Int("n", "sleep", &argparse.Options{Required: false, Help: "nanoseconds to sleep between each read (already 500ns delay between each read)", Default: 7500})
 
@@ -119,41 +122,61 @@ func main() {
 		os.Exit(4)
 	}
 
-	// create ctrl+c
+	// create ctrl+c handler
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+
+	// sample handler
+	pinObjects := []rpio.Pin{}                // generate rpio.Pin objects for every pin
+	pinNames := make(map[rpio.Pin]int)        // make a map so every pin has it's name, for writing
+	pinSampleMap := make(map[rpio.Pin][]bool) // make another map so every pin has it's sample list
+	for _, pin := range *pinsNum {
+		x := rpio.Pin(pin)
+		pinObjects = append(pinObjects, x)
+		pinNames[x] = pin
+	}
+
+	for _, pinObject := range pinObjects {
+		pinSampleMap[pinObject] = []bool{} // Initialize each key with an empty slice
+	}
 
 	go func() {
 		<-sigs
 
-		dump(*binfile)
+		dump(*binfile, pinSampleMap, pinNames)
 
+		rpio.Close()
 		os.Exit(0)
 	}()
 
-	// Unmap gpio memory when done
-	defer rpio.Close()
-
-	pin := rpio.Pin(*pinNum)
-
-	fmt.Println("1")
 	if *pmode == "rx" { // recieve samples
-		pin.Input()
+		for _, pin := range pinObjects { // make every pin an input
+			pin.Input()
+		}
 
 		if *samples == -1 { // if we DONT have a set amount of samples to record
 			for { // read until ctrl+c
-				readAndAdd(pin, *ns)
+				for pinObject, pinSlice := range pinSampleMap { // qr: key,value
+					pinSampleMap[pinObject] = readAndAdd(pinObject, pinSlice)
+				}
+				time.Sleep(time.Duration(*ns))
 			}
 		} else { // if we do have a set amount of samples to record..
 			for i := 0; i < *samples; i++ { // record for those samples
-				readAndAdd(pin, *ns)
+				for pinObject, pinSlice := range pinSampleMap { // qr: key,value
+					pinSampleMap[pinObject] = readAndAdd(pinObject, pinSlice)
+				}
+				time.Sleep(time.Duration(*ns))
 			}
 		}
 
-		dump(*binfile)
+		dump(*binfile, pinSampleMap, pinNames)
+		rpio.Close()
 
 	} else if *pmode == "tx" { // send bytes
 		fmt.Println("tx")
+
+		pin := pinObjects[0]
 		pin.Output()
 
 		// Open the file
@@ -185,8 +208,6 @@ func main() {
 
 			bin := byte2Bin(buffer[0])
 
-			fmt.Println("bin len: ", len(bin))
-
 			for i := 0; i < len(bin); i++ {
 				bit := bin[i]
 
@@ -202,8 +223,12 @@ func main() {
 
 		file.Close()
 		pin.Write(rpio.Low)
-	} else if *pmode == "flp" { // send bytes, the flipper way
+		rpio.Close()
+
+	} else if *pmode == "txflp" { // send bytes, the flipper way
 		fmt.Println("tx flipper")
+
+		pin := pinObjects[0]
 		pin.Output()
 
 		samples, err := SampleGen(*binfile)
@@ -225,6 +250,7 @@ func main() {
 		}
 
 		pin.Write(rpio.Low)
+		rpio.Close()
 	}
 
 	os.Exit(1)

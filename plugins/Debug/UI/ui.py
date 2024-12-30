@@ -69,3 +69,13 @@ class PWNTestOne(BasePwnhyvePlugin):
         tpil.show()
 
         tpil.waitForKey()
+
+    def carousel(tpil):
+        tpil.clear()
+        
+        a = tpil.gui.carouselMenu(tpil)
+
+        a.draw("text and a lot of it and a lot of it and a lot of it and a lot of it", "caption")
+
+        tpil.show()
+        tpil.waitForKey()

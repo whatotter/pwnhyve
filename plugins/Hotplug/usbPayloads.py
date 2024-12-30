@@ -1,14 +1,12 @@
 from PIL import ImageFont
 from time import sleep
 from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
-from core.utils import config
 import os
 
 # reverse shell stuff
 import socket
 from core.webserver.https import *
 from random import randint
-from threading import Thread
 import json
 from base64 import b64decode
 from core.plugin import BasePwnhyvePlugin
