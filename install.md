@@ -1,3 +1,5 @@
+# please use the wiki instead https://github.com/whatotter/pwnhyve/wiki/installing
+
 helllllllllllloooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 
 become super cow
