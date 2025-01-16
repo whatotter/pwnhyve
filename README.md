@@ -49,7 +49,7 @@
 todo
 
 # feature matrix against the flipper zero
-| Feature         | Steinar              | Flipper Zero         |
+| Feature         | Pwnhyve              | Flipper Zero         |
 |-----------------|----------------------|----------------------|
 | NFC/RFID        | No                   | Yes                  |
 | IR              | W.I.P                | Yes                  |
