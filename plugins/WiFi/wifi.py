@@ -1,3 +1,4 @@
+import json
 import core.bettercap.bettercap as bcap
 from core.utils import *
 from random import choice, randrange,randint
@@ -6,7 +7,6 @@ from threading import Thread
 from time import sleep
 import netifaces as nf
 from scapy.all import RandMAC, RadioTap, Dot11, Dot11Beacon, Dot11Elt, sendp, sniff, Dot11ProbeResp
-from json import loads, dumps
 from subprocess import getoutput
 
 from core.plugin import BasePwnhyvePlugin
@@ -81,114 +81,15 @@ class PwnagotchiScreen():
 
             sleep(0.25) # minimize writes
 
-class airmon:
-    def toggleMonitorMode(iface):
-
-        isInMonitorMode = airmon.checkIfMonitorMode(iface)
+class airmon:        
+    def startMonitorMode():
+        getoutput("/usr/sbin/airmon-ng check kill")
         
-        if not isInMonitorMode: # isn't in monitor mode
-            a = getoutput("sudo /usr/sbin/airmon-ng start {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
-            rmStr = ''.join(a[:2])
-            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
-
-            return {
-                "interface": monIface,
-                "monitorMode": True
-            }
-        
-        else: # in monitor mode
-            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 station mode\"".format(iface)).strip().split("[phy")[-1]
-            rmStr = ''.join(a[:2])
-            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
-
-            return {
-                "interface": monIface,
-                "monitorMode": False
-            }
-        
-    def startMonitorMode(iface):
-
-        isInMonitorMode = airmon.checkIfMonitorMode(iface)
-
-        if isInMonitorMode:
-            print("[WIFI] {} was already in monitor mode (first check)".format(iface))
-            
-            return {
-                "interface": iface,
-                "monitorMode": True
-            }
-        
-        ifaces = nf.interfaces()
-
-        for x in ifaces:
-            if iface in x.strip() and x.strip() != iface: # if the interface is in the text, but the text is not the interface (gets "wlan0mon" but not "wlan0")
-                print("[WIFI] {} was already in monitor mode (second check)".format(iface))
-                return {
-                    "interface": x.strip(),
-                    "monitorMode": True
-                }
-
-            print("[WIFI] attempting to set {} in monitor mode".format(iface))
-
-            out = getoutput("sudo /usr/sbin/airmon-ng start {}".format(iface)).split("\n")
-            
-            a = None
-
-            for x in out:
-                if "mac80211 monitor mode" in x:
-                    a = x.strip().split("[phy")[-1]
-                else:
-                    if "ERROR" in x:
-                        a = None
-                        code = x.split(" ")[-1]
-                        print("[WIFI] error putting in monitor mode: {}".format(code))
-
-                        return {
-                            "interface": None, # not changed
-                            "monitorMode": False
-                        }
-
-
-            rmStr = ''.join(a[:2])
-            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
-
-            print("[WIFI] success")
-
-            return {
-                "interface": monIface,
-                "monitorMode": True
-            }
-        
-        
-    def stopMonitorMode(iface):
-        isInMonitorMode = airmon.checkIfMonitorMode(iface)
-
-        if isInMonitorMode:
-            a = getoutput("sudo /usr/sbin/airmon-ng stop {} | grep \"mac80211 monitor mode\"".format(iface)).strip().split("[phy")[-1]
-            rmStr = ''.join(a[:2])
-            monIface = a.replace(")", "").replace(rmStr, "") # ooga booga i hate regex so im gonna use the .strip() and .split() and .replace() !!!!!!!!!
-
-            b = getoutput("sudo /usr/sbin/ip link set dev {} up".format(iface))
-
-            return {
-                "interface": monIface,
-                "monitorMode": False
-            }
-        
-        else:
-            return {
-                "interface": monIface, # not changed
-                "monitorMode": False
-            }
+    def stopMonitorMode():
+        getoutput("systemctl restart NetworkManager")
             
     def checkIfMonitorMode(iface):
-        out = getoutput("iwconfig {}".format(iface)).split("\n")[1].strip().split(" ")[0] # "Mode:Managed"
-
-        _, mode = out.split(":", 1)
-
-        print("[WIFI] {}'s mode: {}".format(iface, mode))
-
-        return True if mode == "Monitor" else False
+        return (False, None)
         
 
 class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
@@ -210,13 +111,16 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
         disp.screenShow(disp, image)
 
         print("[PWNAGOTCHI] whitelist: {}".format(', '.join(whitelist)))
-        ifaceStatus = airmon.startMonitorMode(config["wifi"]["interface"])
+        airmon.startMonitorMode()
 
-        interface = None
+
+        interface = 'wlan0'
+        """
         if ifaceStatus["monitorMode"]:
             interface = ifaceStatus["interface"]
         else:
             return
+        """
 
         print("[PWNAGOTCHI] interface: {}".format(interface))
 
@@ -243,7 +147,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
         cli.clearWifi()
 
         def checkIfExit():
-            if screen.exited: cli.run("exit"); airmon.stopMonitorMode(interface); return
+            if screen.exited: cli.run("exit"); airmon.stopMonitorMode(); return
 
         while True:
             checkIfExit()
@@ -274,7 +178,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
                 if debug: print("checking ap")
 
                 if screen.exited:
-                    if debug: print("returned"); cli.stop(); airmon.stopMonitorMode(interface); return
+                    if debug: print("returned"); cli.stop(); airmon.stopMonitorMode(); return
 
                 if ap.lower() in whitelist:
                     if debug: print("whitelist")
@@ -390,109 +294,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
                 sleep(nextDelay)
 
 class PWN_Essensials(BasePwnhyvePlugin):
-    def setInterfaces(tpil):
-
-        ifaces = nf.interfaces()
-
-        a = tpil.gui.menu(ifaces)
-
-        if a in nf.interfaces():
-
-            config["wifi"]["interface"] = a
-
-            with open("./config.toml", "w") as f:
-                f.write(toml.dumps(config))
-                f.flush()
-        else:
-            tpil.text([4,4], "interface disconnected", font=ImageFont.truetype('core/fonts/tahoma.ttf', 11))
-            tpil.text([4,16], "reconnect it or try again", font=ImageFont.truetype('core/fonts/tahoma.ttf', 8))
-            tpil.show()
-            tpil.waitForKey()
-            while tpil.checkIfKey(): pass
-
-    def beaconSpam(tpil):
-
-        framesSent = 0
-
-        def genFrame(ssid):
-            dot11Frame = Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=RandMAC(), addr3=RandMAC())
-            beac = Dot11Beacon(cap="ESS+privacy")
-            elt = Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
-            return RadioTap()/dot11Frame/beac/elt
-
-        ssids = config["wifi"]["apSpam"]
-
-        handler = tpil.screenConsole(tpil) # init handler
-        #handler.setPercentage(0)
-
-        try:
-            ssidFrames = []
-            threads1 = []
-
-            normalIfaec = config["wifi"]["interface"]
-            iface = airmon.startMonitorMode(normalIfaec)["interface"]
-
-            handler.text = "iface: {}".format(iface)
-
-            for ssid in ssids:
-                try:
-                    if [x for x in ssid][0] == "#": continue
-                except:
-                    continue # empty line
-
-                multiple=False
-
-                # create frames for all ssids
-                #mac = RandMAC()
-
-                if "?$?" in ssid:
-                    try:
-                        multiple = int(ssid.split("?$?")[-1])
-                    except:
-                        raise
-
-                if multiple == False:
-                    a = ':'.join('%02x'%randint(0,255) for x in range(6))
-                    print("{} | {} | one AP".format(ssid, a))
-                    ssidFrames.append(genFrame(ssid))
-                    #threads1.append(Thread(target=probeBeaconThread, args=(ssid,), daemon=True))
-                else:
-                    for x in range(multiple):
-                        ssid = ssid.replace("?$?{}".format(multiple), "")
-                        a = ':'.join('%02x'%randint(0,255) for x in range(6))
-                        print("{} | {} | multiplied".format(ssid, a))
-                        ssidFrames.append(genFrame(ssid+str(x)))
-                        #threads1.append(Thread(target=probeBeaconThread, args=(ssid+str(x),), daemon=True))
-
-            while tpil.checkIfKey(): sleep(0.1)
-
-            while True:
-                if tpil.checkIfKey(): break
-
-                sendp(ssidFrames, iface=iface, verbose=1, count=1)
-                framesSent += 1
-                
-                handler.text = "frames: {}\niface: {}\nhold any key to stop".format(framesSent,iface)
-
-        except Exception as e:
-            handler.text = str(e)
-
-
-        vars.beaconExit = True
-        handler.text = "shutting threads.."
-
-        for x in threads1:
-            x.join()
-
-        handler.exit()
-        
-        airmon.stopMonitorMode(iface)
-
-        sleep(0.5)
-
-    def rssiReader(tpil):
-
-        flipped =False
+    def AP_Scanner(tpil):
 
         class abVars:
             stri = []
@@ -507,16 +309,15 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         #handler.update()
 
-        iface = airmon.startMonitorMode(config["wifi"]["interface"])["interface"]
-
-        sleep(1) # wait for iface to go up
+        airmon.startMonitorMode()
 
         font = ImageFont.truetype('core/fonts/roboto.ttf', 10)
 
         try:
-            cli = bcap.Client(iface=iface)
+            cli = bcap.Client(iface="wlan0")
             if not cli.successful: raise Exception("b") # why the fuck did i do this
         except Exception as e:
+            tpil.clear()
             tpil.text([2,2], "failed to init bettercap:\n{}\n\nwaiting on your key...".format(str(e)))
             tpil.show()
             tpil.waitForKey()
@@ -524,8 +325,6 @@ class PWN_Essensials(BasePwnhyvePlugin):
 
         cli.recon()
         cli.clearWifi()
-
-        gpioPins={'KEY_UP_PIN': 6,'KEY_DOWN_PIN': 19,'KEY_LEFT_PIN': 5,'KEY_RIGHT_PIN': 26,'KEY_PRESS_PIN': 13,'KEY1_PIN': 21,'KEY2_PIN': 20,'KEY3_PIN': 16,}
 
         loading = "."
 
@@ -564,7 +363,6 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 tpil.show()
 
                 sleep(1)
-
         
 
             tpil.rect([(0, 0), (200, 14)], fill=0, outline=255)
@@ -598,26 +396,26 @@ class PWN_Essensials(BasePwnhyvePlugin):
             tpil.show()
 
             while True:
-                key = tpil.getKey()
-                if key == gpioPins["KEY_RIGHT_PIN"]:
+                key = tpil.waitForKey()
+                if key == "right":
                     if ch != len(abVars.stri) - 1:
                         ch += 1
                     break
-                elif key == gpioPins["KEY_LEFT_PIN"]:
+                elif key == 'left':
                     if ch != 0:
                         ch -= 1
                     break
-                elif key == gpioPins["KEY_UP_PIN"]:
+                elif key == 'up':
                     if cz != 0:
                         cz -= 1
                     break
-                elif key == gpioPins["KEY_DOWN_PIN"]:
+                elif key == 'down':
                     if cz != len(compiledJson) - 1:
                         cz += 1
                     break
 
-                elif key == gpioPins["KEY3_PIN"]:
+                elif key == '3':
                     #print(cli.run("exit"))
                     cli.stop()
-                    airmon.stopMonitorMode(normIface)
+                    airmon.stopMonitorMode()
                     return

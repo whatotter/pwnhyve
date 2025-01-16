@@ -7,3 +7,7 @@ scapy
 smbus
 spidev
 toml
+cc1101
+websockets
+RPi.GPIO
+lgpio

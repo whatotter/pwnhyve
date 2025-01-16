@@ -1,44 +1,36 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-absolute shitshow of code
-gpio code snippets are from waveshare docs
-rest are mine
+TODO: clean this
 """
+
 import os
+
+# CD to script path
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+
+import sys
 import time
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 from core.utils import config
 from core.plugin import *
 from core.pil_simplify import tinyPillow
 
-class customizable:
-    disableKeys = False # disable keys from socket
-
-class vars:
-    xCoord = 5
-    yCoord = 5
-    currentSelection = 0 
-    flipped = False
-    icons = {}
-
-    font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
-    flipperFontN = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono.ttf', 16)
-    flipperFontB = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono-Bold.ttf', 16)
-    flipperSelection = Image.open('./core/fonts/selection.bmp')
-    microFont = ImageFont.truetype('core/fonts/pixelop/PixelOperatorMono8.ttf', 5)
-
-
 
 if __name__ == "__main__":
+    
+    #region run usb gadget
+    print("[USB] initializing usb gadget...")
+    os.system("/bin/SteinarUSB")
+    #endregion
 
-    customizable.screenType = config["menu"]["screenType"]
-
-    # setup display driver
+    #region setup display driver
+    screenType = config["menu"]["screenType"]
+    
     menus = pwnhyveMenuLoader()
-
-    selectedMenu = menus.modules[customizable.screenType]["module"]
-
+    selectedMenu = menus.modules[screenType]["module"]
     driverLoader = pwnhyveScreenLoader(config["display"]["driver"])
 
     if driverLoader.driver == None:
@@ -54,9 +46,9 @@ if __name__ == "__main__":
     tinypil = tinyPillow(draw, disp, image)
 
     print("initalized.\n")
-    # end of display setup
+    #endregion end of display setup
 
-    # load plugins
+    #region load plugins
     print('[PLUGINS] initializing plugins and menus...', end="")
     plugPath = config["plugins"]["pluginsPath"]
 
@@ -66,40 +58,54 @@ if __name__ == "__main__":
     currentDirectory = ""
 
     print("initalized.")
-    # end of plugin load
+    #endregion end of plugin load
 
     print("[MENU] READY. HACK THE PLANET!")
 
-    pnd = plugins.moduleList
+    pluginsAndDirectories = plugins.moduleList
+    previousModuleLoaded = None
     while 1:
 
         selection = 0
         disp.fullClear(draw)
 
         # button stuff
-        #pnd = plugins.moduleList + [x for x in os.listdir("./plugins") if os.path.isdir("./plugins/"+x)]
         fontSize = round(disp.height / 8)
         while True:
-            key = disp.gui.menu(pnd, disableBack=currentDirectory=="", icons=plugins.icons)
+            key = disp.gui.menu(
+                pluginsAndDirectories, 
+                disableBack=currentDirectory=="", 
+                icons=plugins.icons
+                )
 
-            if key == None:
-                # go back one folder in the directory path
-
+            if key == None: # user entered back, so go back 1 directory
                 a = currentDirectory.split("/")
                 currentDirectory = '/'.join(a[:len(a)-1])
                 
-                #if currentDirectory == "": # backed all the way
+                if currentDirectory == "": # at main menu
+                    for module, modulePtr in plugins.loadedPluginModules.copy().items(): # unload modules to save memory
+                        del sys.modules[module]
+                        del plugins.loadedPluginModules[module]
+                        del modulePtr
+
+                        try:
+                            modulePtr.__dir__()
+                        except Exception as e:
+                            print("[UNLOADER] unloaded plugin \"{}\": {}".format(module, e))
+
+
                 dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
 
 
                 plugins = pwnhyvePluginLoader(folder=dire)
-                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
+                pluginsAndDirectories = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
 
                 #print("LDIR: {}".format(currentDirectory))
                 continue
             
-            pt = (plugPath+currentDirectory).replace("//", "/")
-            if key in ['/'+x for x in os.listdir(pt) if os.path.isdir(os.path.join(pt,x))]:
+            # user selected a directory, so open the directory and load any plugins in it
+            pluginPath = (plugPath+currentDirectory).replace("//", "/")
+            if key in ['/'+pluginPathFolders for pluginPathFolders in os.listdir(pluginPath) if os.path.isdir(os.path.join(pluginPath, pluginPathFolders))]:
 
                 # example directory structure
 
@@ -120,12 +126,13 @@ if __name__ == "__main__":
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
                 
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
-                pnd = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire+"/"+x) and not x.startswith("_") and ".py" not in x]
+                pluginsAndDirectories = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire+"/"+x) and not x.startswith("_") and ".py" not in x]
 
                 print('[MENU] finished loading')
 
                 break
-            else: # raw plugin
+            
+            else: # user selected a plugin module, so run the plugin module
                 print("[MENU] running plugin \"{}\"".format(currentDirectory+"/"+key))
                 print("[MENU] DISCLAIMER: unless this is an official pwnhyve plugin, any errors that come up after this message are NOT ASSOCIATED WITH PWNHYVE. CONTACT THE PLUGIN'S DEVELOPER TO FIX IT.")
                 

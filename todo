@@ -1,0 +1,26 @@
+in chrono. order
+
+- add wifi tools like
+    - ~EAPHammer~ done
+    - AP wardriving, using a phone for GPS
+
+
+- implement ble right
+    - BLE hacking
+        - ~RSSI sniffing (e.g. look for a lost device by RSSI)~
+        - Bluejacking
+        - [Bluesnarfing](https://github.com/kimbo/bluesnarfer)
+        - Sour Apple
+
+- uhh idk
+
+- implement network functions correctly, then implement these tools:
+    - https://github.com/vanhoefm/macstealer
+    - MITM6 (https://github.com/dirkjanm/mitm6)
+    - remote cracking with implementation of PSKracker (https://github.com/andrewjlamarche/PSKracker)
+
+
+- implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
+- ~CC1101~ FM transmission
+- opensesame
+- make keystroke reflection DDR instead of SDR

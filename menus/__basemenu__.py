@@ -4,6 +4,7 @@ import threading
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from time import sleep
 from core.pil_simplify import tinyPillow
+from textwrap import wrap
 
 # this is accessed as .gui
 class BasePwnhyveScreen():
@@ -15,6 +16,48 @@ class BasePwnhyveScreen():
 
         return None
     
+    class carouselMenu:
+        def __init__(self, tpil:tinyPillow) -> None:
+            self.tpil = tpil
+            self.height = tpil.disp.height
+            self.width = tpil.disp.width
+            self.YCoord = self.height - round(self.height/6)
+            self.fontSize = self.tpil.disp.recommendedFontSize
+            self.font = ImageFont.truetype('core/fonts/monospace.ttf', self.fontSize)
+            pass
+
+        def draw(self, text, caption, wrapText=False):
+            charWidth = round(self.width/4)
+
+            self.tpil.clear()
+
+            self.tpil.text((0,0),
+                        '\n'.join(
+                            wrap(text, width=charWidth)
+                            ) if wrapText else text, 
+                        font=self.font)
+
+            y = self.YCoord
+            self.tpil.rect((0, self.YCoord), (self.width, self.YCoord), color='WHITE') # draw line
+            self.tpil.rect((0, self.YCoord+1), (self.width, self.height), color='BLACK') # draw footer
+
+            y += 1
+
+            self.tpil.loadImage("./core/icons/buttons/left.bmp", [2,y+2],
+                                inverted=self.tpil.disp.invertedColor)
+            
+            self.tpil.loadImage("./core/icons/buttons/right.bmp", [self.width-10, y+2],
+                                inverted=self.tpil.disp.invertedColor)
+            
+            self.tpil.text(
+                (
+                    round(self.width/2),
+                    y
+                ), caption, anchor="ma", fontSize=self.tpil.disp.recommendedFontSize
+            )
+
+            self.tpil.show()
+        
     class keyLegend:
         def __init__(self, tpil:tinyPillow, legend:dict) -> None:
             """
@@ -152,7 +195,7 @@ class BasePwnhyveScreen():
 
                 key = self.disp.waitForKey(debounce=True)
 
-                if key == 'u':
+                if key == 'up':
                     if isWhole:
                         if int(self.whole[selector]) >= 9:
                             continue
@@ -167,7 +210,7 @@ class BasePwnhyveScreen():
                     if self.ttF() >= self.max:
                         self.whole = [x for x in str(self.max).split(".")[0]]
 
-                elif key == 'd':
+                elif key == 'down':
                     if isWhole:
                         if 0 >= int(self.whole[selector]):
                             continue
@@ -182,35 +225,41 @@ class BasePwnhyveScreen():
                     if self.min >= self.ttF():
                         self.whole = [x for x in str(self.min).split(".")[0]]
 
-                elif key == 'r':
+                elif key == 'right':
                     sl += 1
                     if sl > len(self.whole) + len(self.deci):
                         sl = len(self.whole) + len(self.deci)
                 
-                elif key == 'l':
+                elif key == 'left':
                     sl -= 1
                     if 0 >= sl:
                         sl = 0
 
-                elif key == 'p':
+                elif key == 'press':
                     return self.ttF()
     
     class slider:
         def __init__(self, tpil, caption:str,
-                      min_:int=0, start:int=50, max_:int=100, _step=1) -> None:
+                      minimum:int=0, start:int=-1, maximum:int=100,
+                      step=1, ndigits=1, bigstep=10) -> None:
             draw,disp,image = tpil.__getDDI__()
 
+            if start == -1:
+                start = round(maximum/2)
+
             self.caption = caption
-            self.min = min_
-            self.max = max_
+            self.min = minimum
+            self.max = maximum
             self.value = start
-            self._step = _step
+            self._step = step
 
-            assert start >= min_ and max_ >= start
+            assert start >= minimum and maximum >= start
 
-            self.draw = draw
+            self._draw = draw
             self.disp = disp
             self.image = image
+            self.ndigits = ndigits
+            self.bigstep = bigstep
 
             self._bigFont = ImageFont.truetype('core/fonts/roboto.ttf', 12)
             self.captFont = ImageFont.truetype('core/fonts/monospace.ttf', 12)
@@ -218,46 +267,51 @@ class BasePwnhyveScreen():
             self.alive = True
             pass
 
-        def start(self):
+        def draw(self):
 
             while True:
-                self.disp.fullClear(self.draw)
+                self.value = round(self.value, self.ndigits)
+                self.disp.fullClear(self._draw)
 
-                pointerX, pointerY = 12+self.value, 20
-                self.draw.rectangle([(12, 23), (116, 24)])
-                self.draw.rectangle([(pointerX, pointerY), (pointerX+4, pointerY+8)], fill='WHITE')
+                # slider
+                self._draw.rectangle([(0, 23), (128, 24)])
 
-                self.draw.text([64, 16], str(self.value), font=self._bigFont, anchor="ms") #value
+                # slider thumb
+                pointerY = 20
+                pointerX = self.value * (self.disp.width/self.max)
+                self._draw.rectangle([(pointerX, pointerY), (pointerX+4, pointerY+8)])
+
+                self._draw.text([64, 16], str(self.value), font=self._bigFont, anchor="ms") #value
 
                 if self.caption != None:
-                    self.draw.text([64, 40], self.caption, font=self._bigFont, anchor="ms") # caption
+                    self._draw.text([64, 42], self.caption, font=self._bigFont, anchor="ms") # caption
 
                 self.disp.screenShow()
 
                 # end of drawing, wait for key
 
                 key = self.disp.waitForKey(debounce=True)
-                if key == 'r':
+                if key == 'right':
                     self.value += self._step
                     if self.value > self.max:
                         self.value = self.max
 
-                elif key == 'l':
+                elif key == 'left':
                     self.value -= self._step
                     if self.min > self.value:
                         self.value = self.min
                 
-                elif key == 'u':
-                    self.value += self._step * 10
+                elif key == 'up':
+                    self.value += self.bigstep
                     if self.value > self.max:
                         self.value = self.max
 
-                elif key == 'd':
-                    self.value -= self._step * 10
+                elif key == 'down':
+                    self.value -= self.bigstep
                     if self.min > self.value:
                         self.value = self.min
 
-                elif key == 'p':
+                elif key == 'press':
                     return self.value
 
     class usbRunPercentage:
@@ -287,7 +341,6 @@ class BasePwnhyveScreen():
             percentageX, percentageY = 94,24
             while 1:
                 #print(self.text) # dee bug
-                if open("./core/temp/threadQuit", "r").read().strip() == "1": self.close = True; open("./core/temp/threadQuit", "w").write("0")
                 if self.close: return # request to close
 
 
@@ -409,15 +462,16 @@ class BasePwnhyveScreen():
 
             draw,disp,image = tpil.__getDDI__()
 
+            self.tpil = tpil
             self.text = ""
             self.close = False
             self.draw = draw
             self.disp = disp
             self.autoUpdate = autoUpdate
             self.image = image
-            self.updateBool = False
+            self.updateBool = True
 
-            self.cFont = ImageFont.truetype('core/fonts/monospace.ttf', round(self.disp.height / 8))
+            self.cFont = ImageFont.truetype('core/fonts/monospace.ttf', round(self.disp.height / 4))
             self.flipped = flipped
 
             self.stopWriting = False
@@ -425,14 +479,35 @@ class BasePwnhyveScreen():
             self.oldText = ""
             self.started = False
 
-            threading.Thread(target=self.start, daemon=True).start()
+            #threading.Thread(target=self.start, daemon=True).start()
+
+        def checkWrap(self, string):
+            letters = 0
+            strings = []
+            currentString = ""
+            for letter in string:
+                if 128 > self.cFont.getlength(currentString + letter) and letter != "\n":
+                    currentString += letter
+                else:
+                    strings.append(currentString.strip())
+                    currentString = letter
+
+            strings.append(currentString)
+
+            return '\n'.join(strings)
+
 
         def update(self):
-            self.updateBool = True
+            self.tpil.clear()
+            
+            self.tpil.text((0, 1),
+                            self.checkWrap(self.text), 
+                            font=self.cFont, spacing=1) # console
+            
+            self.tpil.show()
 
         def forceUpdate(self):
-            self.updateBool = True
-            sleep(0.1)
+            self.update()
 
         def start(self, divisor:int=32, maxRows=6):
             textOld = None
@@ -443,12 +518,6 @@ class BasePwnhyveScreen():
             self.started = True
 
             while 1:
-                if open("./core/temp/threadQuit", "r").read().strip() == "1": self.close = True; open("./core/temp/threadQuit", "w").write("0")
-
-                if self.autoUpdate == False:
-                    while self.updateBool != True:
-                        pass
-                    self.updateBool = False
                 #print(self.text) # dee bug
                 if self.close:
                     self.disp.fullClear(self.draw)
@@ -457,81 +526,15 @@ class BasePwnhyveScreen():
                 
                 if self.stopWriting: sleep(0.5); continue
 
-
-                # to prevent drawing more lines than display res, remove first line of console if the len of a newline split list is equal to 5
-                if len(self.text.split("\n")) > maxRows: # the maxRows here is max lines
-                    textList = self.text.split("\n") # split into list
-                    while len(textList)-1 > maxRows: # the 12 here is max rows
-                        textList.pop(0) # pop first index
-
-                    self.text = '\n'.join(textList) # join it back together with newlines
-
-                tempText.clear()
-                for line in self.text.split("\n"): # make sure text doesnt go over divider
-                    if len(line) > divisor: # will go over divider
-                        #lineList = [str(x) for x in line] # turn into list
-                        lineWordList = line.split(" ")
-                        lines = []
-                        tempLine = ""
-
-                        #while len(lineList) != divisor: # while len isnt divisor
-                            #lineList.pop(len(lineList) - 1) # remove last char
-
-                        while len(lineWordList) != 0: # while our words that are in a list isnt empty
-                            #print(lineWordList) # debug
-                            for x in lineWordList.copy(): # copy to prevent errors
-                                if len(tempLine) + len(x) > divisor: # if the len of the things are over divisor, start removing
-                                    if len(x) > divisor: # if the entire word is over divisor
-                                        #print("word over divisor")
-                                        xLst = [str(y) for y in x] # turn it into a list
-                                        while len(xLst) != divisor - 2: # while its not divisor
-                                            xLst.pop() # pop last
-                                        xLst.append("..") # to show it's been cut
-                                        x2 = ''.join(xLst) # turn it back into str
-
-                                        lines.append(x2) # append cut word into lines
-                                        lineWordList.remove(x) # remove full word
-                                        tempLine = "" # clear temp line
-                                        break # break off
-
-                                    lines.append(tempLine)
-                                    tempLine = ""
-                                    break
-
-                                tempLine += x + " " # just add our words n stuff
-
-                                lineWordList.remove(x) # prevent going over already processed word
-
-                        # just for multiline pretty
-                        """
-                        lines[0] = "/" + lines[0]
-                        for x in range(1, len(lines) - 1):
-                            lines[x] = '|'+lines[x]
-                        lines[-1] = '\\'+lines[-1]
-                        """
-
-                        #lineList.append("..") # add elipses to show it's been cut
-                        #line = ''.join(lineList) # re-merge list
-
-                        line = '\n'.join(lines) # re-merge list
-
-                    tempText.append(line) # append to list to join later
-                
-                self.text = '\n'.join(tempText) # join lines from list
-
-                """
-                if self.percentage == percentageOld:
-                    if textOld == self.text:
-                        continue # if nothing has changed, continue to prevent drawing too much # this does not work
-                
-                textOld = self.text # set old vars
-                percentageOld = self.percentage          
-                """
-
-                if self.text != self.oldText:
-                    self.disp.fullClear(self.draw)
-                    self.draw.text((2, 1), self.text, fill='WHITE', font=self.cFont, spacing=1) # console
-                    self.disp.screenShow(flipped=self.flipped, stream=True)
+                if self.text != self.oldText or self.updateBool:
+                    self.tpil.clear()
+                    
+                    self.tpil.text((2, 1),
+                                   '\n'.join(wrap(self.text, replace_whitespace=False, drop_whitespace=False, width=round(self.disp.width/4))), 
+                                   font=self.cFont, spacing=1) # console
+                    
+                    self.tpil.show()
+                    self.updateBool = False
                 
                 self.oldText = self.text
 
@@ -547,9 +550,11 @@ class BasePwnhyveScreen():
 
         def addText(self, stri:str):
             self.text += stri+"\n"
+            self.update()
 
         def clearText(self):
             self.text = ""
+            self.update()
 
     def getItems(self, plugins, currentSelection, rows=5):
 
@@ -557,8 +562,8 @@ class BasePwnhyveScreen():
 
         return listToPrint
     
-    def enterText(self, kbRows=["qwertyuiopasdfghjklzxcvbnm", "qwertyuiopasdfghjklzxcvbnm".upper(), "1234567890", "!@#$%^&*()_-+={}\\;',./"],
-                   flipped=False, secret=False, prefix=None, suffix=None):
+    def enterText(self, tpil, kbRows=[["1234567890-=~", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./", " "], ["!@#$%^&*()_+~", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?", " "]],
+                   secret=False, prefix=None, suffix=None):
         """
         super wip
 
@@ -577,60 +582,91 @@ class BasePwnhyveScreen():
         chosenKey = "q"
         compiledStri = ""
 
-        rowIndex = 0
         characterIndex = 0
+        keyRowIndex = 0
+        keyRowBlobIndex = 0
+
+        spaceBar = "[____________]"
 
         font = ImageFont.truetype('core/fonts/monospace.ttf', 16)
+        tinyFont = ImageFont.truetype('core/fonts/monospace.ttf', 11)
+        modifier = False
 
+        slice1 = 0
+        slice2 = len(prefix + suffix)
         while True:
 
-            striShown = prefix + compiledStri + suffix
+            preStri = (prefix + compiledStri + suffix)
+            striShown = preStri[slice1:slice2]
 
-            if len(striShown) > 16:
-                v = [str(x) for x in striShown]
-                while len(v) != 16:
-                    v.pop() 
+            if font.getlength(striShown) >= 120 and not modifier:
+                while font.getlength(striShown) >= 120:
+                    slice1 += 1
+                    striShown = preStri[slice1:slice2]
 
-            self.disp.fullClear(self.draw) # clear
+            tpil.clear() # clear
 
-            self.draw.rectangle([(0, 14), (128, 16)], fill='WHITE', outline=255) # draw the line spliting the text and the keyboard
+            tpil.rect((0, 12), (128, 12)) # draw the line spliting the text and the keyboard
+
+            if modifier:
+                tpil.text((110,56), "ALT", font=tinyFont)
 
             if not secret:
-                self.draw.text((2,2), compiledStri, fill='WHITE', outline=255, font=font)
+                tpil.text((2,0), striShown, font=font)
             else:
-                self.draw.text((2,2), ''.join(["*" for _ in compiledStri]), fill='WHITE', outline=255, font=font)
+                tpil.text((2,0), ''.join(["*" for _ in striShown]), font=font)
+
+            textLength = font.getlength(striShown)+2
+            tpil.rect((textLength, 2), (textLength, 10))
 
 
             ### draws the kb
                 
             maxPixelX = 116
-            textX, textY = 8, 20 # starting coordinate of the first letter
+            textX, textY = 4, 14 # starting coordinate of the first letter
+            textXOffset = 4
+            kbRow = kbRows[keyRowBlobIndex]
 
-            for x in kbRows[rowIndex]: # for every character in our row..
-                if textX >= maxPixelX: # if we already maxed out the display length...
-                    # start a new line
-                    maxPixelX -= 4 # reduce our max pixel X since we're doing halfgrid
-                    textX = 8 + 4 # \r
-                    textY += 12 # \n
+            for keyRow in kbRow: # iterate over key rows (imagine the 3 key rows on your usual keyboard)
+                div = round(maxPixelX / len(keyRow))
+                for char in keyRow: # for every character in our row..
+                    if char == "~": char = "<="
+                    if char == " ": char = spaceBar
 
-                if x != chosenKey: # if this character we're writing isn't chosen..
-                    self.draw.text((textX, textY), x, fill='WHITE', outline=255, font=font) # write it normally
+                    if char != chosenKey: # if this character we're writing isn't chosen..
+                        tpil.text((textX, textY), char, font=font) # write it normally
 
-                else: # if it is chosen...
-                    self.draw.rectangle([(textX-2, textY-1), (textX+8, textY+12)], fill='BLACK', outline=255) # write it with inverted colors..
-                    self.draw.text((textX, textY), x, fill='WHITE', outline=255, font=font) # .. and with a box around it 
+                    else: # if it is chosen...
+                        tpil.rect(
+                            (textX-2, textY), 
+                            (textX + font.getlength(char), textY+10), 
+                            color='WHITE'
+                            ) # draw box
+                        
+                        tpil.text((textX, textY), char, font=font, color="BLACK") # draw text after box 
 
-                textX += 10 # move right for our next character
+                    textX += div # move right for our next character
+
+                nextKeyRowIndex = kbRow.index(keyRow) + 1
+                try:
+                    nextKeyRowLength = len(kbRow[nextKeyRowIndex])
+                except:
+                    nextKeyRowIndex = 0
+
+                if len(keyRow) != nextKeyRowLength: # next row is gonna be a different size
+                    textX = 4 + textXOffset # do magic
+
+                maxPixelX -= textXOffset
+                textXOffset += 4
+                textY += 10
+
 
             # show compiled image
-            self.disp.screenShow(self.disp, self.image, flipped=flipped, stream=True)
+            tpil.show()
 
+            key = tpil.waitForKey(debounce=True)
 
-            ##
-
-            key = self.disp.waitForKey(debounce=True)
-
-            if key == 'd': # moving on the x and y plane
+            if key == 'down': # moving on the x and y plane
 
                 """
                 stringsI += 1 if stringsI != len(kbRows)-1 else 0
@@ -640,19 +676,14 @@ class BasePwnhyveScreen():
                     keyI = len(chars)
                 """
 
-                if rowIndex != len(kbRows):
-                    rowIndex += 1
+                keyRowIndex += 1
+                #characterIndex -= 1
+                if keyRowIndex > len(kbRow)-1 : keyRowIndex = len(kbRow)-1
 
-                if characterIndex > len(kbRows[rowIndex]):
-                    characterIndex = len(kbRows[rowIndex])
+            elif key == 'up':
 
-            elif key == 'u':
-
-                if rowIndex != 0:
-                    rowIndex -= 1
-
-                if characterIndex > len(kbRows[rowIndex]):
-                    characterIndex = len(kbRows[rowIndex])
+                keyRowIndex -= 1
+                if 0 > keyRowIndex: keyRowIndex = 0
 
                 """
                 stringsI -= 1 if stringsI != 0 else 0
@@ -662,31 +693,57 @@ class BasePwnhyveScreen():
                     keyI = len(chars)
                 """
 
-            elif key == 'r': # moving on the y plane
-                characterIndex += 1 if characterIndex != len(kbRows[rowIndex]) -1  else 0
+            elif key == 'right': # moving on the y plane
+                if modifier:
+                    slice1 += 1 if slice1 != len(preStri) else 0
+                else:
+                    characterIndex += 1 if characterIndex != len(kbRow[keyRowIndex]) -1 else 0
 
-            elif key == 'l': # moving on the y plane
-                characterIndex -= 1 if characterIndex != 0 else 0
+            elif key == 'left': # moving on the y plane
+                if modifier:
+                    ignoreOver = True
+                    slice1 -= 1 if slice1 != 0 else 0
+                    slice2 += 1 if slice1 != 0 else 0
+                else:
+                    characterIndex -= 1 if characterIndex != 0 else 0
 
-            elif key == 'p':
-                compiledStri += chosenKey
+            elif key == 'press':
+                if chosenKey == "<=":
+                    compiledStri = compiledStri[:-1]
+                elif chosenKey[0] == "[" and chosenKey[-1] == "]":
+                    compiledStri += " "
+                else:
+                    compiledStri += chosenKey
+
+                modifier = False
+                slice2 += 1
 
             elif key == '3':
                 return prefix + compiledStri + suffix
             elif key == '2':
-                compiledStri += " " #space
+                if keyRowBlobIndex >= len(kbRows)-1:
+                    keyRowBlobIndex = 0
+                else:
+                    keyRowBlobIndex += 1
             elif key == '1':
-                compiledStri = compiledStri[:-1]
+                modifier = not modifier
 
             # calculate our chosen key
                 
             try:
-                chosenKey = kbRows[rowIndex][characterIndex]
-            except IndexError:
-                characterIndex = 0
-                chosenKey = kbRows[rowIndex][characterIndex]
+                chosenKey = kbRow[keyRowIndex][characterIndex]
 
-    def menu(self, choices, disableBack=False):
+            except IndexError:
+                characterIndex = len(kbRow[keyRowIndex])-1 # we went over
+                chosenKey = kbRow[keyRowIndex][characterIndex]
+
+            if chosenKey == "~": chosenKey = "<="
+            if chosenKey == " ": chosenKey = spaceBar
+
+    def menu(self, choices, disableBack=False, 
+             highlight=[], # won't be used here
+             index=None, # won't be used here either
+             ):
         currentSelection = 0
 
         if len(choices) == 0:

@@ -18,8 +18,21 @@ class flipperConv():
 
         self.p = jsonified
         return jsonified
+    
+    def hexDataToBits(self, uslp=1):
+        bits = []
+        for heex in self["HEX_Data"].split(' '):
+            # Convert the hex string to an integer
+            print(heex)
+            hex_num = int(heex, 16)
+            # Convert the integer to a binary string, remove the '0b' prefix, and pad to 4 bits
+            binary_str = bin(hex_num)[2:].zfill(4)
+            # Extend the bits list with the individual bits
+            bits.extend(int(bit) for bit in binary_str)
+        print(bits)
+        return bits
 
-    def rawDataToBits(self, uslp=1):
+    def rawDataToBits(self, nsBitRate=1000):
         """
         https://forum.flipper.net/t/protocol-documentation/4794/3
 
@@ -29,11 +42,17 @@ class flipperConv():
         ```
         """
 
+        """
         if self.p.get("BIT_Data", False):
             print("[FS>BIT] got bit_data from file, returned that")
-            return [x for x in self.p["BIT_Data"]]
+            return [int(x) for x in self.p["BIT_Data"]]
+        """
 
-        assert uslp % 2 == 0 or uslp == 1 # make sure uslp is even
+        """
+        1 microsecond = 1000 nanoseconds
+
+        bits = bit * ((pulse * 1000) / nsBitRate)
+        """
 
         pulses = [int(x) for x in self.p["RAW_Data"].split(" ")]
         print(pulses)
@@ -51,9 +70,14 @@ class flipperConv():
 
             #print("{}: {}".format(pulse, bit * round(pulse/uslp)))
 
-            data += bit * round((pulse/uslp)/10)
+            #data += bit * round((pulse/uslp)/10)
+            bits = bit * round((pulse * 1000) / nsBitRate)
+            data += bits
             
         return data
+    
+    def bits(self):
+        return [int(x) for x in self.p["BIT_Data"].split(" ")]
     
     def __getitem__(self, key):
         return self.p[key]

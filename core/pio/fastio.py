@@ -7,9 +7,27 @@ def hz2NS(hz):
     
     return (1 / hz) * 1e9
 
-def bitToByte(bits):
-    byte_value = int(bits, 2)  # Convert to integer
-    return bytes([byte_value])  # Convert to byte object
+def bitToByte(bits:list):
+
+    if type(bits) == str:
+        bits = [int(x) for x in bits]
+
+    # Ensure bits are in groups of 8
+    if len(bits) % 8 != 0:
+        print("The number of bits must be a multiple of 8. They are: {}. Simply adding padding for now..".format(len(bits)))
+
+        while len(bits) % 8 != 0:
+            bits.append(0)
+
+    bytes_list = []
+    
+    # Iterate through the bits in chunks of 8
+    for i in range(0, len(bits), 8):
+        byte = bits[i:i+8]  # Get the next 8 bits
+        byte_value = sum(b << (7 - j) for j, b in enumerate(byte))  # Convert to byte value
+        bytes_list.append(byte_value)
+    
+    return b''.join([x.to_bytes(1) for x in bytes_list])
 
 class FastIO:
     """
@@ -43,7 +61,7 @@ class FastIO:
     def __init__(self) -> None:
         self.delayNS = 0
 
-        self._executable_ = "./pio"
+        self._executable_ = "./core/pio/pio"
         self._process_ = None
         self.defaultArgs = {
             "samples": "-1",
@@ -53,26 +71,49 @@ class FastIO:
             "sleep": "1000" # 1us, 1mhz
         }
         self.args = self.defaultArgs
+        self.nice = -19
 
         pass
+
+    def hz2NS(self, hz):
+        if hz <= 0:
+            raise ValueError("frequency must be greater than 0hz")
+        
+        return (1 / hz) * 1e9
 
     def flipperSend(self, pin, RAW_Data) -> None:
         """
         transmit bits to a pin, the flipper way
         """
 
-        with open("fastio.bin", "w") as f:
+        with open("flip.bin", "w") as f:
             f.write(RAW_Data)
             f.flush()
 
-        self.args["mode"] = "flp"
+        self.args["mode"] = "txflp"
+        self.args['file'] = 'flip.bin'
         self.args["pin"] = pin
 
         self.__launchProcess__()
 
         self._process_.wait()
 
-        os.remove("fastio.bin")
+        #os.remove("flip.bin")
+
+    def calcBinFile(self, bits, filename = "fastio_tx.bin"):
+        """
+        turns bits into a bin file for later use
+        """
+
+        with open(filename, "wb") as f:
+            f.write(
+                bitToByte(
+                    ''.join([str(x) for x in bits])
+                )
+            )
+            f.flush()
+
+        return filename
 
     def send(self, pin, bits, ns=1000):
         """
@@ -83,10 +124,12 @@ class FastIO:
         if `bits` is a string, open that as a path
         """
 
+        self.args = self.defaultArgs
+
         if type(bits) == str:
             self.args["file"] = bits
         else:
-            with open("fastio.bin", "wb") as f:
+            with open("fastio_tx.bin", "wb") as f:
                 f.write(
                     bitToByte(
                         ''.join([str(x) for x in bits])
@@ -94,62 +137,74 @@ class FastIO:
                 )
                 f.flush()
         
-            self.args["file"] = "fastio.bin"
+            self.args["file"] = "fastio_tx.bin"
 
         self.args["mode"] = "tx"
         self.args["pin"] = pin
-        self.args["sleep"] = ns
+        self.args["sleep"] = round(ns)
 
         self.__launchProcess__()
-
+        
         self._process_.wait()
 
-        if type(bits) == list:
-            os.remove("fastio.bin")
 
-
-    def readSamples(self, pin, samples, output=None):
+    def readSamples(self, pins:list|int, samples:int, output:str=None, bg:bool=False) -> list | subprocess.Popen:
         """
         Read X amount of samples.
-        This function *is* blocking.
+        This function *is* blocking, if bg==False.
         """
 
-        self.args["pin"] = pin
+        if type(pins) == int: pins = [pins]
+
+        self.args["pin"] = pins
         self.args["samples"] = samples
         self.args["mode"] = "rx"
         
         if output != None:
             self.args["file"] = output
+        else:
+            self.args["file"] = 'samples'
 
-        self.__launchProcess__()
+        proc = self.__launchProcess__(bg=bg)
 
-        self._process_.wait()
-
-        if output == None: # output file was not set
-            return self.__parseBin__()
-        else: # output file was set
-            return self.__parseBin__(binf=output)
+        if not bg: 
+            proc.wait()
+            if output == None: # output file was not set
+                return [self.__parseBin__(x) for x in pins]
+            else: # output file was set
+                return [self.__parseBin__(x, binf=output) for x in pins]
+        else:
+            return proc
     
-    def infread(self, pin):
+    def infread(self, pins:list|int, filename="infread") -> subprocess.Popen:
         """
         Read pin X till death (by self.close()).
         Non-blocking.
         """
 
-        self.args["pin"] = pin
+        if type(pins) == int: pins = [pins]
+
+        self.args["pin"] = pins
         self.args["samples"] = "-1"
         self.args["mode"] = "rx"
+        self.args["file"] = filename
 
-        self.__launchProcess__()
+        return self.__launchProcess__()
         
-    def close(self):
+    def close(self) -> list:
         """
         Close program, if there is one, running.
+
+        Auto-guesses the pin parameter and binfile name for parsebin. Should (hopefully) always be successful in parsing the most recent binfile.
         """
         self._process_.send_signal(15)
         self._process_.wait()
-        return self.__parseBin__()
-    
+
+        try:
+            return [self.__parseBin__(pin, binf=self.args['file']) for pin in self.args["pin"].split(",")]
+        except:
+            return None
+        
     def setHZ(self, hz):
         """
         set polling rate to X hz
@@ -160,25 +215,32 @@ class FastIO:
 
     def setNS(self, ns):
         """
-        set polling rate to X nanoseconds (min is 500ns, overhead)
+        set polling rate to X nanoseconds (min is ~500ns, overhead)
         """
         self.args["sleep"] = int(ns-500 if ns-500 > 0 else 0)
         print("[+] set PIO sleep to {}ns".format(ns))
 
-    def __launchProcess__(self) -> None:
+    def __launchProcess__(self, bg=False) -> None:
         """
         launch pio program
         """
 
         cmd = [self._executable_] + self.__compileArgs__()
 
+        if self.nice is not None:
+            cmd = ["nice", "-n", "-20"] + cmd
+
         print("[+] {}".format(' '.join(cmd)))
 
-        self._process_ = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                          stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         
         # process is started, reset args
         self.args = self.defaultArgs
+
+        if bg == False: # running in blocking mode
+            self._process_ = process # allow other functions to access
+
+        return process
 
     def __compileArgs__(self) -> list:
         """
@@ -187,20 +249,29 @@ class FastIO:
         x = []
 
         for param,val in self.args.items():
-            x.append("--"+param)
-            x.append(str(val))
+
+            if type(val) == list:
+                for item in val:
+                    x.append("--"+param)
+                    x.append(str(item))
+            else:
+                x.append("--"+param)
+                x.append(str(val))
 
         return x
     
-    def __parseBin__(self, binf="samples.bin") -> str:
+    def __parseBin__(self, pin, binf="samples", remove=False) -> str:
         """parse bin file to bits"""
         bits = []
 
-        with open(binf, "rb") as f:
+        with open("{}-{}.bin".format(binf, pin), "rb") as f:
             byts = f.read()
 
         for byte in byts:
             bits += [int(x) for x in format(byte, '08b')]
+
+        if remove:
+            os.remove("{}-{}.bin".format(binf, pin))
 
         return bits
     

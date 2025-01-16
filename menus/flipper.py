@@ -1,3 +1,4 @@
+import random
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from core.plugin import BasePwnhyveScreen
 from time import sleep
@@ -11,16 +12,23 @@ class Screen(BasePwnhyveScreen):
         return listToPrint
 
     def menu(self, choices,
-            flipped=False, icons={"..": "./core/icons/back.bmp"}, caption=None, disableBack=False):
+            flipped=False, icons:dict=None, caption=None, disableBack=False, highlight=[], index=None):
         xCoord = 5
         yCoord = 5
         currentSelection = 0 # index of programs list
         maxLNprint = 5
         cleanScrollNum = 0
         currentSelOld = 0
+        
+        isChoicesDict = type(choices) == dict
+        choicesCopy = choices
 
+        if isChoicesDict:
+            choices = list(choices)
+
+        # manage parameters
         if len(choices) == 0:
-            choices = ["empty"]
+            choices = [random.choice(["pretty quiet..", "...", "empty", "!?!?!?", "hellooo?"])]
         if "" in choices:
             choices.remove("") # any whitespace
 
@@ -29,9 +37,14 @@ class Screen(BasePwnhyveScreen):
                 choices.remove("..")
             choices.insert(0, "..")
 
+        if icons != None:
+            icons.update({"..": "./core/icons/back.bmp"})
+
+        if index is not None:
+            currentSelection = index if index >= 0 else 0
+
         while 1:
             yCoordBefore = yCoord
-            selection = list(choices)[currentSelection]
 
             self.disp.fullClear(self.draw)
 
@@ -56,7 +69,7 @@ class Screen(BasePwnhyveScreen):
                 
                 yCoord += 14
 
-            self.display(choices, currentSelection, icons)
+            self.display(choices, currentSelection, icons, highlight=highlight)
 
             yCoord = yCoordBefore # set our y coord
 
@@ -100,8 +113,16 @@ class Screen(BasePwnhyveScreen):
                     #print("Up")
 
                 if key == 'press' or key == 'right': # button is released
-                    if choices[currentSelection] == "..": return None
-                    return choices[currentSelection]
+                    if choices[currentSelection] == "..": 
+                        return None if index == None else (None, 0)
+
+                    if index == None:
+                        if isChoicesDict:
+                            return choicesCopy[choices[currentSelection]]
+                        else:
+                            return choices[currentSelection] # only return our selection
+                    else:
+                        return (choices[currentSelection], currentSelection) # return our selection, aswell as the index of that selection
                     #print("center")
 
                 if key == '2': # button is released
@@ -110,13 +131,15 @@ class Screen(BasePwnhyveScreen):
                     #print("center")
 
                 if not disableBack:
-                    if key == 'left': return None
+                    if key == 'left': return None if index == None else (None, 0)
 
-    def display(self, moduleList, currentSelection, icons):
+    def display(self, moduleList, currentSelection, icons, highlight=[]):
 
         listToPrint = self.getItems(moduleList, currentSelection, amount=10)
         
         selection = moduleList[currentSelection]
+
+        if icons == None: icons = {}
 
         yCoord = 2
         iconSize = self.disp.iconSize
@@ -132,27 +155,34 @@ class Screen(BasePwnhyveScreen):
 
 
         for text in list(listToPrint): # do draw
-            rIcoX, rIcoY = 2 + (2 if self.disp.width == 128 else 0), 1
+            rIcoX, rIcoY = (2 if self.disp.width == 128 else 0), 1
 
-            icofile = icons.get(text, "./core/icons/missing.bmp")
-            rico = Image.open(icofile)
 
-            if self.disp.invertedColor:
-                rico = ImageOps.invert(rico.convert('L'))
+            if len(icons) != 0: # if we defined icons
+                icofile = icons.get(text, "./core/icons/missing.bmp")
+                rico = Image.open(icofile)
+            else: # if we didn't define icons
+                iconSizePadding = -iconSize
 
-            if selection != text: # if our selection isnt the text iter gave us
+            if text in highlight: # manage 'highlight' kwarg
+                text = "> " + text
+
+            if selection != text.replace("> ", ""): # if our selection isnt the text iter gave us
                 self.draw.text(
-                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord),
+                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord+1),
                       text.replace("_", " "), fill=white, outline=white, 
-                      font=unselectedFont) # draw black text over rectangle
-                
+                      font=unselectedFont) # draw black text over rectangle             
             else: # it is our selection
-                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-2)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
-                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
+                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-1)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
+                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord+1), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
             
+            if len(icons) != 0: # if we defined icons
+                # paste
+                if self.disp.invertedColor:
+                    rico = ImageOps.invert(rico.convert('L'))
 
-            ico = rico.resize((iconSize,iconSize))
-            self.image.paste(ico, (rIcoX, rIcoY+yCoord))
+                #ico = rico.resize((iconSize,iconSize))
+                self.image.paste(rico, (rIcoX, rIcoY+yCoord))
 
             yCoord += (iconSize) + 6
 

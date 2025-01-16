@@ -1,64 +1,70 @@
-# pwnhyve
-![pwnhyve](https://user-images.githubusercontent.com/42103041/209862002-9ef1712c-38c5-424d-8017-fc9f119492af.png)
-a pi-zero powered hacking tool, with badusb capabilities, on the fly hoaxshell payload generation, 802.11 deauthing, bettercap support, and (crude) duckyscript support, all in the size of a flipper zero (or raspberry pi depending on your setup)
+<p align="center">
+   <h1 align="center">pwnhyve</h1>
+   <img src="./images/pwnhyve-min.png">
+</p>
+<h4 align="center">a little offensive appliance that mimics some features from the flipper zero and more, under $50</h4>
 
-some of it's features:
+## feature set
+- extremely modular plugin system
+- built on Kali Linux
+- WiFi
+    - Deauthentication attacks
+        - pwnagotchi-like UI
+    - AP scanner
+    - EAPHammer toolset
+        - Harvest credentials using Evil Twin APs
+        - [KARMA attacks](https://en.wikipedia.org/wiki/KARMA_attack)
+        - Captive Portal
+        - Wifi bruteforcing
+- Bluetooth
+    - Access to bettercap's bluetooth stack
+    - Search for devices by RSSI strength
+    - Search for devices by specifics (mac, uuids, types)
+    - GATT BLE hacking
+        - [With this, you can unlock bluetooth locks - click me!](https://youtu.be/kzRCGxDKPFA?t=31)
+- USB
+    - Togglable USB mass storage, act as a normal pen drive
+        - readable inside of kali aswell
+    - Keyboard and Mouse emulation
+    - Duckyscript-like Jinja2 scripting support
+    - USB stealer, steal valuable files from a USB drive immediately after plug-in
+    - File exfiltration, without mass storage, using [Hak5's Keystroke Reflection](https://cdn.shopify.com/s/files/1/0068/2142/files/hak5-whitepaper-keystroke-reflection.pdf?v=1659317977)
 
-- [duckyscript's iconic keystroke reflection](https://docs.hak5.org/hak5-usb-rubber-ducky/advanced-features/exfiltration#the-keystroke-reflection-attack)
-- remote control
-- jinja2 enabled duckyscript support (WIP, but enough to use most scripts)
-- deauthing and sniffing attacks (EAPOL supported (thanks bettercap)), access point spamming, evil portal
-- usb mass storage emulation, mouse emulation
-- ~~BLE hacking~~ work in progress
-- infinite amount of plugins
-- reverse shell hosting
-- literal entire kali linux system in your pocket
+- RF hacking
+    - Jamming
+    - Replay
+    - Use and save as Flipper Zero files
+        - Can use Flipper Zero `.sub` files
+        - Can also save recorded frames as `.sub` files
+- IO
+    - 2 channel 1.5mHz Logic analyzer, compatible with sigrok/pulseview (by CSV export)
+    - Flipper Zero-like breakout
+    - IO playground (PWM, input/output)
+    - ~~SPI flash dumping~~ WIP
+    - ~~Serial to TTL converter~~ WIP
+- other
+    - looks cool
 
-with the shim (WIP, not released to public *yet*)
-- RF hacking (rolljam, sniffing, jamming, replay)
-- IR hacking (replay, jamming)
-- wireless charging
-- pin fuzzing (SPI, IIC/I2C, UART)
-- ~~nfc~~ space constrained and also very hard to make
+# docs
+todo
 
-***
-### DISCLAIMER
-i am not responsible for what you do with this thing; this can actually be used for really bad purposes in the right hands  
-this also isn't meant to be better than the p4wnp1-aloa - the aloa has way more support for everything than me
-if support/something you want isn't implemented yet, look at making plugins  
-unless its something else, like a bug - in that case, [PLEASE make an issue](https://github.com/whatotter/pwnhyve/issues/new)
-***
+# feature matrix against the flipper zero
+| Feature         | Steinar              | Flipper Zero         |
+|-----------------|----------------------|----------------------|
+| NFC/RFID        | No                   | Yes                  |
+| IR              | W.I.P                | Yes                  |
+| 1Wire           | No, but possible     | Yes                  |
+| RF              | Yes                  | Yes                  |
+| BLE             | Yes                  | Yes                  |
+| Converter       | No (for now)         | Yes (SPI, UART, I2C) |
+| Linux           | Yes (Kali)           | No                   |
+| Logic Analyzer  | Yes (1.5mhz)         | No                   |
+| WiFi            | Yes                  | No                   |
+| BadUSB          | Yes (KBM, storage)   | Yes (KBM only)       |
+| Modularity      | Very (python)        | Yes, but hard        |
 
-# NOTICE
-- deauthing works, but can sometimes go silent (see https://github.com/evilsocket/pwnagotchi/issues/267)
-- this is in the middle of a rewrite, bugs are to be expected
 
-# BILL OF MATERIALS
-- a raspberry pi zero w (can also be a 2)
+# disclaimers
+This tool may be used for legal purposes only. Users take full responsibility for any actions performed using this tool. The author accepts no liability for damage caused by this tool. If these terms are not acceptable to you, then do not use this tool.
 
-## OPTIONAL
-### battery (DO NOT BUY IF YOUR GETTING A USB STEM)
-- [pisugar 2 portable](https://www.tindie.com/products/pisugar/pisugar-2-battery-for-raspberry-pi-zero/)
-- [waveshare ups hat](https://www.waveshare.com/ups-hat-c.htm)
-- [or create your own battery](https://github.com/nototter/pwnhyve/wiki/making-your-own-pi-zero-battery-ups)
-- [you could plug it into your phone](https://www.amazon.com/Cable-Matters-Micro-Braided-Jacket/dp/B0746NHSCZ) 
-
-### display
-- [waveshare 1.3inch oled](https://www.waveshare.com/wiki/1.3inch_OLED_HAT)
-### usb stems for quick insertion (DO NOT BUY IF YOUR GETTING A BATTERY PACK)
-- [pi zero stem 1](https://zerostem.io/)
-- [pi zero stem 2 w/o battery support](https://www.amazon.com/risingsaplings-Connector-Expansion-Breakout-Raspberry/dp/B0924TM6NJ)
-
-- note: you could use a tiny micro-usb cable with sync support and plug that in to the victim
-
-## why battery?
-if you try to use your pi as a ducky usb, it will take (minimum) 25 seconds to boot up and start pwnhyve, and a couple of minutes to start everything else up; not very stealthy
-
-you could use it without a battery though, just not reccomended
-
-# how install?
-[go into the wiki to install](https://github.com/whatotter/pwnhyve/wiki/installing)
-
-# credit
-- 98% of this was made by me
-- some of it was from [pwnagotchi](https://github.com/evilsocket/pwnagotchi/) for deauthing
+*wifi sometimes doesn't work because of nexmon; it is out of my ability to fix it*

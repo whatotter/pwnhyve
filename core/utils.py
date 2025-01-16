@@ -28,6 +28,8 @@ class redir:
         logfile.write(modstr)
 
         stdout.write(modstr)
+        if len(modstr) != 0 and (modstr[-1] == b"\n" or modstr[-1] == "\n"):
+            stdout.write("\r")
 
     def flush():
         global stdout, logfile
@@ -49,6 +51,8 @@ class redirERR:
         logfile.write(modstr)
 
         stderr.write(modstr)
+        if len(modstr) != 0 and (modstr[-1] == b"\n" or modstr[-1] == "\n"):
+            stderr.write("\r")
 
     def flush():
         global stderr, logfile

@@ -6,7 +6,7 @@ import importlib
 from threading import Thread
 from menus.__basemenu__ import BasePwnhyveScreen
   
-plugins = {}
+moduleDict = {}
 
 class BasePwnhyvePlugin:
     def __init__(self):
@@ -22,7 +22,7 @@ class pwnhyveScreenLoader():
 
     folder: folder to load drivers from, defaults to "core/screens"
     """
-    def __init__(self, driver, folder="core/screens",):
+    def __init__(self, driver, folder="core/displayDrivers",):
         r = {}
 
         self.driver = None
@@ -35,9 +35,9 @@ class pwnhyveScreenLoader():
                 item = item.replace('.py','')
                 iport = f'{folder.replace("/", ".")}.{item}'
                 print(iport)
-                plugins[item] = importlib.import_module(iport)
+                moduleDict[item] = importlib.import_module(iport)
 
-                self.driver = plugins[item]
+                self.driver = moduleDict[item]
                 print("[SL] loaded")
                 return
             
@@ -60,9 +60,9 @@ class pwnhyveMenuLoader():
                 
                 item = item.replace('.py','')
 
-                plugins[item] = importlib.import_module(f'{folder}.{item}')
+                moduleDict[item] = importlib.import_module(f'{folder}.{item}')
 
-                z = plugins[item]
+                z = moduleDict[item]
                 r[item] = {"module": z}
             
         self.modules = r
@@ -77,6 +77,7 @@ class pwnhyvePluginLoader():
     def __init__(self, folder:str="plugins", enableThreading:bool=True):
         r = {}
         allIcons = {}
+        self.loadedPluginModules = {} # variable to reference modules loaded by this class only, not every module loaded
 
         for item in os.listdir(f"./{folder}"):
             if ".py" in item:
@@ -87,22 +88,23 @@ class pwnhyvePluginLoader():
 
                 importfolder = folder.replace("/", ".")
 
-                FUCK = "{}{}".format(importfolder, item).replace("..", ".")
+                pythonImport = "{}{}".format(importfolder, item).replace("..", ".")
 
-                print("[PL] loading plugin \"{}\"".format(FUCK))
-                plugins[item] = importlib.import_module(FUCK)
 
-                objects = [x for x in dir(plugins[item]) if x.startswith("PWN") or x == "Plugin"]
+                print("[PL] loading plugin \"{}\"".format(pythonImport))
+                moduleDict[item] = importlib.import_module(pythonImport)
+                self.loadedPluginModules[pythonImport] = moduleDict[item]
+
+                objects = [x for x in dir(moduleDict[item]) if x.startswith("PWN") or x == "Plugin"]
 
                 for x in objects:
-                    #z = plugins[item].Plugin()
-                    z = getattr(plugins[item], x) # plugin class
+                    #z = moduleDict[item].Plugin()
+                    z = getattr(moduleDict[item], x) # plugin class
 
                     try:
                         icons = getattr(z, 'icons')
                     except:
                         icons = {}
-                    print(icons)
 
                     r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z, "icons": icons}
                     allIcons.update(icons)

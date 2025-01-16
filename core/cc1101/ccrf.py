@@ -1,12 +1,13 @@
 import logging
 import os
 import time
+from RPi import GPIO
 
 import gpiozero as gpioz
 from core.pio.fastio import FastIO
 
-import cc1101
-from cc1101.options import (
+import core.cc1101.lib as cc1101
+from core.cc1101.lib.options import (
     _TransceiveMode,
 )
 from cc1101.addresses import (
@@ -19,6 +20,7 @@ from cc1101.addresses import (
 
 
 logging.basicConfig(level=logging.INFO)
+usleep = lambda ms: 1 if 1 > ms else [x for x in range(ms*3)]
 
 GDO0 = 12  # BCM12
 GDO2 = 23
@@ -35,7 +37,7 @@ def deleteTrailingNull(bits):
         _bytes.append(bits[x:8+x])
 
 class pCC1101():
-    def __init__(self, spi_bus=0, spi_chip_select=0, retries=5):
+    def __init__(self, spi_bus=0, spi_chip_select=1, retries=5):
 
         self.success = False
         self.err = None
@@ -57,33 +59,80 @@ class pCC1101():
         
         self.snval = 0
         self.currentFreq = 303.81e6
+        self.power = 0xC0
+
+        self.patable = {
+            # compressed version of https://www.ti.com/lit/an/swra151a/swra151a.pdf / pg 7
+            # targeted @ 433mhz
+            # lowest dBm -> highest dBm
+            # must be 28 items
+
+            # page 8
+            0x1b: "-16.2dBm", # -16.2dBm @ 12.8mA
+            0x1e: "-14.3dBm",
+            0x26: "-9.9dBm",
+            0x6c: "-7.1dBm",
+            0x37: "-5.6dBm",
+            0x2c: "-4.7dBm",
+            0x2e: "-3.5dBm",
+            0x65: "-2.9dBm",
+            0x3b: "-2.5dBm",
+            0x64: "-2.3dBm",
+            0x54: "-2.2dBm",
+
+            # page 7
+            0x3c: "-2.1dBm",
+            0x3e: "-1.4dBm",
+            0x61: "-0.5dBm",
+            0x8c: "1.9dBm",
+            0x87: "4.0dBm",
+            0xCD: "5.5dBm",
+            0xca: "6.4dBm",
+            0xc9: "6.8dBm",
+            0xc8: "7.1dBm",
+            0xc7: "7.4dBm",
+            0xc6: "7.8dBm",
+            0xc5: "8.1dBm",
+            0xc4: "8.5dBm",
+            0xc3: "8.8dBm",
+            0xc2: "9.2dBm",
+            0xc1: "9.5dBm",
+            0xc0: "9.9dBm", # 9.9dBm @ 29.1mA
+        }
 
         self._setDefaults()
 
         self.setupRawTransmission()
 
-        self.adjustOOKSensitivity(0, 0xC2)
+        self.adjustOOKSensitivity(0, self.power)
 
-        self.rawTransmit2("101010", delayms=10)
+        self.rawTransmit2("10101010", delayms=10)
 
         self.mode = "tx"
 
         #time.sleep(0.5)
 
         pass
+
+    def sleepMode(self):
+        self.trs._command_strobe(0x36) # exit rx/tx, turn off freq synth and exit
+        self.trs._command_strobe(0x39) # enter powerdown mode when CSn goes high
     
     def _setDefaults(self):
         #self.setRxBW(812.0)
         #self.currentFreq = 303.81e6
 
-        #self.trs._command_strobe(StrobeAddress.SIDLE)
+        self.trs._command_strobe(StrobeAddress.SIDLE)
 
         self.setRxBW(650.0)
+
+        #self.trs.set_symbol_rate_baud(9600)
 
         self.setCCMode(0)
         self.trs.set_base_frequency_hertz(self.currentFreq)
 
-        """
+        time.sleep(0.5)
+        
         abcd = self.trs.get_base_frequency_hertz()
 
         print("-*"* 30)
@@ -91,29 +140,24 @@ class pCC1101():
         print(abcd)
         print(f"base_frequency={(abcd / 1e6):.2f}MHz",)
         print("-*"* 30)
-        """
 
-        #self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG1,  [0x02]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG0,  [0xF8]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.DEVIATN,  [0x47]);
+        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG1,  [0x02]);
+        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG0,  [0xF8]);
+        self.trs._write_burst(ConfigurationRegisterAddress.DEVIATN,  [0x90]);
         self.trs._write_burst(ConfigurationRegisterAddress.FREND1,   [0x56]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.MCSM0 ,   [0x18]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FOCCFG,   [0x16]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.BSCFG,    [0x1C]);
+        self.trs._write_burst(ConfigurationRegisterAddress.MCSM0 ,   [0x18]);
+        self.trs._write_burst(ConfigurationRegisterAddress.FOCCFG,   [0x16]);
+        self.trs._write_burst(ConfigurationRegisterAddress.BSCFG,    [0x1C]);
         self.trs._write_burst(0x1B, [0xC7]);
         self.trs._write_burst(0x1C, [0x00]);
         self.trs._write_burst(0x1D, [0xB2]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FSCAL3,   [0xE9]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FSCAL2,   [0x2A]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FSCAL1,   [0x00]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FSCAL0,   [0x1F]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.FSTEST,   [0x59]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.TEST2,    [0x81]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.TEST1,    [0x35]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.TEST0,    [0x09]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL1, [0x04]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.ADDR,     [0x00]);
-        #self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN,   [0x00]);
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL3,   [0xE9]);
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL2,   [0x2A]);
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL1,   [0x00]);
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL0,   [0x1F]);
+        self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL1, [0x04]);
+        self.trs._write_burst(ConfigurationRegisterAddress.ADDR,     [0x00]);
+        self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN,   [0x00]);
     
     def close(self):
         #GDO0Device.value = 1
@@ -123,33 +167,44 @@ class pCC1101():
     def csn(self, value):
         return
 
-    def setFreq(self, val, rst=True):
+    def setFreq(self, val, doCalc=True):
 
         #self.setRxBW(812.50)
         #self.setCCMode(0)
 
-        self.currentFreq = eval("{}e6".format(val))
+        #self.currentFreq = eval("{}e6".format(val))
+
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+
+        if doCalc:
+            self.currentFreq = val * 10**6
+        else:
+            self.currentFreq = val
 
         print(self.currentFreq)
+        self.trs.set_base_frequency_hertz(self.currentFreq)
+        time.sleep(.01)
+        abcd = self.trs.get_base_frequency_hertz()
 
-        if rst:
-            self._setDefaults() # TODO: figure out why the fuck 303.91mhz turns into 1.04mhz in the cc1101 # i figured it out its cause it wasn't in SIDLE
+        print("-*"* 30)
+        print("REQUESTED: {}".format(val))
+        print("FREQ \"{}\" -> \"{}\"".format(self.currentFreq, abcd / 1e6))
+        print("-*"* 30)
+
+        #if rst:
+            #self._setDefaults() # TODO: figure out why the fuck 303.91mhz turns into 1.04mhz in the cc1101 # i figured it out its cause it wasn't in SIDLE
 
     def _csnRst(self):
 
-        # turn CSn into a sink
-        csnIN = gpioz.DigitalInputDevice(CSN)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(CSN, GPIO.IN)
 
-        time.sleep(1)
+        time.sleep(2.5)
 
-        csnIN.close() # close sink
-        
-        # turn it back into an output
-        CSNDevice = gpioz.DigitalOutputDevice(CSN)
-
+        GPIO.setup(CSN, GPIO.OUT)
+        GPIO.output(CSN, 1)
         time.sleep(0.5)
-
-        CSNDevice.close()
+        GPIO.cleanup()
 
     def rawTransmit(self, bt:bytes) -> None:
         """
@@ -158,13 +213,32 @@ class pCC1101():
         e.g. ```rawTransmit(b"\\x02\\x0F\\xFF")```
         """
         
+        os.remove("fastio.bin")
         with open('fastio.bin', "wb") as f:
             f.write(bt)
             f.flush()
 
         fio.send(GDO0, "fastio.bin")
 
-    def rawTransmit2(self, lbt) -> None:
+    def oldRawTransmit2(self, lbt, delayms=1, inverse=False) -> None:
+        """
+        Play bits through the CC1101 via a list.
+        e.g. ```rawTransmit2([0,1,1,0,1])```
+        """
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(GDO0, GPIO.OUT)
+
+        #with self.trs.asynchronous_transmission():
+        bits = [int(x) for x in lbt]
+        output = GPIO.output
+        gdoPin = GDO0
+        for bit in bits:
+            output(gdoPin, bit)
+            if delayms != 0:
+                usleep(delayms)
+        output(gdoPin, self.snval)
+
+    def rawTransmit2(self, lbt, **kwargs) -> None:
         """
         Play bits through the CC1101 via a list.
 
@@ -172,7 +246,16 @@ class pCC1101():
         """
         #with self.trs.asynchronous_transmission():
 
-        fio.send(GDO0, [int(x) for x in lbt])
+        fio.send(GDO0, [int(x) for x in lbt], ns=500)
+
+    def rawTransmitBin(self, binfile) -> None:
+        """
+        play bits through the CC1101 from a bin file
+
+        e.g. ```rawTransmitBin("binfile.bin")```
+        """
+
+        fio.send(GDO0, binfile, ns=500)
 
     def flipperTransmit(self, RAW_Data) -> None:
         """
@@ -184,13 +267,15 @@ class pCC1101():
 
         fio.flipperSend(GDO0, RAW_Data)
 
-    def recvSamples(self, bits:int) -> list:
+    def recvSamples(self, bits:int, delayms=5) -> list:
         """
         Recieve bits through the GDO2 pin.
         This sends no data to the CC1101.
 
         Returns a list of bits.
         """
+
+        fio.setNS(delayms*1000)
         return fio.readSamples(GDO2, bits)
     
     def recvInf(self) -> None:
@@ -201,7 +286,8 @@ class pCC1101():
         Returns None.
         """
 
-        fio.infread(GDO2)
+        fio.setNS(1*1000)
+        fio.infread(GDO2, filename="/tmp/rawrx")
 
     def recvStop(self) -> list:
         """
@@ -210,7 +296,9 @@ class pCC1101():
         Returns bits read, as a list.
         """
 
-        return fio.close()
+        fio.close()
+
+        return fio.__parseBin__(GDO2, binf="/tmp/rawrx", remove=True)
 
     def flipperRecv(self):
         """
@@ -344,7 +432,7 @@ class pCC1101():
         #self.adjustOOKSensitivity(0, 0x51)
         #print('[+] set cc1101 OOK to 0x51')
 
-        self.rawTransmit2("101010", delayms=100)
+        self.rawTransmit2("10101010", delayms=100)
         print('[+] transmitted some example bits')
 
         self.mode = "tx"
@@ -389,7 +477,10 @@ class pCC1101():
             self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0x93])
             self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [7+m4RxBw])
 
-        self.trs._set_modulation_format(0b011)
+        self.trs._set_modulation_format(0b011) # OOK
+        #self.trs._set_modulation_format(0b000) # 2FSK
+        #self.trs._set_modulation_format(0b001) # GFSK
+        #self.trs._set_modulation_format(0b100) # 4FSK
         
     def setupRawTransmission(self, output_power=0xCB) -> None:
         """
@@ -438,12 +529,15 @@ class pCC1101():
         
         self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL) # setPktFormat(3)
         
+        #self.adjustOOKSensitivity(0, self.power)
+
         self.trs._command_strobe(StrobeAddress.SIDLE)
         self.trs._command_strobe(StrobeAddress.STX)
 
         self.mode = "tx"
         #self.setFreq(self.currentFreq)
-        self.adjustOOKSensitivity(0, 0xC2)
+        self.adjustOOKSensitivity(0, self.power)
+        #self.trs.set_symbol_rate_baud(115200)
         #self.trs._command_strobe(StrobeAddress.SIDLE)
 
     def adjustOOKSensitivity(self, zero, one) -> None:
@@ -511,6 +605,10 @@ class pCC1101():
         self.trs._command_strobe(StrobeAddress.SIDLE)
         self.trs._command_strobe(StrobeAddress.SRX)
         #self.setFreq(self.currentFreq)
+
+        #self.adjustOOKSensitivity(0, self.power)
+
+        #self.trs.set_symbol_rate_baud(99_970)
 
         self.mode = "rx"
 
