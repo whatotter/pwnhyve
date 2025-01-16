@@ -40,7 +40,7 @@ class tinyPillow:
 
         color = self.__manageInvColor__(color)
 
-        return self.draw.text(coords, text,
+        return self.draw.text(coords, str(text),
                         font=wfont,
                         fill=color,
                         **kwargs

@@ -21,14 +21,14 @@ pins with * are recommended to not be used
 |          |    |
 |          |    |
 | GND      | 9  |
-| NC       | 10 |
+| GPIO22   | 10 |
 | SCL      | 11 |
 | SDA      | 12 |
 | UART_RX  | 13 |
 | UART_TX  | 14 |
-| NC       | 15 |
+| GPIO1    | 15 |
 | GND      | 16 |
-| NC       | 17 |
+| GPIO0    | 17 |
 | 3V3      | 18 |
 +----------+----+
 ```
@@ -39,10 +39,12 @@ pins with * are recommended to not be used
 - GPIO18 (phys. pin 12) would be for `spidev0.1` (CC1101)
 - GPIO7 (phys. pin 26) would be for `spidev0.2` (other things)
 
-run ```
+aka JUST RUN THIS
+```
 dtc -I dts -O dtb -o 3spi.dtbo ./core/installation/spi-cs-extend.dts
 sudo cp 3spi.dtbo /boot/overlays/
 echo "dtoverlay=3spi" >> /boot/config.txt
+echo "dtoverlay=spi0-2cs,cs0=8,cs1=18" >> /boot/config.txt
 
 sudo reboot
 ```

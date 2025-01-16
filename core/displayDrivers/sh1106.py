@@ -4,11 +4,10 @@ from core.utils import redir, config
 from core.plugin import pwnhyveMenuLoader
 from io import BytesIO
 import base64
-from core.screens.sh1106 import *
+from core.displayDrivers.sh1106 import *
 import gpiozero as gpioz
-import core.screens.__helper__ as h
-
-import core.disp_drivers.SH1106.SH1106m as SH1106
+import core.displayDrivers.__helper__ as h
+import core.displayDrivers.SH1106.SH1106m as SH1106
 
 #GPIO define
 RST_PIN        = 22

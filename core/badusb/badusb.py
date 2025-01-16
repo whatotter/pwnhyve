@@ -47,9 +47,7 @@ class DuckyScriptInterpreter():
         self.percentage = 0
         self.printed = ''
 
-        self.handler = tpil.gui.usbRunPercentage(tpil) # init handler
-        threading.Thread(target=self.handler.start,daemon=True).start() # start handler
-        self.handler.setPercentage(0)
+        self.handler = tpil.gui.screenConsole(tpil) # init handler
 
         return
 
@@ -84,7 +82,8 @@ class DuckyScriptInterpreter():
                 self.key[base](line.split(" "))
 
             # this is painful
-            self.handler.setPercentage(math.floor((index / len(self.fileData)) * 100)) # set percentage
+            percentageFinished = math.floor((index / len(self.fileData)) * 100)
+            self.handler.addText("{}% done..".format(percentageFinished)) # set percentage
 
         self.handler.addText("finished")
         
@@ -698,4 +697,3 @@ class BadUSB:
         self.keyboard = None
         return None
     
-os.system("sudo /bin/pwnhyveusb")

@@ -19,6 +19,12 @@ class Screen(BasePwnhyveScreen):
         maxLNprint = 5
         cleanScrollNum = 0
         currentSelOld = 0
+        
+        isChoicesDict = type(choices) == dict
+        choicesCopy = choices
+
+        if isChoicesDict:
+            choices = list(choices)
 
         # manage parameters
         if len(choices) == 0:
@@ -111,7 +117,10 @@ class Screen(BasePwnhyveScreen):
                         return None if index == None else (None, 0)
 
                     if index == None:
-                        return choices[currentSelection] # only return our selection
+                        if isChoicesDict:
+                            return choicesCopy[choices[currentSelection]]
+                        else:
+                            return choices[currentSelection] # only return our selection
                     else:
                         return (choices[currentSelection], currentSelection) # return our selection, aswell as the index of that selection
                     #print("center")
@@ -146,7 +155,7 @@ class Screen(BasePwnhyveScreen):
 
 
         for text in list(listToPrint): # do draw
-            rIcoX, rIcoY = 2 + (2 if self.disp.width == 128 else 0), 1
+            rIcoX, rIcoY = (2 if self.disp.width == 128 else 0), 1
 
 
             if len(icons) != 0: # if we defined icons
@@ -160,20 +169,20 @@ class Screen(BasePwnhyveScreen):
 
             if selection != text.replace("> ", ""): # if our selection isnt the text iter gave us
                 self.draw.text(
-                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord),
+                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord+1),
                       text.replace("_", " "), fill=white, outline=white, 
                       font=unselectedFont) # draw black text over rectangle             
             else: # it is our selection
-                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-2)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
-                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
+                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-1)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
+                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord+1), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
             
             if len(icons) != 0: # if we defined icons
                 # paste
                 if self.disp.invertedColor:
                     rico = ImageOps.invert(rico.convert('L'))
 
-                ico = rico.resize((iconSize,iconSize))
-                self.image.paste(ico, (rIcoX, rIcoY+yCoord))
+                #ico = rico.resize((iconSize,iconSize))
+                self.image.paste(rico, (rIcoX, rIcoY+yCoord))
 
             yCoord += (iconSize) + 6
 

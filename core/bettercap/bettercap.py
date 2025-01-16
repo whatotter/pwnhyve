@@ -16,7 +16,7 @@ def decode(r):
     try:
         return r.json()
     except Exception as e:
-        if r.status_code == 200:
+        if r.status_code == 200 or r.status_code == 400:
             uError("error while decoding json: error='%s' resp='%s'" % (e, r.text))
         else:
             err = "error %d: %s" % (r.status_code, r.text.strip())
@@ -24,7 +24,7 @@ def decode(r):
         return r.text
 
 def startBCAP(iface: str = "wlan0mon"):
-    getoutput('sudo bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
+    getoutput('sudo /bin/bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
 
 class Client(object):
     def __init__(
@@ -170,7 +170,7 @@ class Client(object):
         return False
 
     def stop(self):
-        getoutput("sudo pkill -f bettercap")
+        getoutput("sudo /bin/pkill -f bettercap")
         # self.run("exit")
         while True:
             try:

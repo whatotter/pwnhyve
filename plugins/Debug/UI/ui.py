@@ -27,6 +27,9 @@ def scText(text, caption, maxln=6):
     return '\n'.join(s)
 
 class PWNTestOne(BasePwnhyvePlugin):
+    def keyboard(tpil):
+        tpil.gui.enterText(tpil)
+
     def screenConsole(tpil):
         a = tpil.gui.screenConsole(tpil)
 

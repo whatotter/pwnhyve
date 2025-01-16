@@ -1,6 +1,6 @@
 
 import time
-import core.disp_drivers.ST7789.config as config
+import core.displayDrivers.ST7789.config as config
 
 class ST7789(config.RaspberryPi):
 

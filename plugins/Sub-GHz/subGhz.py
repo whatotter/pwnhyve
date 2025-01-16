@@ -254,10 +254,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     transceiver.rawTransmitBin(binfile)
                     repeats += 1
 
-                    transceiver.setFreq(
-                        float(fsubData["Frequency"]) + (2500 * repeats),
-                        doCalc = False
-                    )
+                    print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
                     
                     if tpil.checkIfKey() == 'press':
                         continue
@@ -282,9 +279,9 @@ class PWNsubGhz(BasePwnhyvePlugin):
         #strfrq = str(beforefreq)[:3]
         #transceiver.revertTransceiver()
 
-    def Set_Frequency(draw,disp,image,GPIO):
+    def Set_Frequency(tpil):
         global freq, strfrq
-        a = disp.gui.setFloat(draw,disp,image,GPIO,"Frequency (300-950mhz)", _min=300.0, _max=950.0,
+        a = tpil.gui.setFloat(tpil, "Frequency (300-950mhz)", _min=300.0, _max=950.0,
                               start=str(int(transceiver.currentFreq/1e6))+".000"
                               #    ^ round the float into an int       ^ then add THREE place values
                               ).start()

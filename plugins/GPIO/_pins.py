@@ -28,7 +28,10 @@
 """
 
 pins = { # name -> BCM
-    "GPIO4": 23,
+    "GPIO4": 4,
+    "GPIO17": 17,
+    "GPIO1": 1,
+    "GPIO0": 0,
     #"GPIO3": 22,
     "SCL": 3,
     "SDA": 2,
@@ -46,15 +49,17 @@ pinLocations = { # which pin it is, left to right, pins facing up
     "MISO": 6,
     "MOSI": 7,
     "5V": 8,
+
+
     "GND2": 9,
-    # skip NC
+    "GPIO22": 10,
     "SCL": 11,
     "SDA": 12,
     "RxD": 13,
     "TxD": 14,
-    # skip NC
+    "GPIO1": 15,
     "GND3": 16,
-    # skip NC
+    "GPIO0": 17,
     "3v3": 18,
 
     #"GPIO3": -1
@@ -73,8 +78,6 @@ def physicalPinLookup(pin):
     return pins[physPinsInv[pin]]
 
 def requestPin(tpil, highlightedPins=[], append={}, minimize=False):
-    # draw a white rectangle, then draw a black rectangle inside of that white rectangle \
-    # then draw text in that rectangle for every pin
 
     def pinName(pin):
 
@@ -83,7 +86,7 @@ def requestPin(tpil, highlightedPins=[], append={}, minimize=False):
                 pin, pinLocations[pin], append.get(pin, "")
             )
         else:
-            return "P{} {}".format(
+            return "Pin {} {}".format(
                 pinLocations[pin], append.get(pin, "")
             )
 

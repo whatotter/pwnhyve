@@ -174,6 +174,8 @@ class pCC1101():
 
         #self.currentFreq = eval("{}e6".format(val))
 
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+
         if doCalc:
             self.currentFreq = val * 10**6
         else:
@@ -181,12 +183,12 @@ class pCC1101():
 
         print(self.currentFreq)
         self.trs.set_base_frequency_hertz(self.currentFreq)
+        time.sleep(.01)
         abcd = self.trs.get_base_frequency_hertz()
 
         print("-*"* 30)
-        print(self.currentFreq)
-        print(abcd)
-        print(f"base_frequency={(abcd / 1e6):.2f}MHz",)
+        print("REQUESTED: {}".format(val))
+        print("FREQ \"{}\" -> \"{}\"".format(self.currentFreq, abcd / 1e6))
         print("-*"* 30)
 
         #if rst:

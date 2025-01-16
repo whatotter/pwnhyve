@@ -1,4 +1,4 @@
-import core.disp_drivers.SH1106.config as config
+import core.displayDrivers.SH1106.config as config
 import time
 import numpy as np
 

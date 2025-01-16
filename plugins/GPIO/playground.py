@@ -1,6 +1,6 @@
 import gpiozero as gpioz
 from core.plugin import BasePwnhyvePlugin 
-import plugins.IO._pins as pinMGR
+import plugins.GPIO._pins as pinMGR
 
 def createPWM(tpil, pin):
 
@@ -15,12 +15,16 @@ def createPWM(tpil, pin):
 
 def createOut(tpil, pin):
     
+    clearPin(pin) # clear pin before changing
+    print("out created on pin {}".format(pin))
     pinObject = gpioz.OutputDevice(pin)
+    pinObject.on()
 
     return pinObject
 
 def createServo(tpil, pin):
     
+    clearPin(pin) # clear pin before changing
     pinObject = gpioz.Servo(pin)
 
     return pinObject
@@ -75,16 +79,19 @@ class PWNPlayground(BasePwnhyvePlugin):
 
                     pinModeStrings[pinName] = "({}hz / {})".format(pinObjects[pin].frequency, pinObjects[pin].value)
                     pinModes[pinName] = "PWM"
+                    break
 
                 elif mode == "Output":
+                    print('detected output')
 
-                    if pin not in pinObjects or pinModes.get(pinName) != ">":
+                    if pin not in pinObjects or pinModes.get(pinName) != "Output":
                         pinObjects[pin] = createOut(tpil, pin)
                     else:
                         pinObjects[pin].value = not pinObjects[pin].value
 
                     pinModeStrings[pinName] = "({})".format('ON' if pinObjects[pin].value else 'OFF')
-                    pinModes[pinName] = ">"
+                    pinModes[pinName] = "Output"
+                    break
 
                 elif mode == "Servo":
                     if pin not in pinObjects or pinModes.get(pinName) != "Servo":
@@ -97,6 +104,7 @@ class PWNPlayground(BasePwnhyvePlugin):
 
                     pinModeStrings[pinName] = "(Servo {})".format(pinObjects[pin].value)
                     pinModes[pinName] = "Servo"
+                    break
 
                 elif mode == None:
                     break

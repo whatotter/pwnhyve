@@ -13,25 +13,16 @@ disableWrite = false                    # DEBUG
 invertJoystickVertical   = false        # whether to invert the joystick vertically,
 invertJoystickHorizontal = false        # or horizontally.
 
-[vnc]
+[vnc] # depreciated, VNC is being reworked
 enableVNC  = true                       # whether to stream the display (and controls, if chosen) to 0.0.0.0:11198
 vncControl = true                       # if you allow remote control of the display 
 
-[wifi]
+[wifi] # depreciated, wlan0 is the default for now
 interface = "wlan0"                     # interface to use for wifi hacking
 
-apSpam    = [
-    "otterwrks.co?$?5"
-    # explaining the syntax:
-    # basically just add `?$?` and then a number after it to loop a specific ap X amount of times
-    # so basically, if you wanted to repeat `Hello World` 6 times, it would be `Hello World?$?6`
-    # then, it'll come out as 'Hello World 1', 'Hello World 2', 'Hello World 3', you get the rest
-    # the # of aps that'll actually show depend on your environment, but usually around 15-20 max.
-]
-
 [badusb]
-usbBin       = "/piusb.bin"             # path to usb storage bin file
-mountFolder  = "/mnt/pwnhyve"           # path to mount usbBin for reading
+usbBin       = "/piusb.bin"             # path to usb storage bin file - must have leading forward slash
+mountFolder  = "/mnt/steinar"           # path to mount usbBin for reading
 
 keyboardPath = "/dev/hidg0"             # path to the keyboard device
 mousePath    = "/dev/hidg1"             # path to the mouse device

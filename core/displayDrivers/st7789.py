@@ -5,9 +5,9 @@ from core.plugin import pwnhyveMenuLoader
 from io import BytesIO
 import base64
 import gpiozero as gpioz
-import core.screens.__helper__ as h
+import core.displayDrivers.__helper__ as h
 
-import core.disp_drivers.ST7789.ST7789 as ST
+import core.displayDrivers.ST7789.ST7789 as ST
 
 KEY_UP_PIN     = 6 
 KEY_DOWN_PIN   = 19

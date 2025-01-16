@@ -1,0 +1,8 @@
+[Unit]
+Description=pwnhyve startup
+
+[Service]
+ExecStart=/bin/python3 cwd/main.py
+
+[Install]
+RequiredBy=local-fs.target
