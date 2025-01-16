@@ -40,30 +40,37 @@ update the system aswell pls
 
 6. Install required tools
     ```
-    apt install bettercap eaphammer
+    apt install bettercap eaphammer golang-go
     ```
 
-7. Put the USB gadget script in `/bin`
+7. Build FastIO
+    ```
+    cd ./core/pio
+    go build pio.go
+    cd ../..
+    ```
+
+8. Put the USB gadget script in `/bin`
     ```
     cp ./core/install/pwnhyveUSB /bin/ 
     chmod +x /bin/pwnhyveUSB
     ```
 
-8. No need to setup the USB script to run on boot, pwnhyve already runs it when started
+9. No need to setup the USB script to run on boot, pwnhyve already runs it when started
 
-9. Setup pwnhyve's systemctl service
+10. Setup pwnhyve's systemctl service
     ```
     sed -i "s@cwd@$(pwd)@g" ./core/install/pwnhyve.service
     cp ./core/install/pwnhyve.service /etc/systemd/system/
     ```
 
-10. Restart systemctl's daemon and enable pwnhyve
+11. Restart systemctl's daemon and enable pwnhyve
     ```
     systemctl daemon-reload
     systemctl enable pwnhyve.service
     ```
 
-11. reboot
+12. reboot
     ```
     sudo reboot now
     ```
