@@ -3,6 +3,7 @@ import threading
 import json, base64
 
 import asyncio
+import websockets.exceptions
 from websockets.server import serve
 
 class BaseDisplayDriver():
@@ -54,7 +55,13 @@ class sockStream:
 
             try:
                 a = await asyncio.wait_for(websocket.recv(), 0.1)
-            except TimeoutError:
+            except (websockets.exceptions.ConnectionClosedOK):
+                print("[VNC] Client closed connection")
+                return
+            except (websockets.exceptions.ConnectionClosedError):
+                print("[VNC] Client closed connection abruptly")
+                return
+            except (TimeoutError, asyncio.exceptions.TimeoutError):
                 a = None
 
             if a != None:
@@ -74,17 +81,6 @@ def checkSocketINput():
         return False
     else:
         if gpio in ["up", "left", "right", "down", "1", "2", "3", "press"]:
-            buttons = {
-            "up": 'u',
-            "down": 'd',
-            "left": 'l',
-            "right": 'r',
-            "press": 'p',
-            "1": '1',
-            "2": '2',
-            "3": '3',
-            }
-
-            return (buttons[gpio])
+            return gpio
         
 threading.Thread(target=sockStream.start, daemon=True).start()

@@ -1,15 +1,18 @@
-from PIL import Image, ImageFont, ImageOps, ImageDraw
+from PIL import Image, ImageOps, ImageDraw
 from time import sleep
 from core.plugin import pwnhyveMenuLoader
 from io import BytesIO
 import base64
 
-import core.screens.__helper__ as h
-
+import core.displayDrivers.__helper__ as h
 
 s = pwnhyveMenuLoader()
 screens = s.modules
 mr = None
+
+class DispDummy():
+    width = 128
+    height = 64
 
 class DisplayDriver():
     def __init__(self, screen) -> None:
@@ -20,22 +23,34 @@ class DisplayDriver():
         self.image = Image.new('1', (128, 64), "WHITE") # init display
         self.draw = ImageDraw.Draw(self.image) # dsiayp
         self.GPIO = None
+        self.disp = DispDummy()
 
         self.pinout = { # gpio pins are the buttons, like joystick, side buttons, etc.
-            'KEY_UP_PIN': 6,
-            'KEY_DOWN_PIN': 19,
-            'KEY_LEFT_PIN': 5,
-            'KEY_RIGHT_PIN': 26,
-            'KEY_PRESS_PIN': 13,
-            'KEY1_PIN': 21,
-            'KEY2_PIN': 20,
-            'KEY3_PIN': 16,
+            'up': 6,
+            'down': 19,
+            'left': 5,
+            'right': 26,
+            'press': 13,
+            '1': 21,
+            '2': 20,
+            '3': 16,
         }
 
-        self.gui = screen.Screen(self.draw, self, self.image, self.GPIO)
+        self.gui = screen.Screen(self.draw, self, self.image)
 
         self.width = 128
         self.height = 64
+
+        # from sh1106.py
+        # properties of display
+        self.hasColor = False
+        self.invertedColor = True
+        self.width = self.disp.width
+        self.height = self.disp.height
+        self.name = "SH1106"
+        # these are variables due to PPI differences
+        self.recommendedFontSize = 16 # font size for decent readability
+        self.iconSize = 8
         
         mr = self
 
@@ -111,8 +126,7 @@ class DisplayDriver():
 
         return False
         
-    def showImage(self, disp, directory):
-        img = Image.new('1', (disp.width, disp.height), 255)  # 255: clear the frame
+    def showImage(self, directory):
         bmp = Image.open(directory)
-        img.paste(bmp, (0,5))
+        self.draw.paste(bmp, (0,0))
         # Himage2=Himage2.rotate(180) 	

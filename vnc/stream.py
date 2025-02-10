@@ -17,7 +17,7 @@ import base64
 import asyncio
 from websockets.sync.client import connect
 
-
+# todo: redo this whole thing
 
 ip = input("ip: ") if len(sys.argv) == 1 else sys.argv[1]
 #s.setblocking(False)
@@ -34,12 +34,13 @@ def dumpAndOpenLog():
     with open("log.txt", "w") as f:
         f.write('\n'.join(clog))
 
-    os.system("start ./log.txt")
+    os.system("./log.txt")
 
 class VideoWindow(QWidget):
     buttonQ = []
     def __init__(self, paddingX=4, paddingY=4):
         s = True
+        websocket = None
         super().__init__()
         self.setWindowTitle("Video Display")
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -111,7 +112,7 @@ class VideoWindow(QWidget):
             self.exit.resize(24,24)
             self.exit.setText("X")
             self.exit.setStyleSheet("background-color: transparent; font-size: 38px")
-            self.exit.clicked.connect(lambda: sys.exit())
+            self.exit.clicked.connect(lambda: self.cleanup())
             self.exit.setFocusPolicy(Qt.NoFocus)
 
             self.min = QPushButton(self)
@@ -139,6 +140,10 @@ class VideoWindow(QWidget):
 
         if s:
             self.status.setText("CONNECTED.")
+
+    def cleanup(self):
+        self.websocket.close()
+        sys.exit()
 
     def center(self):
         qr = self.frameGeometry()
@@ -253,6 +258,8 @@ class VideoWindow(QWidget):
         while True:
             try:
                 with connect("ws://{}:8765".format(ip)) as websocket:
+                    self.websocket = websocket
+
                     if haveibeenfucked:
                         self.status.setText("RECONNECTED.")
                         haveibeenfucked = False
@@ -273,6 +280,7 @@ class VideoWindow(QWidget):
                         except:
                             self.status.setText("DISCONNECTED. ATTEMPTING RECONNECT..")
                             haveibeenfucked = True
+                            raise
                             break
 
                         rsp = json.loads(rawresp)
