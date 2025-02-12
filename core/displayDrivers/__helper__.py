@@ -1,3 +1,5 @@
+import os
+import sys
 from core.utils import redir, config
 import threading
 import json, base64
@@ -82,5 +84,9 @@ def checkSocketINput():
     else:
         if gpio in ["up", "left", "right", "down", "1", "2", "3", "press"]:
             return gpio
+        elif gpio == "reload":
+            print("\033[2J")
+            print("[VNC] Reloading...")
+            os.execv(sys.executable, ['python'] + sys.argv)
         
 threading.Thread(target=sockStream.start, daemon=True).start()

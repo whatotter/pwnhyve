@@ -118,8 +118,6 @@ class DisplayDriver():
     def getKey(self):
         """get key without waiting; return current key pressed"""
 
-        print("z")
-
         a = h.checkSocketINput()
         if a:
             return a

@@ -1,12 +1,8 @@
 import json
 import os
 import threading
-from tkinter import *
-from PIL import ImageTk, Image, ImageOps
-import socket
 import base64
 import sys
-import io
 import time
 
 from PyQt5.QtWidgets import *
@@ -238,11 +234,12 @@ class VideoWindow(QWidget):
             49: "1",
             50: "2",
             51: "3",
+
+            92: "reload"
         }
 
         if keys.get(event.key(), False):
             key = keys.get(event.key())
-            print(key)
             if key not in self.buttonQ:
                 self.buttonQ.append(key)
                 print('button add: {}'.format(self.buttonQ))
