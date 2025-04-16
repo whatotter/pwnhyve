@@ -3,7 +3,7 @@
    <img src="./images/pwnhyve-min.png">
 </p>
 <h4 align="center">a little offensive appliance that mimics some features from the flipper zero and more, under $50</h4>
-<h4 align="center">https://docs.pwnhyve.xyz/</h4>
+<h4 align="center">https://otter-1.gitbook.io/pwnhyve</h4>
 
 ## feature set
 - extremely modular plugin system
@@ -47,7 +47,7 @@
     - looks cool
 
 # docs
-https://docs.pwnhyve.xyz/
+https://otter-1.gitbook.io/pwnhyve
 
 # feature matrix against the flipper zero
 | Feature         | Pwnhyve              | Flipper Zero         |
