@@ -13,6 +13,12 @@ class vars:
 usb = BadUSB()
 
 class Plugin(BasePwnhyvePlugin):
+    _icons = {
+        "File_Exfiltration": "./core/icons/usb.bmp",
+        "Ducky_Payloads": "./core/icons/usbfolder.bmp",
+        "LOLBAS": "./core/icons/usbfolder.bmp"
+    }
+
     def File_Exfiltration(tpil):
         global usb
         handler = tpil.gui.usbRunPercentage(tpil) # init handler

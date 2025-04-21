@@ -16,6 +16,12 @@ piusb = config["badusb"]["usbBin"]
 mountFolder = config["badusb"]["mountFolder"]
 
 class PWN_Gadget(BasePwnhyvePlugin):
+    _icons = {
+        "Toggle_USB_Ethernet": "./core/icons/eth.bmp",
+        "Toggle_Mass_Storage": "./core/icons/usb.bmp",
+        "Hide_USB_Device": "./core/icons/usb.bmp",
+        "Drive_Stealer": "./core/icons/usb.bmp",
+    }
 
     def Toggle_USB_Ethernet(tpil):
         global USBEthernetEnabled

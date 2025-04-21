@@ -53,8 +53,12 @@ def checkForTransciever(tpil):
 
 class PWNsubGhz(BasePwnhyvePlugin):
 
-    icons = {
-        "Read_Raw": "./core/icons/skullemit.bmp"
+    _icons = {
+        "XCVR_Read_Raw": "./core/icons/router.bmp",
+        "Set_XCVR_Power": "./core/icons/router.bmp",
+        "Set_XCVR_Frequency": "./core/icons/router.bmp",
+        "XCVR_Replay_Data": "./core/icons/routeremit.bmp",
+        "Play_FM_Radio": "./core/icons/routeremit.bmp",
     }
     
     def XCVR_Read_Raw(tpil):

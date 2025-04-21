@@ -38,6 +38,10 @@ pinModeStrings = {
 }
 
 class PWNPlayground(BasePwnhyvePlugin):
+    _icons = {
+        "Playground": "./core/icons/tool.bmp",
+    }
+
     def Playground(tpil):
         global pinObjects
         pinObjects = {}

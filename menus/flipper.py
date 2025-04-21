@@ -159,8 +159,13 @@ class Screen(BasePwnhyveScreen):
 
 
             if len(icons) != 0: # if we defined icons
-                icofile = icons.get(text, "./core/icons/missing.bmp")
-                rico = Image.open(icofile)
+                icofile = icons.get(text, None)
+                if icofile != None:
+                    rico = Image.open(icofile)
+                else:
+                    rico = None
+                    iconSizePadding = -iconSize
+
             else: # if we didn't define icons
                 iconSizePadding = -iconSize
 
@@ -169,22 +174,22 @@ class Screen(BasePwnhyveScreen):
 
             if selection != text.replace("> ", ""): # if our selection isnt the text iter gave us
                 self.draw.text(
-                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord+1),
+                    (iconSizePadding+iconSize+self.rzc2r(4), yCoord+2),
                       text.replace("_", " "), fill=white, outline=white, 
                       font=unselectedFont) # draw black text over rectangle             
             else: # it is our selection
-                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-1)), self.rzxyr((120, 13 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
-                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord+1), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
+                self.draw.rounded_rectangle([self.rzxyr((0, yCoord-1)), self.rzxyr((120, 14 + yCoord))], fill=1, outline=white, radius=3) # draw colored rectangle first
+                self.draw.text((iconSizePadding+iconSize+self.rzc2r(4), yCoord+2), text.replace("_", " "), fill=white, outline=white, font=selectedFont) # draw black text over rectangle
             
-            if len(icons) != 0: # if we defined icons
+            if len(icons) != 0 and rico != None: # if we defined icons
                 # paste
                 if self.disp.invertedColor:
                     rico = ImageOps.invert(rico.convert('L'))
 
-                #ico = rico.resize((iconSize,iconSize))
-                self.image.paste(rico, (rIcoX, rIcoY+yCoord))
+                ico = rico.resize((iconSize,iconSize))
+                self.image.paste(ico, (rIcoX+2, rIcoY+yCoord))
 
-            yCoord += (iconSize) + 6
+            yCoord += 8 + 8
 
         yCoord = 3
 

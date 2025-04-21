@@ -93,6 +93,14 @@ def manage(tpil, params, listOfAssertParams, isCreds=False, isWifiCreds=True):
     sc.exit()
 
 class PWNHammer(BasePwnhyvePlugin):
+    _icons = {
+        "Edit_Parameters": "./core/icons/tool.bmp",
+        "Troll_WinDefender": "./core/icons/routeremit.bmp",
+        "Captive_Portal": "./core/icons/routeremit.bmp",
+        "Evil_Twin": "./core/icons/routeremit.bmp",
+        "Redirect_to_SMB": "./core/icons/routeremit.bmp",
+    }
+
     def Edit_Parameters(tpil):
         # * triggers string entry
         edits = {

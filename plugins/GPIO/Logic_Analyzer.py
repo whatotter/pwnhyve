@@ -112,6 +112,10 @@ def editConfig(tpil):
         LA_CFG[choice] = cfgParameter
 
 class PWNLA(BasePwnhyvePlugin):
+    _icons = {
+        "Logic_Analyzer": "./core/icons/graph.bmp",
+    }
+        
     def Logic_Analyzer(tpil:tinyPillow):
         global xCoord, previousBit, bitsBeforeActivity, dataset, samplesRecorded
 

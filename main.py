@@ -71,7 +71,11 @@ if __name__ == "__main__":
 
         # button stuff
         fontSize = round(disp.height / 8)
+        folders = ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./"+plugPath) and not x.startswith("_") and ".py" not in x]
         while True:
+            for folder in folders:
+                plugins.icons[folder] = "./core/icons/folder.bmp"
+                
             key = disp.gui.menu(
                 pluginsAndDirectories, 
                 disableBack=currentDirectory=="", 
