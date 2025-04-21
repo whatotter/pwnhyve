@@ -127,4 +127,8 @@ class DisplayDriver():
     def showImage(self, directory):
         bmp = Image.open(directory)
         self.draw.paste(bmp, (0,0))
+<<<<<<< Updated upstream
         # Himage2=Himage2.rotate(180) 	
+=======
+        # Himage2=Himage2.rotate(180) 	
+>>>>>>> Stashed changes
