@@ -37,6 +37,7 @@
     - Use and save as Flipper Zero files
         - Can use Flipper Zero `.sub` files
         - Can also save recorded frames as `.sub` files
+    - FM radio hijacking
 - IO
     - 2 channel 1.5mHz Logic analyzer, compatible with sigrok/pulseview (by CSV export)
     - Flipper Zero-like breakout

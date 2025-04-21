@@ -34,7 +34,6 @@ pins with * are recommended to not be used
 ```
 
 # spi
-~~add `dtoverlay=spi0-2cs,cs0=8,cs1=18` to `/boot/config.txt`~~  
 - GPIO8 (phys. pin 24) would be for `spidev0.0` (display)
 - GPIO18 (phys. pin 12) would be for `spidev0.1` (CC1101)
 - GPIO7 (phys. pin 26) would be for `spidev0.2` (other things)
@@ -44,7 +43,6 @@ aka JUST RUN THIS
 dtc -I dts -O dtb -o 3spi.dtbo ./core/installation/spi-cs-extend.dts
 sudo cp 3spi.dtbo /boot/overlays/
 echo "dtoverlay=3spi" >> /boot/config.txt
-echo "dtoverlay=spi0-2cs,cs0=8,cs1=18" >> /boot/config.txt
 
 sudo reboot
 ```

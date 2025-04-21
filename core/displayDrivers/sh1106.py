@@ -80,13 +80,13 @@ class DisplayDriver():
         
         pass
 
-    def waitWhileChkKey(self, s, resolution=0.05):
+    def waitWhileChkKey(self, s, resolution=0.05, debounce=True):
         """wait s seconds while also checking for a keypress"""
 
         tw = round(s / resolution)
 
         for x in range(tw):
-            a = self.getKey()
+            a = self.getKey(debounce=debounce)
             if a != False:
                 return a
 

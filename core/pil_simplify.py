@@ -50,7 +50,7 @@ class tinyPillow:
         """draw a rectangle/square"""
         color = self.__manageInvColor__(color)
         
-        return self.draw.rectangle([topleft, bottomright],
+        return self.draw.rectangle((tuple(topleft), tuple(bottomright)),
                         fill=color
                         )
     def clear(self):

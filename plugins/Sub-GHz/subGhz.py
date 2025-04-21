@@ -1,19 +1,26 @@
 import os
 import time
+
 import core.cc1101.ccrf as ccrf
 import core.cc1101.binary as binTranslate
 import core.cc1101.flipsub as fsub
-from core.plugin import BasePwnhyvePlugin 
-import math
+import core.rpitx.rpitx as rpitx
 
-transceiver = ccrf.pCC1101()
-freq = transceiver.currentFreq
-strfrq = str(freq)[:3]
+from core.plugin import BasePwnhyvePlugin 
+
+fm = rpitx.PiFMRds()
+
+transceiverEnabled = False
+
+try:
+    transceiver = ccrf.pCC1101()
+    freq = transceiver.currentFreq
+    strfrq = str(freq)[:3]
+    transceiverEnabled = True
+except:
+    print("[+] CC1101 not detected")
 
 rbyt = {}
-
-#transceiver.revertTransceiver()
-
 sctext = ""
 def scText(text, caption, maxln=6):
     global sctext
@@ -33,14 +40,27 @@ def scText(text, caption, maxln=6):
 
     return '\n'.join(s)
 
+def checkForTransciever(tpil):
+
+    if not transceiverEnabled:
+        a = tpil.gui.screenConsole(tpil)
+        a.addText("No CC1101 detected - this function is disabled")
+
+        tpil.waitForKey()
+        return False
+    
+    return True
+
 class PWNsubGhz(BasePwnhyvePlugin):
 
     icons = {
         "Read_Raw": "./core/icons/skullemit.bmp"
     }
     
-    def Read_Raw(tpil):
+    def XCVR_Read_Raw(tpil):
         global freq, rbyt
+
+        if not checkForTransciever(tpil): return
 
         transceiver.rst()
 
@@ -197,7 +217,9 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 transceiver.sleepMode()
                 return
 
-    def Set_Power(tpil):
+    def Set_XCVR_Power(tpil):
+        if not checkForTransciever(tpil): return
+
         powerStrings = []
 
         for registerValue, dBm in transceiver.patable:
@@ -209,8 +231,9 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         transceiver.adjustOOKSensitivity(0, registerValue)
 
-    def Replay_Data(tpil):
+    def XCVR_Replay_Data(tpil):
         global strfrq, freq
+        if not checkForTransciever(tpil): return
 
         fle = tpil.gui.menu(os.listdir("./subghz"))
 
@@ -279,8 +302,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
         #strfrq = str(beforefreq)[:3]
         #transceiver.revertTransceiver()
 
-    def Set_Frequency(tpil):
+    def Set_XCVR_Frequency(tpil):
         global freq, strfrq
+
+        if not checkForTransciever(tpil): return
+
         a = tpil.gui.setFloat(tpil, "Frequency (300-950mhz)", _min=300.0, _max=950.0,
                               start=str(int(transceiver.currentFreq/1e6))+".000"
                               #    ^ round the float into an int       ^ then add THREE place values
@@ -289,3 +315,25 @@ class PWNsubGhz(BasePwnhyvePlugin):
         transceiver.setFreq(a)
 
         print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
+
+    def Play_FM_Radio(tpil):
+        audio = "./fm_audio/" + tpil.gui.menu(list(filter(lambda x: x.endswith(".wav"), os.listdir("./fm_audio"))))
+        if audio == None: return
+
+        frequency = tpil.gui.slider(tpil, "FM Frequency", minimum=90, maximum=110, 
+                                    start=102.5, step=0.1, bigstep=1).draw()
+        
+
+        sc = tpil.gui.screenConsole(tpil)
+        sc.addText("Hit any key to stop\n\n\n" + "Playing FM @ {}\n{}".format(frequency, audio))
+        time.sleep(0.1) # finish writes to gpio
+
+        fm.freq = frequency
+
+        fm.play(audio)
+
+        tpil.waitForKey()
+
+        fm.stop()
+
+        print(audio)
