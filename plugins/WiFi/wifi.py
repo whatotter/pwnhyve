@@ -20,8 +20,7 @@ class PwnagotchiScreen():
         self.console = ""
         self.handshakes = 0
         self.aps = 0
-        self.face = "(◕‿‿◕)" # dumbass face god its so cute
-        #self.face = "(o..o)" # shitty face
+        self.face = "(◕‿‿◕)"
 
         self.draw = canvas
         self.disp = disp
