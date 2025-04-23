@@ -97,8 +97,8 @@ def editConfig(tpil):
 
         elif cfgParameter["type"] == "pin":
             channelPins = [ # channel pins to highlight as selected
-                LA_CFG["Channel 1"]["value"],
-                LA_CFG["Channel 2"]["value"]
+                pinMGR.pinLookup(LA_CFG["Channel 1"]["value"]),
+                pinMGR.pinLookup(LA_CFG["Channel 2"]["value"])
                 ]
 
             cfgParameter["value"] = pinMGR.requestPin(tpil, highlightedPins=channelPins)
@@ -150,7 +150,7 @@ class PWNLA(BasePwnhyvePlugin):
 
         def drawLine(bits:bool, lineLength, channel="ch1"):
             global xCoord, previousBit, bitsBeforeActivity
-            print("[!!!] drawing {} samples".format(len(bits)))
+            print("[!!!] drawing {} samples | bw: {}".format(len(bits), lineLength))
 
             highCoord = CH1_HIGH if channel == "ch1" else CH2_HIGH
             lowCoord = CH1_LOW if channel == "ch1" else CH2_LOW
@@ -162,7 +162,7 @@ class PWNLA(BasePwnhyvePlugin):
             for bit in bits:
                 bitsPassed += 1
 
-                if bit != previousBit: # if bit is different, then draw the previous bit
+                if bit != previousBit or bitsPassed == len(bits): # if bit is different, then draw the previous bit
                     bitLength = lineLength*bitsPassed
 
                     if bit == 0: # if this new bit is LOW, then the previous bit was HIGH

@@ -70,7 +70,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         a = tpil.gui.screenConsole(tpil)
         
-        a.text = (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq)))
+        a.setText( (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq))) )
 
         transceiver.setupRawRecieve()
 
@@ -85,11 +85,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
         
         #a.addText("hit any key to start RX")
 
-        a.text = scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq))
+        a.setText( scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq)) )
 
         tpil.waitForKey()
 
-        a.text = scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq))
+        a.setText( scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq)) )
         
         transceiver.recvInf() # start reading
 
@@ -158,7 +158,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     binTranslate.deleteTrailingNull(bits)
                 )
 
-                hexs = binTranslate.bytesToHex(byts)
+                hexs = binTranslate.octetsToHex(byts)
 
                 a = tpil.gui.screenConsole(tpil)
 
@@ -200,11 +200,13 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 lines.append("EOF.")
 
                 offset = 0
+
                 while True:
                     selectedLines = lines[0+offset:6+offset]
 
                     a.text = '\n'.join(selectedLines)
 
+                    a.update()
                     z = tpil.waitForKey()
 
                     if z == "down":

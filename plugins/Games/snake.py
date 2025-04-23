@@ -8,8 +8,26 @@ class Plugin(BasePwnhyvePlugin):
 
         def drawPixel2(xy):
             # draw pixels in a 64x32 grid instead of 128x64
-            xAxis, yAxis = xy[0]*2, xy[1]*2
-            tpil.rect((xAxis, yAxis), (xAxis+1, yAxis+1))
+            xAxis, yAxis = xy[0]*4, xy[1]*4
+            tpil.rect((xAxis, yAxis), (xAxis+3, yAxis+3))
+
+        def extendTail(XYZ):
+            coordPlane = XYZ.copy()
+            print("MP: {}".format(coordPlane))
+            match coordPlane[2]: # coordPlane[2] is the direction of the pixel
+                case "up":
+                    coordPlane[1] += 1 # move Y-1
+                case "down":
+                    coordPlane[1] -= 1 # move Y+1
+                case "right":
+                    coordPlane[0] -= 1 # move X+1
+                case "left":
+                    coordPlane[0] += 1 # move X-1
+
+            print("MP new: {}".format(coordPlane))
+
+            return coordPlane
+
 
         def moveSnake(snakePos):
             global dirChange
@@ -44,11 +62,11 @@ class Plugin(BasePwnhyvePlugin):
             pass
 
         dirChanges = [] # when snake body pixel reaches a pixel in here, the body will turn to the alotted direction
-        snakePos = [[x, 16, "right"] for x in range(36, 42)]
-        applePos = [48, 16]
+        snakePos = [[x, 8, "right"] for x in range(4, 8)]
+        applePos = [12, 8]
         popNext = False
         applesAte = 0
-        speed = 0.25
+        speed = 0.2
 
         def checkDir(dir):
             # make sure snake doesn't do a 180 into itself
@@ -76,7 +94,7 @@ class Plugin(BasePwnhyvePlugin):
             tpil.show()
 
             # user key management
-            key = tpil.waitWhileChkKey(speed)
+            key = tpil.waitWhileChkKey(speed, resolution=0.001)
 
             if key == "up":
                 if checkDir("up"): snakeDirection("up")
@@ -87,9 +105,21 @@ class Plugin(BasePwnhyvePlugin):
             elif key == "down":
                 if checkDir("down"):snakeDirection("down")
 
+            headCoordinate = [snakePos[-1][0], snakePos[-1][1]]
+
+            # if head is on an apple, the snake ate it - increase score by 1
+            if headCoordinate == applePos:
+                applesAte += 1
+                speed -= 0.001
+                applePos = [random.randint(2,30), random.randint(2,10)]
+
+                a = extendTail(snakePos[0])
+
+                snakePos.insert(0, a)
+
+
             # handle snake tail movement
             snakeTail = snakePos[0]
-            print('Tail: {}'.format([snakeTail[0], snakeTail[1]]))
             try:
                 if [snakeTail[0], snakeTail[1]] == dirChanges[0][0]:
                     # if the last direction change is not applicable to the snake anymore (e.g snake body finished the turn)
@@ -98,21 +128,16 @@ class Plugin(BasePwnhyvePlugin):
             except:
                 pass
 
-            headCoordinate = [snakePos[-1][0], snakePos[-1][1]]
 
-            # if head is on an apple, the snake ate it - increase score by 1
-            if headCoordinate == applePos:
-                applesAte += 1
-                speed -= 0.005 if speed >= 0.01 else 0.001
-                applePos = [random.randint(2,62), random.randint(2,24)]
 
             # make snake die when crashed into wall
-            if (headCoordinate[0] >= 64 or headCoordinate[0] == -1) or (headCoordinate[1] >= 32 or headCoordinate[1] == -1):
+            if (headCoordinate[0] >= 32 or headCoordinate[0] == -1) or (headCoordinate[1] >= 16 or headCoordinate[1] == -1):
                 died()
                 return
 
             # make snake die when crashed into itself
             if headCoordinate in [[x[0], x[1]] for x in snakePos][:-1]:
+                print("snake crashed into self")
                 died()
                 return
 

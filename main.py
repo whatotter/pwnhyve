@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
     #region run usb gadget
     print("[USB] initializing usb gadget...")
-    os.system("/bin/SteinarUSB")
+    os.system("/bin/pwnhyveUSB")
     #endregion
 
     #region setup display driver

@@ -548,6 +548,10 @@ class BasePwnhyveScreen():
         def quit(self):
             self.exit()
 
+        def setText(self, stri:str):
+            self.text = stri
+            self.update()
+
         def addText(self, stri:str):
             self.text += stri+"\n"
             self.update()
