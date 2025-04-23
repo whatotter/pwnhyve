@@ -111,7 +111,8 @@ class tinyPillow:
         self.disp.screenShow()
         if clear: self.clear()
 
-        
+    def invertImage(self, image:Image):
+        return ImageOps.invert(image.convert('L'))        
 
     def __getDDI__(self):
         """return (d)raw (d)isplay (i)mage for backwards compat. or custom drawings"""

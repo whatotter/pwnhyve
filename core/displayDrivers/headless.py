@@ -50,7 +50,7 @@ class DisplayDriver():
         self.name = "SH1106"
         # these are variables due to PPI differences
         self.recommendedFontSize = 16 # font size for decent readability
-        self.iconSize = 8
+        self.iconSize = 12
         
         mr = self
 
@@ -127,8 +127,4 @@ class DisplayDriver():
     def showImage(self, directory):
         bmp = Image.open(directory)
         self.draw.paste(bmp, (0,0))
-<<<<<<< Updated upstream
         # Himage2=Himage2.rotate(180) 	
-=======
-        # Himage2=Himage2.rotate(180) 	
->>>>>>> Stashed changes
