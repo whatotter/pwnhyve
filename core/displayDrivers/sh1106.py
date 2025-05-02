@@ -62,7 +62,7 @@ class DisplayDriver():
         self.name = "SH1106"
         # these are variables due to PPI differences
         self.recommendedFontSize = 16 # font size for decent readability
-        self.iconSize = 8
+        self.iconSize = 12
 
         self.keysBeingHeld = []
 

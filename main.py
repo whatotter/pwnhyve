@@ -5,6 +5,7 @@ TODO: clean this
 """
 
 import os
+import threading
 
 # CD to script path
 abspath = os.path.abspath(__file__)
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     
     #region run usb gadget
     print("[USB] initializing usb gadget...")
-    os.system("/bin/SteinarUSB")
+    os.system("/bin/pwnhyveUSB")
     #endregion
 
     #region setup display driver
@@ -64,6 +65,8 @@ if __name__ == "__main__":
 
     pluginsAndDirectories = plugins.moduleList
     previousModuleLoaded = None
+    finishedLoading = False
+    extraLoadingText = ""
     while 1:
 
         selection = 0
@@ -71,7 +74,11 @@ if __name__ == "__main__":
 
         # button stuff
         fontSize = round(disp.height / 8)
+        folders = ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./"+plugPath) and not x.startswith("_") and ".py" not in x]
         while True:
+            for folder in folders:
+                plugins.icons[folder] = "./core/icons/folder.bmp"
+                
             key = disp.gui.menu(
                 pluginsAndDirectories, 
                 disableBack=currentDirectory=="", 
@@ -115,18 +122,50 @@ if __name__ == "__main__":
                 #    |- test2
                 #    |  \ b.py
                 #    | c.py
+
+                def threadedLoading(disp):
+                    global finishedLoading
+                    global extraLoadingText
+
+                    loadings = [
+                        "|", "/", "---", "\\", "|", "/", "---", "\\"
+                    ]
+                    loadingIndex = 0
+
+                    while not finishedLoading:
+                        if loadingIndex == len(loadings):
+                            loadingIndex = 0
+
+                        disp.fullClear(draw)
+                        disp.draw.text((round(disp.width/2), round(disp.height/2)), loadings[loadingIndex], 
+                                       font=ImageFont.truetype('core/fonts/roboto.ttf', 24), anchor="mm")
+                        disp.draw.text((2, 2), extraLoadingText, 
+                                       font=ImageFont.truetype('core/fonts/roboto.ttf', 12))
+                        disp.screenShow()
+
+                        loadingIndex += 1
+
+                        time.sleep(0.25)
+
+                    finishedLoading = False
+                    extraLoadingText = ""
+                    
+
+                loadingThread = threading.Thread(target=threadedLoading, args=(disp,), daemon=True)
+                loadingThread.start()
                     
                 currentDirectory += key
                 print("[MENU] loading "+currentDirectory)
-                disp.fullClear(draw)
-                disp.draw.text((round(disp.width/3), round(disp.height/4)), "loading...", font=ImageFont.truetype('core/fonts/tahoma.ttf', fontSize))
-                disp.screenShow()
 
+                extraLoadingText = "Loading {}".format(currentDirectory)
 
                 dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
                 
                 plugins = pwnhyvePluginLoader(folder=dire) # "test"
                 pluginsAndDirectories = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire+"/"+x) and not x.startswith("_") and ".py" not in x]
+
+                finishedLoading = True
+                loadingThread.join()
 
                 print('[MENU] finished loading')
 

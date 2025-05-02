@@ -111,6 +111,6 @@ def requestPin(tpil, highlightedPins=[], append={}, minimize=False):
     if not minimize:
         pin = pinName.split(" ", 1)[0] # hacky
     else:
-        return physicalPinLookup(int(pinName[1:].split(" ")[0]))
+        return physicalPinLookup(int(pinName[1:].split(" ")[1]))
 
     return pins[pin] # translate pin name to BCM pin (e.g. 23)

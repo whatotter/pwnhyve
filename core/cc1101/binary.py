@@ -38,6 +38,12 @@ def bin2(num:int):
     else:
         dif = 8 - len(a)
         return "0"*dif + a
+    
+def b2h(_bytes):
+    hexa = []
+    for byte in _bytes:
+        hexa.append(byte.hex())
+    return hexa
 
 def hexToBytes(hexa):
     _bytes = []

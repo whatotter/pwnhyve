@@ -40,8 +40,10 @@ class Plugin(BasePwnhyvePlugin):
             else:
                 h = tpil.disp.height
 
-            frames[x] = bmp.resize((tpil.disp.width, h))
+            image = bmp.resize((tpil.disp.width, h))
 
+            frames[x] = tpil.invertImage(image)
+        
 
         while 1: # wait for key press
             if tpil.checkIfKey(): return
@@ -49,6 +51,7 @@ class Plugin(BasePwnhyvePlugin):
             if currFrame == framesAmnt: currFrame = 1
 
             tpil.pasteImage(frames[currFrame])
+            tpil.show()
 
             currFrame += 1
 

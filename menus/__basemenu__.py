@@ -339,83 +339,28 @@ class BasePwnhyveScreen():
             tempText = []
 
             percentageX, percentageY = 94,24
+            self.started = True
+
             while 1:
                 #print(self.text) # dee bug
-                if self.close: return # request to close
-
-
-                # to prevent drawing more lines than display res, remove first line of console if the len of a newline split list is equal to 5
-                if len(self.text.split("\n")) > 5:
-                    textList = self.text.split("\n") # split into list
-                    while len(textList) > 5:
-                        textList.pop(0) # pop first index
-
-                    self.text = '\n'.join(textList) # join it back together with newlines
-
-                tempText.clear()
-                for line in self.text.split("\n"): # make sure text doesnt go over divider
-                    if len(line) > divisor: # will go over divider
-                        #lineList = [str(x) for x in line] # turn into list
-                        lineWordList = line.split(" ")
-                        lines = []
-                        tempLine = ""
-
-                        #while len(lineList) != divisor: # while len isnt divisor
-                            #lineList.pop(len(lineList) - 1) # remove last char
-
-                        while len(lineWordList) != 0: # while our words that are in a list isnt empty
-                            #print(lineWordList) # debug
-                            for x in lineWordList.copy(): # copy to prevent errors
-                                if len(tempLine) + len(x) > divisor: # if the len of the things are over divisor, start removing
-                                    if len(x) > divisor: # if the entire word is over divisor
-                                        #print("word over divisor")
-                                        xLst = [str(y) for y in x] # turn it into a list
-                                        while len(xLst) != divisor - 2: # while its not divisor
-                                            xLst.pop() # pop last
-                                        xLst.append("..") # to show it's been cut
-                                        x2 = ''.join(xLst) # turn it back into str
-
-                                        lines.append(x2) # append cut word into lines
-                                        lineWordList.remove(x) # remove full word
-                                        tempLine = "" # clear temp line
-                                        break # break off
-
-                                    lines.append(tempLine)
-                                    tempLine = ""
-                                    break
-
-                                tempLine += x + " " # just add our words n stuff
-
-                                lineWordList.remove(x) # prevent going over already processed word
-
-                        # just for multiline pretty
-                        """
-                        lines[0] = "/" + lines[0]
-                        for x in range(1, len(lines) - 1):
-                            lines[x] = '|'+lines[x]
-                        lines[-1] = '\\'+lines[-1]
-                        """
-
-                        #lineList.append("..") # add elipses to show it's been cut
-                        #line = ''.join(lineList) # re-merge list
-
-                        line = '\n'.join(lines) # re-merge list
-
-                    tempText.append(line) # append to list to join later
+                if self.close:
+                    self.disp.fullClear(self.draw)
+                    self.disp.screenShow(self.disp, self.image, flipped=self.flipped, stream=True)
+                    return # request to close
                 
-                self.text = '\n'.join(tempText) # join lines from list
+                if self.stopWriting: sleep(0.5); continue
 
-                """
-                if self.percentage == percentageOld:
-                    if textOld == self.text:
-                        continue # if nothing has changed, continue to prevent drawing too much # this does not work
+                if self.text != self.oldText or self.updateBool:
+                    self.tpil.clear()
+                    
+                    self.tpil.text((2, 1),
+                                   '\n'.join(wrap(self.text, replace_whitespace=False, drop_whitespace=False, width=round(self.disp.width/2))), 
+                                   font=self.cFont, spacing=1) # console
+                    
+                    self.tpil.show()
+                    self.updateBool = False
                 
-                textOld = self.text # set old vars
-                percentageOld = self.percentage          
-                """
-
-                self.update()
-                sleep(0.05)
+                self.oldText = self.text
 
         def update(self):
             percentageX, percentageY = 94,24
@@ -443,6 +388,10 @@ class BasePwnhyveScreen():
                 self.text = ""
 
             self.text += stri+"\n"
+
+            if len(self.text.split("\n")) > 4:
+                self.text = '\n'.join(self.text.split("\n")[4:])
+
             self.update()
 
         def clearText(self):
@@ -548,8 +497,19 @@ class BasePwnhyveScreen():
         def quit(self):
             self.exit()
 
+        def setText(self, stri:str):
+            self.text = stri
+            self.update()
+
         def addText(self, stri:str):
             self.text += stri+"\n"
+
+            if len(self.text.split("\n")) > 7:
+                a = self.text.split("\n")
+                a.pop(0)
+                
+                self.text = '\n'.join(a)
+
             self.update()
 
         def clearText(self):

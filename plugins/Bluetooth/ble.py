@@ -77,6 +77,12 @@ def split22s(s):
     return [s[i:i+2] for i in range(0, len(s), 2)]
 
 class PWNBluetooth(BasePwnhyvePlugin):
+    _icons = {
+        "Enumerate_Clients": "./core/icons/wififolder.bmp",
+        "BLE_Write": "./core/icons/clipboard.bmp",
+        "Graph_RSSIs": "./core/icons/graph.bmp"
+    }
+    
     def Enumerate_Clients(tpil:tinyPillow):
         chosenIndex = 0
         sliceIndex = 0

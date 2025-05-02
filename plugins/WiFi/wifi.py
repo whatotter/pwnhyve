@@ -92,6 +92,10 @@ class airmon:
         
 
 class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
+    _icons = {
+        "pwnagotchi": "./core/icons/routeremit.bmp"
+    }
+    
     def pwnagotchi(draw, disp, image, GPIO, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:int=10, checkDelay:float=float(1), nextDelay:float=float(10), fileLocation="/home/pwnagotchi/handshakes", debug:bool=False, prettyDebug:bool=True):
 
         screen = PwnagotchiScreen(draw, disp, image, GPIO)
@@ -293,6 +297,9 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
                 sleep(nextDelay)
 
 class PWN_Essensials(BasePwnhyvePlugin):
+    _icons = {
+        "AP_Scanner": "./core/icons/router.bmp"
+    }
     def AP_Scanner(tpil):
 
         class abVars:

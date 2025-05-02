@@ -10,11 +10,32 @@ class vars:
 
     font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
 
-usb = BadUSB()
+try:
+    usb = BadUSB()
+except FileNotFoundError:
+    usb = None
 
 class Plugin(BasePwnhyvePlugin):
+    _icons = {
+        "File_Exfiltration": "./core/icons/usb.bmp",
+        "Ducky_Payloads": "./core/icons/usbfolder.bmp",
+        "LOLBAS": "./core/icons/usbfolder.bmp"
+    }
+
     def File_Exfiltration(tpil):
         global usb
+
+        if usb == None:
+            a = tpil.gui.screenConsole(tpil)
+
+            a.setText("USB is not connected\n\n...")
+
+            tpil.waitForKey()
+
+            a.exit()
+
+            return
+
         handler = tpil.gui.usbRunPercentage(tpil) # init handler
 
         handler.addText("hit any key to run payload\nexfiltrating: $env:tmp/z")
@@ -83,6 +104,17 @@ class Plugin(BasePwnhyvePlugin):
         global usb
         # args: [draw, disp, image]
 
+        if usb == None:
+            a = tpil.gui.screenConsole(tpil)
+
+            a.setText("USB is not connected\n\n...")
+
+            tpil.waitForKey()
+
+            a.exit()
+
+            return
+
         print("abcd")
 
         payloads = os.listdir("./payloads/")
@@ -113,6 +145,17 @@ class Plugin(BasePwnhyvePlugin):
 
         basedir = "./core/LOLBAS/"
         directory = basedir
+
+        if usb == None:
+            a = tpil.gui.screenConsole(tpil)
+
+            a.setText("USB is not connected\n\n...")
+
+            tpil.waitForKey()
+
+            a.exit()
+
+            return
 
         while True:
             # theres definitely a better way of doin this

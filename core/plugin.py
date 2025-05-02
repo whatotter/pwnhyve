@@ -102,7 +102,7 @@ class pwnhyvePluginLoader():
                     z = getattr(moduleDict[item], x) # plugin class
 
                     try:
-                        icons = getattr(z, 'icons')
+                        icons = getattr(z, '_icons')
                     except:
                         icons = {}
 

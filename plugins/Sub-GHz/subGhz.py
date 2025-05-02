@@ -53,8 +53,12 @@ def checkForTransciever(tpil):
 
 class PWNsubGhz(BasePwnhyvePlugin):
 
-    icons = {
-        "Read_Raw": "./core/icons/skullemit.bmp"
+    _icons = {
+        "XCVR_Read_Raw": "./core/icons/router.bmp",
+        "Set_XCVR_Power": "./core/icons/router.bmp",
+        "Set_XCVR_Frequency": "./core/icons/router.bmp",
+        "XCVR_Replay_Data": "./core/icons/routeremit.bmp",
+        "Play_FM_Radio": "./core/icons/routeremit.bmp",
     }
     
     def XCVR_Read_Raw(tpil):
@@ -66,7 +70,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         a = tpil.gui.screenConsole(tpil)
         
-        a.text = (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq)))
+        a.setText( (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq))) )
 
         transceiver.setupRawRecieve()
 
@@ -81,11 +85,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
         
         #a.addText("hit any key to start RX")
 
-        a.text = scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq))
+        a.setText( scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq)) )
 
         tpil.waitForKey()
 
-        a.text = scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq))
+        a.setText( scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq)) )
         
         transceiver.recvInf() # start reading
 
@@ -154,7 +158,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     binTranslate.deleteTrailingNull(bits)
                 )
 
-                hexs = binTranslate.bytesToHex(byts)
+                hexs = binTranslate.octetsToHex(byts)
 
                 a = tpil.gui.screenConsole(tpil)
 
@@ -196,11 +200,13 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 lines.append("EOF.")
 
                 offset = 0
+
                 while True:
                     selectedLines = lines[0+offset:6+offset]
 
                     a.text = '\n'.join(selectedLines)
 
+                    a.update()
                     z = tpil.waitForKey()
 
                     if z == "down":

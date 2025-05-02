@@ -1,3 +1,4 @@
+import time
 from PIL import ImageFont
 import subprocess
 import os
@@ -16,6 +17,12 @@ piusb = config["badusb"]["usbBin"]
 mountFolder = config["badusb"]["mountFolder"]
 
 class PWN_Gadget(BasePwnhyvePlugin):
+    _icons = {
+        "Toggle_USB_Ethernet": "./core/icons/eth.bmp",
+        "Toggle_Mass_Storage": "./core/icons/usb.bmp",
+        "Hide_USB_Device": "./core/icons/usb.bmp",
+        "Drive_Stealer": "./core/icons/usb.bmp",
+    }
 
     def Toggle_USB_Ethernet(tpil):
         global USBEthernetEnabled
@@ -100,7 +107,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
             os.mkdir(extractPoint)
         except: pass
 
-        handler = tpil.gui.usbRunPercentage(tpil) # init handler
+        handler = tpil.gui.screenConsole(tpil) # init handler
 
         handler.addText("creating mountdir")
 
@@ -111,8 +118,6 @@ class PWN_Gadget(BasePwnhyvePlugin):
         foundFiles = {}
 
         os.mkdir(MOUNT_DIR)
-
-        handler.addText("created mountdir")
 
         handler.addText("waiting for usb")
 
@@ -140,6 +145,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
             if len(output) > 0: # i dont even know anymore
                 output = output.split("\n")
                 handler.addText("got usb; mounting")
+                startTime = time.time_ns() / 1_000_000
                 o = subprocess.getstatusoutput("mount %s %s" % (output[0].split(" ")[0], MOUNT_DIR))
 
                 if o[0] != 0: 
@@ -162,7 +168,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
             else:
                 sleep(0.025)
 
-        handler.addText("files to extract: {}".format('", "'.join(fileSearch)))
+        handler.addText("extracting {} files".format(len(fileSearch)))
         handler.addText("using find command")
 
         for item in fileSearch:
@@ -185,8 +191,9 @@ class PWN_Gadget(BasePwnhyvePlugin):
 
         subprocess.getoutput("sudo umount {}".format(output[0].split(" ")[0]))
 
+        endTime = time.time_ns() / 1_000_000
+
         handler.addText("done")
-        handler.setPercentage(100)
         tpil.waitForKey()
 
         # just for easier reading
@@ -194,7 +201,8 @@ class PWN_Gadget(BasePwnhyvePlugin):
         for found in foundFiles:
             b += len(foundFiles[found])
 
-        handler.text = "total files: {}\ntarget\n{}\nextract to {}".format(b, output[0].split(" ")[0], extractPoint)
+        handler.text = "total files extracted: {}\nUSB target: {}\ntime taken: {}ms".format(b, output[0].split(" ")[0].strip(), round(endTime-startTime, 2))
+        handler.update()
 
         tpil.waitForKey()
 
