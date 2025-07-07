@@ -28,7 +28,11 @@ def scText(text, caption, maxln=6):
 
 class PWNTestOne(BasePwnhyvePlugin):
     def keyboard(tpil):
-        tpil.gui.enterText(tpil)
+        tpil.gui.enterText()
+
+    def toast(tpil):
+        tpil.gui.toast("text", [4,2], [128-4, 64-8])
+        tpil.waitForKey()
 
     def screenConsole(tpil):
         a = tpil.gui.screenConsole(tpil)

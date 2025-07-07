@@ -1,4 +1,5 @@
 import os
+import time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from time import sleep
 from core.pil_simplify import tinyPillow
@@ -12,6 +13,8 @@ class BasePwnhyveScreen():
         self.disp = disp
         self.draw = draw
         self.image = image
+
+        self.tpil = tinyPillow(draw, disp, image, gui=self)
 
         return None
     
@@ -515,13 +518,21 @@ class BasePwnhyveScreen():
             self.text = ""
             self.update()
 
+    def toast(self, text, xy1, xy2):
+        self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
+        self.draw.rounded_rectangle((xy1, xy2), radius=3)
+
+        self.tpil.text([xy1[0]+4, xy1[1]+2], text, fontSize=16)
+
+        self.tpil.show()
+
     def getItems(self, plugins, currentSelection, rows=5):
 
         listToPrint = plugins[currentSelection:currentSelection+rows]
 
         return listToPrint
     
-    def enterText(self, tpil, kbRows=[["1234567890-=~", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./", " "], ["!@#$%^&*()_+~", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?", " "]],
+    def enterText(self, kbRows=[["1234567890-=~", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./", " %"], ["!@#$%^&*()_+~", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?", " "]],
                    secret=False, prefix=None, suffix=None):
         """
         super wip
@@ -529,8 +540,6 @@ class BasePwnhyveScreen():
         kbRows: the rows/set of characters to let the user choose from - default is alphanumeric characters and symbols
 
         font: the default font to use for the letters, etc.
-
-        flipped: if the keyboard should be flipped (used for when the user isn't using the display in normal orentiation)
 
         secret: if the text being entered should be classified - example, a password
         """
@@ -545,7 +554,8 @@ class BasePwnhyveScreen():
         keyRowIndex = 0
         keyRowBlobIndex = 0
 
-        spaceBar = "[____________]"
+        spaceBar = "[_________]"
+        enter = "[<]"
 
         font = ImageFont.truetype('core/fonts/monospace.ttf', 16)
         tinyFont = ImageFont.truetype('core/fonts/monospace.ttf', 11)
@@ -563,20 +573,20 @@ class BasePwnhyveScreen():
                     slice1 += 1
                     striShown = preStri[slice1:slice2]
 
-            tpil.clear() # clear
+            self.tpil.clear() # clear
 
-            tpil.rect((0, 12), (128, 12)) # draw the line spliting the text and the keyboard
+            self.tpil.rect((0, 12), (128, 12)) # draw the line spliting the text and the keyboard
 
             if modifier:
-                tpil.text((110,56), "ALT", font=tinyFont)
+                self.tpil.text((110,56), "ALT", font=tinyFont)
 
             if not secret:
-                tpil.text((2,0), striShown, font=font)
+                self.tpil.text((2,0), striShown, font=font)
             else:
-                tpil.text((2,0), ''.join(["*" for _ in striShown]), font=font)
+                self.tpil.text((2,0), ''.join(["*" for _ in striShown]), font=font)
 
             textLength = font.getlength(striShown)+2
-            tpil.rect((textLength, 2), (textLength, 10))
+            self.tpil.rect((textLength, 2), (textLength, 10))
 
 
             ### draws the kb
@@ -589,20 +599,26 @@ class BasePwnhyveScreen():
             for keyRow in kbRow: # iterate over key rows (imagine the 3 key rows on your usual keyboard)
                 div = round(maxPixelX / len(keyRow))
                 for char in keyRow: # for every character in our row..
-                    if char == "~": char = "<="
-                    if char == " ": char = spaceBar
+
+                    if keyRowBlobIndex == 0: # text, not symbols
+                        if char == "~": char = "<="
+                        elif char == "%": 
+                            char = enter
+                        elif char == " ": 
+                            char = spaceBar
+                            div = font.getlength(char)+2
 
                     if char != chosenKey: # if this character we're writing isn't chosen..
-                        tpil.text((textX, textY), char, font=font) # write it normally
+                        self.tpil.text((textX, textY), char, font=font) # write it normally
 
                     else: # if it is chosen...
-                        tpil.rect(
+                        self.tpil.rect(
                             (textX-2, textY), 
                             (textX + font.getlength(char), textY+10), 
                             color='WHITE'
                             ) # draw box
                         
-                        tpil.text((textX, textY), char, font=font, color="BLACK") # draw text after box 
+                        self.tpil.text((textX, textY), char, font=font, color="BLACK") # draw text after box 
 
                     textX += div # move right for our next character
 
@@ -621,9 +637,9 @@ class BasePwnhyveScreen():
 
 
             # show compiled image
-            tpil.show()
+            self.tpil.show()
 
-            key = tpil.waitForKey(debounce=True)
+            key = self.tpil.waitForKey(debounce=True)
 
             if key == 'down': # moving on the x and y plane
 
@@ -669,8 +685,10 @@ class BasePwnhyveScreen():
             elif key == 'press':
                 if chosenKey == "<=":
                     compiledStri = compiledStri[:-1]
-                elif chosenKey[0] == "[" and chosenKey[-1] == "]":
+                elif chosenKey[0] == "[" and chosenKey[-1] == "]" and chosenKey[1] == "_":
                     compiledStri += " "
+                elif chosenKey == enter:
+                    return prefix + compiledStri + suffix
                 else:
                     compiledStri += chosenKey
 
@@ -698,6 +716,7 @@ class BasePwnhyveScreen():
 
             if chosenKey == "~": chosenKey = "<="
             if chosenKey == " ": chosenKey = spaceBar
+            if chosenKey == "%": chosenKey = enter
 
     def menu(self, choices, disableBack=False, 
              highlight=[], # won't be used here

@@ -124,7 +124,7 @@ class PWNHammer(BasePwnhyvePlugin):
             if main == None: break
 
             if edits[main] == "*":
-                second = tpil.gui.enterText(tpil)
+                second = tpil.gui.enterText()
             else:
                 second = tpil.gui.menu(edits[main])
 

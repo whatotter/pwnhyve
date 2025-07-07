@@ -18,7 +18,7 @@ invertJoystickHorizontal = false        # or horizontally.
 enableVNC  = true                       # whether to stream the display (and controls, if chosen) to 0.0.0.0:11198
 vncControl = true                       # if you allow remote control of the display 
 
-[wifi] # depreciated, wlan0 is the default for now
+[wifi] 
 interface = "wlan0"                     # interface to use for wifi hacking
 
 [badusb]

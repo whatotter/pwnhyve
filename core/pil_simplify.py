@@ -3,11 +3,16 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from core.utils import config
 
 class tinyPillow:
-    def __init__(self, draw:ImageDraw.Draw, disp, image):
+    def __init__(self, draw:ImageDraw.Draw, disp, image, gui=None):
         self.draw = draw
         self.disp = disp
         self.image = image
-        self.gui = disp.gui
+
+        try:
+            self.gui = disp.gui
+        except AttributeError:
+            self.gui = gui
+
         self.pinout = self.disp.pinout
 
         self.instantDraw = False

@@ -107,7 +107,7 @@ class DisplayDriver():
 
         return False
 
-    def checkIfKey(self):
+    def checkIfKey(self, **kwargs):
         """check if there is a key being pressed"""
 
         if h.checkSocketINput():
@@ -115,7 +115,7 @@ class DisplayDriver():
 
         return False
 
-    def getKey(self):
+    def getKey(self, **kwargs):
         """get key without waiting; return current key pressed"""
 
         a = h.checkSocketINput()

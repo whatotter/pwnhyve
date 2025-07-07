@@ -132,7 +132,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 hexs = binTranslate.octetsToHex(octets)
 
-                with open("./subghz/"+tpil.gui.enterText(tpil, suffix=".sub"), "w") as f:
+                with open("./subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
                     fdata = (
                         "Filetype: Flipper SubGhz RAW File",
                         "Version: 1",

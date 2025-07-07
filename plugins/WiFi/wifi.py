@@ -337,6 +337,8 @@ class PWN_Essensials(BasePwnhyvePlugin):
         ch = 0
         cz = 0
 
+        dmc = False
+
         while True:
 
             while True:
