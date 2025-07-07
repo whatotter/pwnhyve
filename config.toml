@@ -1,6 +1,7 @@
 [display]
 invert = false                          # whether invert the display vertically.
-driver = "sh1106"
+driver = "sh11106"
+debugAll = false # new: used for a custom plugin that uses pwnhyve remotely to test plugins, ci/cd type of thing
 
 [driver_options] # supposed to be like an argument type of thing for display drivers
 spi = true

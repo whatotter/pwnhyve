@@ -21,6 +21,6 @@ in chrono. order
 
 
 - implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
-- ~CC1101~ FM transmission
+- ~CC1101~ ~FM transmission~
 - opensesame
 - make keystroke reflection DDR instead of SDR

@@ -14,7 +14,8 @@ from os import system
 
 def decode(r):
     try:
-        return r.json()
+        uStatus(r.text)
+        return r.text
     except Exception as e:
         if r.status_code == 200 or r.status_code == 400:
             uError("error while decoding json: error='%s' resp='%s'" % (e, r.text))

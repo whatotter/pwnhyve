@@ -1,5 +1,6 @@
 # simplifies pillow's draw
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from core.utils import config
 
 class tinyPillow:
     def __init__(self, draw:ImageDraw.Draw, disp, image):

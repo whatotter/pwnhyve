@@ -2,7 +2,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from core.plugin import BasePwnhyveScreen
 from time import sleep
-
+from core.utils import config
 
 class Screen(BasePwnhyveScreen):
     def getItems(self, plugins, currentSelection, amount=5):
@@ -56,6 +56,14 @@ class Screen(BasePwnhyveScreen):
                     cleanScrollNum -= 1
 
             currentSelOld = currentSelection
+
+                            
+            if config["display"]["debugAll"]:
+                if isChoicesDict:
+                    print("MENUCHOICE:{}".format(choicesCopy[choices[currentSelection]]))
+                else:
+                    print("MENUCHOICE:{}".format(choices[currentSelection])) # only return our selection
+
 
             if caption == None:
                 pass
@@ -132,7 +140,7 @@ class Screen(BasePwnhyveScreen):
 
                 if not disableBack:
                     if key == 'left': return None if index == None else (None, 0)
-
+                    
     def display(self, moduleList, currentSelection, icons, highlight=[]):
 
         listToPrint = self.getItems(moduleList, currentSelection, amount=10)

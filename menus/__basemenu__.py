@@ -1,10 +1,9 @@
-import math
 import os
-import threading
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from time import sleep
 from core.pil_simplify import tinyPillow
 from textwrap import wrap
+from core.utils import config
 
 # this is accessed as .gui
 class BasePwnhyveScreen():
