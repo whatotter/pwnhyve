@@ -95,6 +95,7 @@ class DisplayDriver():
         return False
     
     def dgRead(self, pin):
+        if pin == None: return False
         return self.gpiodev[pin].value
 
     def waitForKey(self, debounce=True):

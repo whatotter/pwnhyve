@@ -18,6 +18,7 @@ from PIL import ImageFont
 from core.utils import config
 from core.plugin import *
 from core.pil_simplify import tinyPillow
+import core.bgworker as bgworker
 
 
 if __name__ == "__main__":
@@ -60,6 +61,13 @@ if __name__ == "__main__":
 
     print("initalized.")
     #endregion end of plugin load
+
+    #region load background threads
+
+    usbThread = bgworker.ThreadedWorker(bgworker.USBNotifyWorker(), args=(tinypil,))
+    usbThread.startWorker()
+
+    #endregion
 
     print("[MENU] READY. HACK THE PLANET!")
 

@@ -1,0 +1,14 @@
+{
+    "name": "pwnhyve",
+    "start_url": "/",
+    "icons": [
+      {
+        "src": "icon.webp",
+        "sizes": "48x48",
+        "type": "image/webp"
+      }
+    ],
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000"
+  }

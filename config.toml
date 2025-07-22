@@ -19,7 +19,7 @@ enableVNC  = true                       # whether to stream the display (and con
 vncControl = true                       # if you allow remote control of the display 
 
 [wifi] 
-interface = "wlan0"                     # interface to use for wifi hacking
+interface = "wlp0s20f3"                     # interface to use for wifi hacking
 
 [badusb]
 usbBin       = "/piusb.bin"             # path to usb storage bin file - must have leading forward slash

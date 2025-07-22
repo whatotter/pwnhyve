@@ -1,3 +1,4 @@
+from io import BytesIO
 import os
 import time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -518,13 +519,33 @@ class BasePwnhyveScreen():
             self.text = ""
             self.update()
 
-    def toast(self, text, xy1, xy2):
+    def toast(self, text, xy1, xy2, timeout=-1, textYOffset=0):
+        originalImage = self.image.tobytes('raw', '1')
+        #originalImage = self.image.tobitmap()
+        # since we're overlaying on an image that we want to restore after \
+        # a bit, we save the image before we do anything with it to load \
+        # it back after
+
+        # draw toast box
         self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
         self.draw.rounded_rectangle((xy1, xy2), radius=3)
 
-        self.tpil.text([xy1[0]+4, xy1[1]+2], text, fontSize=16)
+        self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], text, font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8))
 
-        self.tpil.show()
+        self.tpil.show(clear=False)
+
+        # wait for user to read, or something
+        if 0 > timeout:
+            self.tpil.waitForKey() # let user continue when they want
+        else:
+            time.sleep(timeout) # wait for toast to go away
+
+        # load back the image we saved earlier
+        imageFB = Image.frombytes('1', (self.image.width, self.image.height), originalImage, 'raw', '1')
+        self.image.paste(imageFB, (0,0))
+
+        # show it
+        self.tpil.show(clear=False)
 
     def getItems(self, plugins, currentSelection, rows=5):
 

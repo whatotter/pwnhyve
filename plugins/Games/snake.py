@@ -59,7 +59,7 @@ class Plugin(BasePwnhyvePlugin):
 
 
         def died():
-            pass
+            tpil.gui.toast("you died\nscore: {}".format(applesAte), [2,2], [tpil.width-3, tpil.height-3])
 
         dirChanges = [] # when snake body pixel reaches a pixel in here, the body will turn to the alotted direction
         snakePos = [[x, 8, "right"] for x in range(4, 8)]
@@ -84,6 +84,7 @@ class Plugin(BasePwnhyvePlugin):
         while True:
             # drawing
             tpil.clear()
+            tpil.draw.rectangle([(0,0), (tpil.image.width-1, tpil.image.height-1)], fill=1, outline=0)
 
             drawPixel2(applePos)
 

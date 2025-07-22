@@ -72,7 +72,7 @@ class Screen(BasePwnhyveScreen):
                 self.draw.text(
                     self.resizeCoords2Res([8,1]), 
                     caption, 
-                    font=ImageFont.truetype('core/fonts/tahoma.ttf', 11)
+                    font=ImageFont.truetype('core/fonts/monospace.ttf', 11)
                     )
                 
                 yCoord += 14

@@ -1,12 +1,9 @@
-import json
 import core.bettercap.bettercap as bcap
 from core.utils import *
 from random import choice, randrange,randint
 from PIL import Image, ImageFont
 from threading import Thread
 from time import sleep
-import netifaces as nf
-from scapy.all import RandMAC, RadioTap, Dot11, Dot11Beacon, Dot11Elt, sendp, sniff, Dot11ProbeResp
 from subprocess import getoutput
 
 from core.plugin import BasePwnhyvePlugin

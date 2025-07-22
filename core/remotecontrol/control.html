@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<head>
+    <link rel="manifest" href="pwa-manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" href="css/control.css">
+    <link rel="stylesheet" href="css/xterm.css">
+    <script src="js/xterm.min.js"></script>
+    <script src="js/solid.min.js"></script>
+    <script src="js/socket.io.js"></script>
+    <script src="js/fontawesome.min.js"></script>
+</head>
+<body>
+
+    <div class="cover" id="cover">
+        <div class="login-box">
+            <h2>Pwnhyve Login</h2>
+
+            <p align="center" id="login-status">Login failed - try again</p>
+            
+            <div class="sbs">
+                <p>Username</p>
+                <input id="user" type="text">
+            </div>
+
+            <div class="sbs">
+                <p>Password</p>
+                <input id="pass" type="password">
+            </div>
+
+            <button id="login">
+                Login
+            </button>
+        </div>
+    </div>
+
+
+    <div class="header">
+        <div style="display: flex; flex-direction: row; align-items: center;">
+            <svg fill="#ccc" height="30px" version="1.1" viewBox="-51.2 -51.2 614.40 614.40" stroke="#013F72" stroke-width="25.6"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="1.024"></g><g> <g> <g> <path d="M508.203,197.698L435.2,149.03V59.731c0-2.995-1.579-5.769-4.139-7.313l-85.333-51.2c-2.705-1.621-6.084-1.621-8.789,0 L256,49.781L175.061,1.218c-2.705-1.621-6.084-1.621-8.789,0l-85.333,51.2c-2.56,1.544-4.139,4.318-4.139,7.313v89.3L3.797,197.7 C1.425,199.287,0,201.949,0,204.8v102.4c0,2.859,1.425,5.521,3.797,7.1L76.8,362.968v89.297c0,2.995,1.579,5.777,4.139,7.322 l85.333,51.2c1.357,0.811,2.876,1.212,4.395,1.212s3.038-0.401,4.395-1.212L256,462.223l80.939,48.563 c1.357,0.811,2.876,1.212,4.395,1.212c1.519,0,3.038-0.401,4.395-1.212l85.333-51.2c2.56-1.545,4.139-4.326,4.139-7.322v-89.298 l73.003-48.668c2.372-1.579,3.797-4.241,3.797-7.1v-102.4C512,201.948,510.575,199.285,508.203,197.698z M256,348.448 l-62.352-37.411l-14.448-8.669v-92.732l0.42-0.252L256,163.556l76.38,45.828l0.42,0.252v92.732l-14.448,8.669L256,348.448z M341.333,18.481l76.8,46.089v84.198l-76.8,46.08l-76.8-46.08V64.57L341.333,18.481z M93.867,64.57l76.8-46.089l76.8,46.089 v84.198l-76.8,46.08l-76.8-46.08V64.57z M17.067,209.365l68.502-45.668l57.07,34.242l19.495,11.699v92.73l-74.422,44.653 l-2.139,1.283l-68.506-45.67V209.365z M170.667,493.515l-76.8-46.08v-84.197l76.801-46.081l76.799,46.079v84.198L170.667,493.515z M341.333,493.515l-76.8-46.08v-84.198l76.8-46.08l76.8,46.08v84.198L341.333,493.515z M494.933,302.633l-68.506,45.67 l-76.066-45.638l-0.495-0.297v-92.732l76.561-45.935l68.506,45.67V302.633z"></path> </g> </g> </g></svg>
+            <p class="header-logo-text">pwnhyve</p>
+        </div>
+        <div class="header-logo-right">
+            <button class="header-button" onclick="window.open(`https://otter-1.gitbook.io/pwnhyve`)">
+                <i class="fa-solid fa-book"></i>
+                Documentation
+            </button>
+        </div>
+
+    </div>
+
+    <div class="outer-body">
+        <div class="inner-body">
+            <div class="header-buffer"></div>
+
+            <div class="grid-box">
+                <div class="grid-item shadowed" style="height: min-content">
+                    <h1 id="welcome" style="font-size: x-large; margin: 0;">Welcome</h1>
+                    
+                    <div class="box-carrier">
+                        <div class="micro-box" id="databox-l"></div>
+                        <div class="micro-box" id="databox-r"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="">
+                <div class="main-display shadowed" id="displayCarrier">
+                    <canvas id="displayCanvas" height="512" width="1124" blurry></canvas>
+                    <h2 id="status">CONNECTED.</h2>
+                </div>  
+            </div>
+
+            <div class="grid-box">
+                <div class="grid-item shadowed">
+                    <h1>Shell</h1>
+                    <div id="terminal-shell">
+                        <div id="terminal" style="color:white"></div>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="grid-box">
+                <div class="grid-item shadowed">
+                    <h1>Active plugins</h1>
+                    <table id="pfb"></table>
+                </div>
+                <div class="grid-item shadowed flex-grow" id="payload-box">
+                    <div class="upload-file-overlay" id="payload-hover" hidden>
+                        <h1>drop file here</h1>
+                    </div>
+
+                    <div class="sbs" style="margin-bottom: 12px;">
+                        <h1 style="margin-bottom: 0;">Payloads</h1>
+                    </div>
+                    <table id="payloads" class="colored-table">
+                        <tr>
+                            <th style="padding-top: 8px; padding-bottom: 8px;">Payload Name</th>
+                            <th style="padding-top: 8px; padding-bottom: 8px;">Size</th>
+                            <th style="padding-top: 8px; padding-bottom: 8px;">Action</th>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/control.js"></script>
+</body>

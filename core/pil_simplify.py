@@ -18,6 +18,9 @@ class tinyPillow:
         self.instantDraw = False
         self.font = ImageFont.truetype('core/fonts/monospace.ttf', 12)
 
+        self.height = self.image.height
+        self.width = self.image.width
+
         return
     
     def __manageInvColor__(self, color):
