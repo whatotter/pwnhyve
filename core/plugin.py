@@ -3,8 +3,9 @@ plugin loading system
 """
 import os
 import importlib
+from core.utils import *
 from threading import Thread
-from menus.__basemenu__ import BasePwnhyveScreen
+from core.__basemenu__ import BasePwnhyveScreen
   
 moduleDict = {}
 
@@ -28,31 +29,29 @@ class pwnhyveScreenLoader():
         self.driver = None
         for item in os.listdir(f"./{folder}"):
             if ".py" in item and driver in item:
-                print(item)
 
-                print("[SL] attempting to load display driver \"{}\"".format(item))
+                #uWarn("[ScreenLoader] Attempting to load display driver \"{}\"".format(item))
                 
                 item = item.replace('.py','')
                 iport = f'{folder.replace("/", ".")}.{item}'
-                print(iport)
                 moduleDict[item] = importlib.import_module(iport)
 
                 self.driver = moduleDict[item]
-                print("[SL] loaded")
+                #uSuccess("[ScreenLoader] Loaded")
                 return
             
-        print("[SL] couldn't find the display driver, none loaded - this WILL cause issues")
+        uAlert("[ScreenLoader] couldn't find the display driver, none loaded - this WILL cause issues")
             
 
 
 class pwnhyveMenuLoader():
     """
-    loads custom screens from ./menus folder.
+    loads custom screens from ./addons/menus folder.
     seperate from "pwnhyvePluginLoader" for compatibility and less confusion, even though they're 99% the same
 
-    folder: folder to load GUIs from, defaults to "menus"
+    folder: folder to load GUIs from, defaults to "addons/menus"
     """
-    def __init__(self, folder="menus",):
+    def __init__(self, folder="addons/menus",):
         r = {}
 
         for item in os.listdir(f"./{folder}"):
@@ -60,7 +59,7 @@ class pwnhyveMenuLoader():
                 
                 item = item.replace('.py','')
 
-                moduleDict[item] = importlib.import_module(f'{folder}.{item}')
+                moduleDict[item] = importlib.import_module(f'{folder.replace("/", ".")}.{item}')
 
                 z = moduleDict[item]
                 r[item] = {"module": z}
@@ -79,6 +78,12 @@ class pwnhyvePluginLoader():
         allIcons = {}
         self.loadedPluginModules = {} # variable to reference modules loaded by this class only, not every module loaded
 
+        if folder.startswith("./"):
+            folder = folder[2:] # remove the "./"
+
+        if not folder.endswith("/"):
+            folder += "/" # this is stupid, but needed
+
         for item in os.listdir(f"./{folder}"):
             if ".py" in item:
                 
@@ -91,7 +96,7 @@ class pwnhyvePluginLoader():
                 pythonImport = "{}{}".format(importfolder, item).replace("..", ".")
 
 
-                print("[PL] loading plugin \"{}\"".format(pythonImport))
+                uWarn("[PluginLoader] loading plugin \"{}\"".format(pythonImport))
                 moduleDict[item] = importlib.import_module(pythonImport)
                 self.loadedPluginModules[pythonImport] = moduleDict[item]
 
@@ -108,7 +113,8 @@ class pwnhyvePluginLoader():
 
                     r[item+"::"+x] = {"functions": [y for y in dir(z) if not y.startswith("_")], "module": z, "icons": icons}
                     allIcons.update(icons)
-                    print("[PL] loading class \"{}\"".format(item+"::"+x))
+
+                    uWarn("[PluginLoader] loading class \"{}\"".format(item+"::"+x))
             
         self.th = enableThreading
 

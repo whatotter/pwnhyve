@@ -159,17 +159,15 @@ class Screen(BasePwnhyveScreen):
 
         unselectedFont = ImageFont.truetype('core/fonts/monospace.ttf', fontSize)
         selectedFont   = ImageFont.truetype('core/fonts/monospace.ttf', fontSize)
-        flipperSelection = Image.open('./core/fonts/selection.bmp')
-
 
         for text in list(listToPrint): # do draw
             rIcoX, rIcoY = (2 if self.disp.width == 128 else 0), 1
-
 
             if len(icons) != 0: # if we defined icons
                 icofile = icons.get(text, None)
                 if icofile != None:
                     rico = Image.open(icofile)
+                    iconSizePadding = 4 if self.disp.height == 64 else 8
                 else:
                     rico = None
                     iconSizePadding = -iconSize

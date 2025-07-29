@@ -3,9 +3,9 @@
     "start_url": "/",
     "icons": [
       {
-        "src": "icon.webp",
+        "src": "favicon.svg",
         "sizes": "48x48",
-        "type": "image/webp"
+        "type": "image/svg+xml"
       }
     ],
     "display": "standalone",

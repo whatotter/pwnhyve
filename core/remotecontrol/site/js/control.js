@@ -17,6 +17,8 @@ const greetings = [
     "Hey #!",
     "Good to see you, #.",
     "Good luck, #.",
+    "Greetings, #.",
+    "Good evening, #."
 ]
 
 sshIO.on("sshtx", (msg) => {
@@ -35,6 +37,45 @@ sshIO.on("authstatus", (msg) => {
 
 sshIO.on("sshbuf", (msg) => {
     term.write(msg["buffer"])
+})
+
+sshIO.on("addons", (msg) => {
+    console.log(msg)
+
+    for (const addon of msg) {
+        var sbItem = document.createElement("div")
+        var img = document.createElement("img")
+        var sbItemName = document.createElement("div")
+        var p = document.createElement("p")
+
+        sbItem.className = "sidebar-item"
+        
+        img.src = addon["manifest"]["icon"]
+        img.width = 32
+        img.height = 32
+
+        sbItemName.className = "sidebar-item-name"
+
+        p.innerHTML = addon["manifest"]["name"]
+
+        sbItemName.appendChild(p)
+
+        sbItem.appendChild(img)
+        sbItem.appendChild(sbItemName)
+
+        document.getElementById("sidebar").appendChild(sbItem)
+
+        /* now add the iframe */
+        var iframe = document.createElement("iframe")
+        iframe.src = addon["path"]
+        iframe.className = "addon-iframe"
+
+        document.getElementById("inner-body").appendChild(iframe)
+
+        sbItem.addEventListener("click", function(){
+            iframe.scrollIntoView({behavior: 'smooth'})
+        })
+    }
 })
 
 sshIO.on("sysinfo", (msg) => {
@@ -75,6 +116,10 @@ sshIO.on("sysinfo", (msg) => {
         document.getElementById(key).innerHTML = msg[key]
     }
 })
+
+function showIframe(path) {
+    console.log(`do something with ${path}`)
+}
 
 function WSConnect() {
     socket = new WebSocket(`ws://${location.hostname}:8765`)
@@ -205,6 +250,9 @@ function handleGesture() {
 function authenticate(u,p) {
     document.getElementById("login").setAttribute("disabled", true)
     sshIO.emit("authenticate", {"user": u, "pasw": p})
+
+    var greetingIndex = getRandomIntInclusive(0, greetings.length)
+    document.getElementById("welcome").innerHTML = greetings[greetingIndex].replace("#", u)
 }
 
 function showPlugins() {
@@ -346,7 +394,7 @@ function initialize() {
 
     setInterval(function() {
         sshIO.emit("reqsysinfo")
-    }, 250)
+    }, 1000)
 
     showPlugins()
     showPayloads()
@@ -371,10 +419,7 @@ function manageAuth(code) {
     } else if (code == 0) {
         initialize()
 
-        var greetingIndex = getRandomIntInclusive(0, greetings.length)
-
         document.getElementById("cover").setAttribute("hidden", true)
-        document.getElementById("welcome").innerHTML = greetings[greetingIndex].replace("#", document.getElementById("user").value)
         return true
     }
 }
@@ -435,6 +480,14 @@ document.addEventListener("DOMContentLoaded", function () {
             showPayloads()
         }, 100)
     })
+
+    if ("geolocation" in navigator) {
+        const watchID = navigator.geolocation.watchPosition((position) => {
+            console.log(`lat: ${position.coords.latitude}  long: ${position.coords.longitude}`)
+        });
+    } else {
+        /* geolocation IS NOT available */
+    }
 })
 
 WSConnect()

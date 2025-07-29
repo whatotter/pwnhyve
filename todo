@@ -1,18 +1,23 @@
 in chrono. order
 
-- add wifi tools like
-    - ~EAPHammer~ done
-    - AP wardriving, using a phone for GPS
+# to fix
+- the whole subghz plugin
+    - that shit is FUCKED
 
+# to add
+- add wifi tools like
+    - AP wardriving, using a phone for GPS
+        - this can be done with the new webui
 
 - implement ble right
     - BLE hacking
-        - ~RSSI sniffing (e.g. look for a lost device by RSSI)~
         - Bluejacking
         - [Bluesnarfing](https://github.com/kimbo/bluesnarfer)
-        - Sour Apple
+        - ~Sour Apple~ impossible with linux ble stack, i *think*
 
-- uhh idk
+- more usb stuff
+    - ~hidx stealthlink from hak5 or something like that for reverse shell comms~
+        - no, it's way too convoluted and platform dependent that there's just no point in implementing it
 
 - implement network functions correctly, then implement these tools:
     - https://github.com/vanhoefm/macstealer
@@ -21,6 +26,10 @@ in chrono. order
 
 
 - implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
-- ~CC1101~ ~FM transmission~
 - opensesame
-- make keystroke reflection DDR instead of SDR
+
+# what's done
+- ~CC1101~ ~FM transmission~
+- ~RSSI sniffing (e.g. look for a lost device by RSSI)~
+- ~EAPHammer~
+- ~make keystroke reflection DDR instead of SDR~

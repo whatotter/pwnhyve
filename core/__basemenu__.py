@@ -1,11 +1,9 @@
-from io import BytesIO
 import os
 import time
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from time import sleep
 from core.pil_simplify import tinyPillow
 from textwrap import wrap
-from core.utils import config
 
 # this is accessed as .gui
 class BasePwnhyveScreen():

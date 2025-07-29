@@ -1,6 +1,6 @@
 import os
 import sys
-from core.utils import redir, config
+from core.utils import *
 import threading
 import json, base64
 
@@ -28,11 +28,11 @@ class sockStream:
     def start():
 
         if not config["vnc"]["enableVNC"]:
-            print('vnc disabled')
+            uAlert('VNC Disabled - skipping..')
             return
         
         while True:
-            print("[VNC] READY FOR CONNECTIONS.")
+            uGood("[VNC] READY FOR CONNECTIONS.")
             asyncio.run(sockStream.asyncStart())
 
     async def handle(websocket):
@@ -49,8 +49,8 @@ class sockStream:
                 await websocket.send(json.dumps({
                     "frame": frame.decode('ascii'),
                     "log": base64.b64encode(
-                                    ''.join(redir.log).encode('ascii')
-                                    ).decode('ascii')
+                                    ''.join(redir.log).encode('utf-8')
+                                    ).decode('utf-8')
                 }))
 
                 redir.log = []
@@ -58,10 +58,10 @@ class sockStream:
             try:
                 a = await asyncio.wait_for(websocket.recv(), 0.1)
             except (websockets.exceptions.ConnectionClosedOK):
-                print("[VNC] Client closed connection")
+                uStatus("[VNC] Client closed connection")
                 return
             except (websockets.exceptions.ConnectionClosedError):
-                print("[VNC] Client closed connection abruptly")
+                uStatus("[VNC] Client closed connection abruptly")
                 return
             except (TimeoutError, asyncio.exceptions.TimeoutError):
                 a = None
@@ -70,7 +70,7 @@ class sockStream:
                 if a != "R":
                     sockStream.mostRecentButton = a
                 else:
-                    print("[VNC] CONNECTION ESTABLISHED")
+                    uGood("[VNC] Connection established")
                     sockStream.resendImage = True # when a new connection is established, send the current screen image
     
 
@@ -86,7 +86,7 @@ def checkSocketINput():
             return gpio
         elif gpio == "reload":
             print("\033[2J")
-            print("[VNC] Reloading...")
+            uAlert("[VNC] Reloading...")
             os.execv(sys.executable, ['python'] + sys.argv)
         
 threading.Thread(target=sockStream.start, daemon=True).start()

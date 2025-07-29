@@ -7,10 +7,22 @@ import core.cc1101.flipsub as fsub
 import core.rpitx.rpitx as rpitx
 
 from core.plugin import BasePwnhyvePlugin 
+from core.utils import IPC
 
 fm = rpitx.PiFMRds()
+ui = IPC.WebUiLink("subghz")
 
+rbyt = {}
+sctext = ""
 transceiverEnabled = False
+
+def blinkerSub(sender, **kw):
+    print(f"Caught signal from {sender!r}, data {kw!r}")
+
+    if kw["action"] == "jam":
+        print("im supposed to be jamming")
+
+ui.subscribe(blinkerSub)
 
 try:
     transceiver = ccrf.pCC1101()
@@ -20,8 +32,6 @@ try:
 except:
     print("[+] CC1101 not detected")
 
-rbyt = {}
-sctext = ""
 def scText(text, caption, maxln=6):
     global sctext
 
@@ -132,7 +142,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 hexs = binTranslate.octetsToHex(octets)
 
-                with open("./subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
+                with open("./addons/subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
                     fdata = (
                         "Filetype: Flipper SubGhz RAW File",
                         "Version: 1",
@@ -241,9 +251,9 @@ class PWNsubGhz(BasePwnhyvePlugin):
         global strfrq, freq
         if not checkForTransciever(tpil): return
 
-        fle = tpil.gui.menu(os.listdir("./subghz"))
+        fle = tpil.gui.menu(os.listdir("./addons/subghz"))
 
-        fsubData = fsub.flipperConv("./subghz/"+fle)
+        fsubData = fsub.flipperConv("./addons/subghz/"+fle)
         print(".sub file frequency is at {}".format(fsubData["Frequency"]))
 
         transceiver.currentFreq = float(fsubData["Frequency"])
@@ -323,7 +333,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
 
     def Play_FM_Radio(tpil):
-        audio = "./fm_audio/" + tpil.gui.menu(list(filter(lambda x: x.endswith(".wav"), os.listdir("./fm_audio"))))
+        audio = "./addons/fm_audio/" + tpil.gui.menu(list(filter(lambda x: x.endswith(".wav"), os.listdir("./addons/fm_audio"))))
         if audio == None: return
 
         frequency = tpil.gui.slider(tpil, "FM Frequency", minimum=90, maximum=110, 

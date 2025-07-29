@@ -1,6 +1,18 @@
 import threading
 import subprocess
 import time
+import core.remotecontrol.serve as WebUI
+from core.utils import *
+
+class WebUIWorker():
+    """
+    just runs the webui in the background
+    """
+    def __init__(self) -> None:
+        pass
+
+    def start(self, tpil):
+        WebUI.socketio.run(WebUI.app, port=5000, host="0.0.0.0")
 
 class USBNotifyWorker():
     """
@@ -36,7 +48,7 @@ class USBNotifyWorker():
                                    timeout=3)
 
             pluggedIn = currentUSB.copy()
-            time.sleep(0.1)
+            time.sleep(0.25)
 
 
 class ThreadedWorker():
@@ -50,6 +62,6 @@ class ThreadedWorker():
     def startWorker(self):
         self.thread = threading.Thread(target=self.object.start, args=self.args, daemon=True)
         self.thread.start()
-        print("[+] background thread started for {}".format(self.object))
+        uStatus("[BackgroundWorker] background thread started for {}".format(self.object))
 
         return self.thread

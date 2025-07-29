@@ -117,7 +117,7 @@ class Plugin(BasePwnhyvePlugin):
 
         print("abcd")
 
-        payloads = os.listdir("./payloads/")
+        payloads = os.listdir("./addons/payloads/")
 
         vars.payloadList["back"] = '0'
 
@@ -131,8 +131,7 @@ class Plugin(BasePwnhyvePlugin):
         if a == None:
             return
 
-        draw,disp,image = tpil.__getDDI__()
-        dsi = DuckyScriptInterpreter(usb, "./payloads/{}".format(a), tpil)
+        dsi = DuckyScriptInterpreter(usb, "./addons/payloads/{}".format(a), tpil)
 
         dsi.parse()
 

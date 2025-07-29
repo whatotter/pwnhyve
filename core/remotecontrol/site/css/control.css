@@ -21,7 +21,7 @@ td,
 li,
 button {
     color: #ccc;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: robotoweb, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 th, td {
@@ -68,7 +68,7 @@ button {
 }
 
 #status {
-    font-family: mono;
+    font-family: "pixel";
 }
 
 #terminal-shell {
@@ -96,7 +96,7 @@ button {
     height: 4.5vh;
     box-shadow: 0px 2px 5px 0px #121212;
     margin-bottom: 1%;
-    padding: 4px 24px;
+    padding: 4px 8px;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -130,7 +130,7 @@ svg {
     margin-left: 6px;
     margin-top: -5px;
     font-size: 28pt;
-    font-family: 'mono';
+    font-family: 'pixel';
 }
 
 .header-logo-right {
@@ -229,6 +229,60 @@ svg {
     gap: 8px;
 }
 
+.addon-iframe {
+    width: 100%;
+    height: fit-content;
+    border: 1px solid #013F72;
+    background-color: #171717;
+    border-radius: 8px;
+    margin-bottom: 1%;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 2.5vw;
+    height: 100vh;
+    background-color: #171717;
+    padding-top: 5.5vh;
+} .sidebar-item {
+    width: 2.5vw;
+    height: 2.5vw;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    transition: 0.2s ease;
+} .sidebar-item[active] {
+    border-right: 2px solid #013F72;
+} .sidebar-item:hover {
+    border-right: 2px solid #013F72;
+    cursor: pointer;
+} .sidebar-item-name {
+    position: absolute;
+    left: calc(2.5vw + 8px);
+    background-color: rgba(0,0,0,0.5);
+    width: max-content;
+
+    padding: 4px 8px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+    transition: 0.2s;
+    opacity: 0;
+
+    cursor: default;
+    pointer-events: none;
+} .sidebar-item-name p {
+    margin: 0;
+} .sidebar-item:hover .sidebar-item-name {
+    opacity: 1;
+}
+
 .micro-box {
     width: 50%;
     min-height: 10%;
@@ -312,7 +366,7 @@ textarea {
     margin-bottom: 0;
     font-size: 48px;
     font-weight: 600;
-    font-family: "mono";
+    font-family: "pixel";
 }
 
 .grid-box {
@@ -356,6 +410,10 @@ table {
     border: 1px solid #013F72;
 
     position: relative;
+    overflow: scroll;
+}
+
+#terminal {
     overflow: hidden;
 }
 
@@ -373,83 +431,12 @@ table {
     flex-grow: 2;
 }
 
-@media (max-width: 768px) {
-
-    #displayCanvas {
-        width: 100%;
-    }
-
-    #displayCarrier h2 {
-        font-size: 24px;
-    }
-
-    .inner-body {
-        max-width: 100vw;
-        width: 100vw;
-        padding: 12px;
-    }
-
-    .center {
-        max-width: 100vw;
-        width: 100vw;
-    }
-
-    .grid-box {
-        flex-direction: column;
-        display: flex;
-        width: 100%;
-        gap: 1%;
-    }
-}
-
-@media (max-height: 512px) {
-    /* user has rotated their phone to use the display */
-
-    body {
-        overflow: hidden;
-        background-color: #000;
-    }
-
-    #displayCanvas {
-        width: 100vw;
-        border-radius: 0;
-        background-color: #013F72;
-        padding: 0 36px
-    }
-
-    #displayCarrier {
-        padding: 0;
-        padding-top: 24px;
-        margin: 0;
-        border-radius: 0;
-        background-color: #000;
-    }
-
-    #displayCarrier h2 {
-        font-size: 24px;
-        display: none;
-    }
-
-    .inner-body {
-        max-width: 100vw;
-        width: 100vw;
-    }
-
-    .center {
-        max-width: 100vw;
-        width: 100vw;
-    }
-
-    .grid-box {
-        display: none;
-    }
-
-    .header {
-        display: none;
-    }
+@font-face {
+    font-family: "pixel";
+    src: url(/webfonts/monospace.ttf) format("truetype");
 }
 
 @font-face {
-    font-family: "mono";
-    src: url(/webfonts/monospace.ttf) format("truetype");
+    font-family: "robotoweb";
+    src: url(/webfonts/roboto.ttf) format("truetype");
 }

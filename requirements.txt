@@ -15,5 +15,6 @@ lgpio
 # webui stuff
 paramiko
 flask-socketio
-flask
+Flask
 python-pam
+gevent
