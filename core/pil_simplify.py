@@ -1,21 +1,23 @@
 # simplifies pillow's draw
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from core.__basemenu__ import BasePwnhyveScreen
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.__basemenu__ import BasePwnhyveScreen
 
 class tinyPillow:
-    gui: BasePwnhyveScreen
 
     def __init__(self, draw:ImageDraw.Draw, disp, image, gui=None):
         self.draw = draw
         self.disp = disp
         self.image = image
 
-        self.gui : BasePwnhyveScreen = None
+        self.gui : "BasePwnhyveScreen" = None
 
         try:
-            self.gui: BasePwnhyveScreen = disp.gui
+            self.gui: "BasePwnhyveScreen" = disp.gui
         except AttributeError:
-            self.gui: BasePwnhyveScreen = gui
+            self.gui: "BasePwnhyveScreen" = gui
 
         self.pinout = self.disp.pinout
 

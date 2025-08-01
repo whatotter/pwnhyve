@@ -10,8 +10,7 @@ stdout = sys.stdout
 stderr = sys.stderr
 ansiReset = "\033[0m"
 
-logfile = open("pwnhyve.log", "w")
-
+logfile = open("pwnhyve.log", "a")
 
 class redir:
     """
@@ -32,6 +31,8 @@ class redir:
         if len(modstr) != 0 and (modstr[-1] == b"\n" or modstr[-1] == "\n"):
             stdout.write("\r")
 
+        logfile.flush()
+        
     def flush():
         global stdout, logfile
         stdout.flush()
@@ -54,6 +55,8 @@ class redirERR:
         stderr.write(modstr)
         if len(modstr) != 0 and (modstr[-1] == b"\n" or modstr[-1] == "\n"):
             stderr.write("\r")
+
+        logfile.flush()
 
     def flush():
         global stderr, logfile

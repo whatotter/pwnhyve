@@ -64,7 +64,7 @@ class PWN_System(BasePwnhyvePlugin):
         subprocess.getoutput("sudo reboot")
         return
 
-    def System_Info(tpil):
+    def System_Info(tpil:tinyPillow):
 
         z = tpil.gui.screenConsole()
 
@@ -88,6 +88,7 @@ class PWN_System(BasePwnhyvePlugin):
             jumbled += "{}: {}\n".format(x, ifaces[x])
 
         z.text = "{}".format(jumbled)
+        z.update()
 
         tpil.waitForKey()
         z.exit()
@@ -104,8 +105,11 @@ class PWN_System(BasePwnhyvePlugin):
                 ssids.append(ssid)
             return ssids
         
-        def selectNetwork(ssids=findNetworks()):
-            return tpil.gui.menu(ssids)
+        def activeConnections():
+            return subprocess.getoutput("nmcli con show")
+        
+        def selectNetwork():
+            return tpil.gui.menu(findNetworks())
 
 
         ssid = selectNetwork()
@@ -118,26 +122,54 @@ class PWN_System(BasePwnhyvePlugin):
         # copied n edited from setEnviroVars
         
         pwd = None
-
-        menuDict = {
-            "ssid: {}".format(ssid): "ssid",
-            "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password": "pass",
-            "connect": "connect"
-        }
         
         while True:
-            choice = tpil.gui.menu(menuDict)
-            
-            if choice == None or choice == "connect": break
-            elif choice == "ssid: {}".format(ssid):
-                ssid = selectNetwork()
-            elif choice == "enter password" or choice == "password: {}".format(''.join(["*" for _ in pwd])):
-                pwd = tpil.gui.enterText(secret=True)
-        
-            out = subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
 
-            if "No network" in out:
-                tpil.gui.toast("Network doesn't exist", [2,2], [tpil.width-2, 32])
+            if ssid not in activeConnections():
+                menuDict = {
+                    "ssid: {}".format(ssid): "ssid",
+                    "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password": "pass",
+                    "connect": "connect"
+                }
+            else:
+                menuDict = {
+                    "ssid: {}".format(ssid): "ssid",
+                    "*saved password*": "pass",
+                    "connect": "connect"
+                }
+                    
+            choice = tpil.gui.menu(menuDict)
+
+            if choice == "connect":
+                tpil.gui.toast("attempting to connect..", [2,2], [tpil.width-2, 32], timeout=None)
+
+                if ssid not in activeConnections():
+                    # make connection
+                    subprocess.getoutput("sudo nmcli connection delete \"{}\"".format(ssid))
+                    out = subprocess.getoutput("sudo nmcli dev wifi connect \"{}\" password \"{}\"".format(ssid, pwd))
+                else:
+                    # connect to existing
+                    out = subprocess.getoutput("sudo nmcli dev wifi connect \"{}\"".format(ssid))
+
+                print(out)
+
+                if "No network" in out:
+                    tpil.gui.toast("Network doesn't exist", [2,2], [tpil.width-2, 32])
+                elif "Connection activation failed" in out:
+                    tpil.gui.toast("Password is likely wrong", [2,2], [tpil.width-2, 32])
+                elif "activated" in out:
+                    tpil.gui.toast("Connected!!", [2,2], [tpil.width-2, 32])
+                    return
+                else:
+                    tpil.gui.toast(out, [2,2], [tpil.width-2, 32])
+
+            elif choice == "ssid":
+                ssid = selectNetwork()
+            elif choice == "pass":
+                pwd = tpil.gui.enterText(secret=True)
+            elif choice == None:
+                break
+
 
     def Fix_Interfaces():
         # bandaid

@@ -1,420 +1,11 @@
 import os
 import time
-from typing import Union
+from typing import Type, Union
 from PIL import Image, ImageDraw, ImageFont
 from time import sleep
 from core.pil_simplify import tinyPillow
 from textwrap import wrap
 
-# this is accessed as .gui
-class BasePwnhyveScreen():
-    
-    def __init__(self, draw:ImageDraw, disp, image:Image):
-
-        self.disp = disp
-        self.draw = draw
-        self.image = image
-
-        self.tpil = tinyPillow(draw, disp, image, gui=self)
-
-        return None
-    
-    def carouselMenu(self, *args, **kwargs) -> carouselMenu:
-        """
-        a simple carousel menu
-        ** beware this is nonblocking, you must manage redraws and key inputs yourself **
-        
-        Example:
-            >>> menu = tpil.gui.carouselMenu()
-            >>> menu.draw("main console text", "caption")
-            >>> if tpil.waitForKey() == "right":
-            >>>     # user scrolled right...
-            >>> ...
-        """
-
-        return carouselMenu(self.tpil)
-
-    def keyLegend(self, *args, **kwargs) -> keyLegend:
-        """
-        create a key legend at the bottom of the screen (takes 10 pixels)
-        ** BEWARE THIS IS NOT AUTOMATICALLY REDRAWN, YOU MUST REDRAW IT YOURSELF USING `this.draw()` **
-
-        Args:
-            legend: a dictionary of keys, and what they do
-                    e.g. {"left": "back", "press": "ok", "right": "next"}
-                    icons will be automagically filled out
-        """
-
-        return keyLegend(self.tpil, *args, **kwargs)
-
-    def setFloat(self, *args, **kwargs) -> float:
-        """
-        set individual values in a number, e.g. like sdrpp's frequency changer
-        typically used for exactly that, setting radio frequencies
-
-        Args:
-            caption (str): caption to tell the user (what this is for)
-            _min (float): minimum value the user can pick
-            start (str): starting value; must be a string because python doesn't like 300.000 and turns it into 300.0
-            _max (float): maximum value the user can pick
-            wholePlaces (int): amount of whole number places there is
-            decimalPlaces (int): amount of decimal places there is 
-
-        Returns:
-            float: the result the user picked
-        """
-
-        ab = setFloat(self.tpil, *args, **kwargs)
-        return ab.start()
-
-    def slider(self, *args, **kwargs) -> Union[float,int]:
-        """
-        a simple integer slider
-
-        Args:
-            caption (str): caption to show the user (e.g. what the user is picking)
-            minimum (int or float): minimum the slider can go to
-            start (int or float): where the slider starts (must be between minimum and maximum) (e.g. 50)
-            maximum (int or float): maximum the slider can go to
-            step (int or float): steps the slider goes, when the user goes left and right (right being +)
-            bigstep (int or float): steps the slider goes when the uses up and down (up being +)
-            ndigits (int): number of digits to round to, if the value is a float
-
-        Returns:
-            float or int: the value the user chose
-        """
-
-        ab = slider(self.tpil, *args, **kwargs)
-        return ab.draw() # why it's in two bits, no clue
-
-    def usbRunPercentage(self, **kwargs) -> usbRunPercentage:
-        """
-        issue a console with a 80/20 split, where 20% of the screen is taken up by \
-        a percentage
-
-        this is kinda depreciated, i don't like using it
-        """
-        return usbRunPercentage(self.tpil, **kwargs)
-
-    def screenConsole(self, **kwargs) -> screenConsole:
-        """
-        issue a terminal-like ui to the user - only text allowed
-        """
-
-        return screenConsole(self.tpil, **kwargs)
-
-    def toast(self, text:str, xy1:list, xy2:list, timeout:int=-1, textYOffset:int=0):
-        """
-        toast the user with a notification, and go away when the user clicks a key
-
-        @text: text of the notification
-        @xy1: top-left XY coord in list format [X,Y], for the body
-        @xy2: bottom-right XY coord in list format [X,Y], for the body
-        @timeout: timeout before hiding toast box - defaults to -1 (user intervention)
-        @textYOffset: text offset from top of the body (e.g. margin-top)
-
-        """
-        originalImage = self.image.tobytes('raw', '1')
-        #originalImage = self.image.tobitmap()
-        # since we're overlaying on an image that we want to restore after \
-        # a bit, we save the image before we do anything with it to load \
-        # it back after
-
-        # draw toast box
-        self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
-        self.draw.rounded_rectangle((xy1, xy2), radius=3)
-
-        self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], text, font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8))
-
-        self.tpil.show(clear=False)
-
-        # wait for user to read, or something
-        if 0 > timeout:
-            self.tpil.waitForKey() # let user continue when they want
-        else:
-            time.sleep(timeout) # wait for toast to go away
-
-        # load back the image we saved earlier
-        imageFB = Image.frombytes('1', (self.image.width, self.image.height), originalImage, 'raw', '1')
-        self.image.paste(imageFB, (0,0))
-
-        # show it
-        self.tpil.show(clear=False)
-
-    def getItems(self, plugins, currentSelection, rows=5):
-
-        listToPrint = plugins[currentSelection:currentSelection+rows]
-
-        return listToPrint
-    
-    def enterText(self, kbRows=[["1234567890-=~", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./", " %"], ["!@#$%^&*()_+~", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?", " "]],
-                   secret=False, prefix=None, suffix=None):
-        """
-        allows the user to enter text and returns the string
-
-        @kbRows: the rows/set of characters to let the user choose from - default is alphanumeric characters and symbols
-        @font: the default font to use for the letters, etc.
-        @secret: if the text being entered should be classified - example, a password
-        @prefix: string to prefix user's text with - for example, a date
-        @suffix: string to suffix user's text with - for example, a file extension
-        """
-
-        prefix = "" if prefix is None else prefix
-        suffix = "" if suffix is None else suffix
-
-        chosenKey = "q"
-        compiledStri = ""
-
-        characterIndex = 0
-        keyRowIndex = 0
-        keyRowBlobIndex = 0
-
-        spaceBar = "[_________]"
-        enter = "[<]"
-
-        font = ImageFont.truetype('core/fonts/monospace.ttf', 16)
-        tinyFont = ImageFont.truetype('core/fonts/monospace.ttf', 11)
-        modifier = False
-
-        slice1 = 0
-        slice2 = len(prefix + suffix)
-        while True:
-
-            preStri = (prefix + compiledStri + suffix)
-            striShown = preStri[slice1:slice2]
-
-            if font.getlength(striShown) >= 120 and not modifier:
-                while font.getlength(striShown) >= 120:
-                    slice1 += 1
-                    striShown = preStri[slice1:slice2]
-
-            self.tpil.clear() # clear
-
-            self.tpil.rect((0, 12), (128, 12)) # draw the line spliting the text and the keyboard
-
-            if modifier:
-                self.tpil.text((110,56), "ALT", font=tinyFont)
-
-            if not secret:
-                self.tpil.text((2,0), striShown, font=font)
-            else:
-                self.tpil.text((2,0), ''.join(["*" for _ in striShown]), font=font)
-
-            textLength = font.getlength(striShown)+2
-            self.tpil.rect((textLength, 2), (textLength, 10))
-
-
-            ### draws the kb
-                
-            maxPixelX = 116
-            textX, textY = 4, 14 # starting coordinate of the first letter
-            textXOffset = 4
-            kbRow = kbRows[keyRowBlobIndex]
-
-            for keyRow in kbRow: # iterate over key rows (imagine the 3 key rows on your usual keyboard)
-                div = round(maxPixelX / len(keyRow))
-                for char in keyRow: # for every character in our row..
-
-                    if keyRowBlobIndex == 0: # text, not symbols
-                        if char == "~": char = "<="
-                        elif char == "%": 
-                            char = enter
-                        elif char == " ": 
-                            char = spaceBar
-                            div = font.getlength(char)+2
-
-                    if char != chosenKey: # if this character we're writing isn't chosen..
-                        self.tpil.text((textX, textY), char, font=font) # write it normally
-
-                    else: # if it is chosen...
-                        self.tpil.rect(
-                            (textX-2, textY), 
-                            (textX + font.getlength(char), textY+10), 
-                            color='WHITE'
-                            ) # draw box
-                        
-                        self.tpil.text((textX, textY), char, font=font, color="BLACK") # draw text after box 
-
-                    textX += div # move right for our next character
-
-                nextKeyRowIndex = kbRow.index(keyRow) + 1
-                try:
-                    nextKeyRowLength = len(kbRow[nextKeyRowIndex])
-                except:
-                    nextKeyRowIndex = 0
-
-                if len(keyRow) != nextKeyRowLength: # next row is gonna be a different size
-                    textX = 4 + textXOffset # do magic
-
-                maxPixelX -= textXOffset
-                textXOffset += 4
-                textY += 10
-
-
-            # show compiled image
-            self.tpil.show()
-
-            key = self.tpil.waitForKey(debounce=True)
-
-            if key == 'down': # moving on the x and y plane
-
-                """
-                stringsI += 1 if stringsI != len(kbRows)-1 else 0
-                chars = kbRows[stringsI]
-
-                if keyI > len(chars):
-                    keyI = len(chars)
-                """
-
-                keyRowIndex += 1
-                #characterIndex -= 1
-                if keyRowIndex > len(kbRow)-1 : keyRowIndex = len(kbRow)-1
-
-            elif key == 'up':
-
-                keyRowIndex -= 1
-                if 0 > keyRowIndex: keyRowIndex = 0
-
-                """
-                stringsI -= 1 if stringsI != 0 else 0
-                chars = kbRows[stringsI]
-
-                if keyI > len(chars):
-                    keyI = len(chars)
-                """
-
-            elif key == 'right': # moving on the y plane
-                if modifier:
-                    slice1 += 1 if slice1 != len(preStri) else 0
-                else:
-                    characterIndex += 1 if characterIndex != len(kbRow[keyRowIndex]) -1 else 0
-
-            elif key == 'left': # moving on the y plane
-                if modifier:
-                    ignoreOver = True
-                    slice1 -= 1 if slice1 != 0 else 0
-                    slice2 += 1 if slice1 != 0 else 0
-                else:
-                    characterIndex -= 1 if characterIndex != 0 else 0
-
-            elif key == 'press':
-                if chosenKey == "<=":
-                    compiledStri = compiledStri[:-1]
-                elif chosenKey[0] == "[" and chosenKey[-1] == "]" and chosenKey[1] == "_":
-                    compiledStri += " "
-                elif chosenKey == enter:
-                    return prefix + compiledStri + suffix
-                else:
-                    compiledStri += chosenKey
-
-                modifier = False
-                slice2 += 1
-
-            elif key == '3':
-                return prefix + compiledStri + suffix
-            elif key == '2':
-                if keyRowBlobIndex >= len(kbRows)-1:
-                    keyRowBlobIndex = 0
-                else:
-                    keyRowBlobIndex += 1
-            elif key == '1':
-                modifier = not modifier
-
-            # calculate our chosen key
-                
-            try:
-                chosenKey = kbRow[keyRowIndex][characterIndex]
-
-            except IndexError:
-                characterIndex = len(kbRow[keyRowIndex])-1 # we went over
-                chosenKey = kbRow[keyRowIndex][characterIndex]
-
-            if chosenKey == "~": chosenKey = "<="
-            if chosenKey == " ": chosenKey = spaceBar
-            if chosenKey == "%": chosenKey = enter
-
-    def menu(self, choices, disableBack=False, 
-             highlight=[], # won't be used here
-             index=None, # won't be used here either
-             ) -> str:
-        currentSelection = 0
-
-        if len(choices) == 0:
-            choices = ["empty"]
-        if "" in choices:
-            choices.remove("") # any whitespace
-
-        if not disableBack:
-            if ".." in choices:
-                choices.remove("..")
-            choices.insert(0, "..")
-            
-        listToPrint = self.getItems(choices, currentSelection)
-        selection = choices[currentSelection]
-
-        xCoord = 2
-        yCoord = 2
-
-        font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
-
-        for text in list(listToPrint): # do draw
-            if selection != text: # if our selection isnt the text iter gave us
-                #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
-            else: # it is our selection
-                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
-
-                    
-            yCoord += 14
-
-    def display(self, moduleList, currentSelection, icons):
-
-        listToPrint = self.getItems(moduleList, currentSelection)
-        selection = moduleList[currentSelection]
-
-
-        xCoord = 2
-        yCoord = 2
-
-        font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
-
-        for text in list(listToPrint): # do draw
-            if selection != text: # if our selection isnt the text iter gave us
-                #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
-            else: # it is our selection
-                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
-                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
-
-                    
-            yCoord += 14
-
-    def resizeCoordinate2Res(self, coordinate, axis='x'):
-        # for displays that aren't 128x64
-
-        if axis.lower() == 'x':
-            return round(coordinate*(self.disp.width) / 128)
-        elif axis.lower() == 'y':
-            return round(coordinate*(self.disp.height) / 64)
-        else:
-            raise ValueError("axis \"{}\" is not 'x' or 'y'".format(axis))
-        
-    def resizeCoords2Res(self, xy):
-        # resize both x and y from a list
-        return (
-            self.resizeCoordinate2Res(xy[0]),
-            self.resizeCoordinate2Res(xy[1])
-        )
-    
-    def rzxyr(self, *args, **kwargs):
-        # shorthand for resizeCoords2Res
-        return self.resizeCoords2Res(*args, **kwargs)
-    
-    def rzc2r(self, *args, **kwargs):
-        # shorthand for resizeCoordinate2Res
-        return self.resizeCoordinate2Res(*args, **kwargs)
-    
 class carouselMenu:
     def __init__(self, tpil:tinyPillow) -> None:
         self.tpil = tpil
@@ -913,3 +504,416 @@ class screenConsole:
     def clearText(self):
         self.text = ""
         self.update()
+
+# this is accessed as .gui
+class BasePwnhyveScreen():
+    
+    def __init__(self, draw:ImageDraw, disp, image:Image):
+
+        self.disp = disp
+        self.draw = draw
+        self.image = image
+
+        self.tpil = tinyPillow(draw, disp, image, gui=self)
+
+        return None
+    
+    def carouselMenu(self, *args, **kwargs) -> Type[carouselMenu]:
+        """
+        a simple carousel menu
+        ** beware this is nonblocking, you must manage redraws and key inputs yourself **
+        
+        Example:
+            >>> menu = tpil.gui.carouselMenu()
+            >>> menu.draw("main console text", "caption")
+            >>> if tpil.waitForKey() == "right":
+            >>>     # user scrolled right...
+            >>> ...
+        """
+
+        return carouselMenu(self.tpil)
+
+    def keyLegend(self, *args, **kwargs) -> Type[keyLegend]:
+        """
+        create a key legend at the bottom of the screen (takes 10 pixels)
+        ** BEWARE THIS IS NOT AUTOMATICALLY REDRAWN, YOU MUST REDRAW IT YOURSELF USING `this.draw()` **
+
+        Args:
+            legend: a dictionary of keys, and what they do
+                    e.g. {"left": "back", "press": "ok", "right": "next"}
+                    icons will be automagically filled out
+        """
+
+        return keyLegend(self.tpil, *args, **kwargs)
+
+    def setFloat(self, *args, **kwargs) -> float:
+        """
+        set individual values in a number, e.g. like sdrpp's frequency changer
+        typically used for exactly that, setting radio frequencies
+
+        Args:
+            caption (str): caption to tell the user (what this is for)
+            _min (float): minimum value the user can pick
+            start (str): starting value; must be a string because python doesn't like 300.000 and turns it into 300.0
+            _max (float): maximum value the user can pick
+            wholePlaces (int): amount of whole number places there is
+            decimalPlaces (int): amount of decimal places there is 
+
+        Returns:
+            float: the result the user picked
+        """
+
+        ab = setFloat(self.tpil, *args, **kwargs)
+        return ab.start()
+
+    def slider(self, *args, **kwargs) -> Union[float,int]:
+        """
+        a simple integer slider
+
+        Args:
+            caption (str): caption to show the user (e.g. what the user is picking)
+            minimum (int or float): minimum the slider can go to
+            start (int or float): where the slider starts (must be between minimum and maximum) (e.g. 50)
+            maximum (int or float): maximum the slider can go to
+            step (int or float): steps the slider goes, when the user goes left and right (right being +)
+            bigstep (int or float): steps the slider goes when the uses up and down (up being +)
+            ndigits (int): number of digits to round to, if the value is a float
+
+        Returns:
+            float or int: the value the user chose
+        """
+
+        ab = slider(self.tpil, *args, **kwargs)
+        return ab.draw() # why it's in two bits, no clue
+
+    def usbRunPercentage(self, **kwargs) -> Type[usbRunPercentage]:
+        """
+        issue a console with a 80/20 split, where 20% of the screen is taken up by \
+        a percentage
+
+        this is kinda depreciated, i don't like using it
+        """
+        return usbRunPercentage(self.tpil, **kwargs)
+
+    def screenConsole(self, **kwargs) -> Type[screenConsole]:
+        """
+        issue a terminal-like ui to the user - only text allowed
+        """
+
+        return screenConsole(self.tpil, **kwargs)
+
+    def toast(self, text:str, xy1:list, xy2:list, timeout:int=-1, textYOffset:int=0):
+        """
+        toast the user with a notification, and go away when the user clicks a key
+
+        @text: text of the notification
+        @xy1: top-left XY coord in list format [X,Y], for the body
+        @xy2: bottom-right XY coord in list format [X,Y], for the body
+        @timeout: timeout before hiding toast box - defaults to -1 (user intervention) - set as `None` for no hiding, no waiting
+        @textYOffset: text offset from top of the body (e.g. margin-top)
+
+        """
+        originalImage = self.image.tobytes('raw', '1')
+        #originalImage = self.image.tobitmap()
+        # since we're overlaying on an image that we want to restore after \
+        # a bit, we save the image before we do anything with it to load \
+        # it back after
+
+        # draw toast box
+        self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
+        self.draw.rounded_rectangle((xy1, xy2), radius=3)
+
+        self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], text, font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8))
+
+        self.tpil.show(clear=False)
+
+        # wait for user to read, or something
+        if timeout == None:
+            return
+        else:
+            if 0 > timeout:
+                self.tpil.waitForKey(debounce=True) # let user continue when they want
+            else:
+                time.sleep(timeout) # wait for toast to go away
+
+        # load back the image we saved earlier
+        imageFB = Image.frombytes('1', (self.image.width, self.image.height), originalImage, 'raw', '1')
+        self.image.paste(imageFB, (0,0))
+
+        # show it
+        self.tpil.show(clear=False)
+
+    def getItems(self, plugins, currentSelection, rows=5):
+
+        listToPrint = plugins[currentSelection:currentSelection+rows]
+
+        return listToPrint
+    
+    def enterText(self, kbRows=[["1234567890-=~", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./", " %"], ["!@#$%^&*()_+~", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?", " "]],
+                   secret=False, prefix=None, suffix=None):
+        """
+        allows the user to enter text and returns the string
+
+        @kbRows: the rows/set of characters to let the user choose from - default is alphanumeric characters and symbols
+        @font: the default font to use for the letters, etc.
+        @secret: if the text being entered should be classified - example, a password
+        @prefix: string to prefix user's text with - for example, a date
+        @suffix: string to suffix user's text with - for example, a file extension
+        """
+
+        prefix = "" if prefix is None else prefix
+        suffix = "" if suffix is None else suffix
+
+        chosenKey = "q"
+        compiledStri = ""
+
+        characterIndex = 0
+        keyRowIndex = 0
+        keyRowBlobIndex = 0
+
+        spaceBar = "[_________]"
+        enter = "[<]"
+
+        font = ImageFont.truetype('core/fonts/monospace.ttf', 16)
+        tinyFont = ImageFont.truetype('core/fonts/monospace.ttf', 11)
+        modifier = False
+
+        slice1 = 0
+        slice2 = len(prefix + suffix)
+        while True:
+
+            preStri = (prefix + compiledStri + suffix)
+            striShown = preStri[slice1:slice2]
+
+            if font.getlength(striShown) >= 120 and not modifier:
+                while font.getlength(striShown) >= 120:
+                    slice1 += 1
+                    striShown = preStri[slice1:slice2]
+
+            self.tpil.clear() # clear
+
+            self.tpil.rect((0, 12), (128, 12)) # draw the line spliting the text and the keyboard
+
+            if modifier:
+                self.tpil.text((110,56), "ALT", font=tinyFont)
+
+            if not secret:
+                self.tpil.text((2,0), striShown, font=font)
+            else:
+                self.tpil.text((2,0), ''.join(["*" for _ in striShown]), font=font)
+
+            textLength = font.getlength(striShown)+2
+            self.tpil.rect((textLength, 2), (textLength, 10))
+
+
+            ### draws the kb
+                
+            maxPixelX = 116
+            textX, textY = 4, 14 # starting coordinate of the first letter
+            textXOffset = 4
+            kbRow = kbRows[keyRowBlobIndex]
+
+            for keyRow in kbRow: # iterate over key rows (imagine the 3 key rows on your usual keyboard)
+                div = round(maxPixelX / len(keyRow))
+                for char in keyRow: # for every character in our row..
+
+                    if keyRowBlobIndex == 0: # text, not symbols
+                        if char == "~": char = "<="
+                        elif char == "%": 
+                            char = enter
+                        elif char == " ": 
+                            char = spaceBar
+                            div = font.getlength(char)+2
+
+                    if char != chosenKey: # if this character we're writing isn't chosen..
+                        self.tpil.text((textX, textY), char, font=font) # write it normally
+
+                    else: # if it is chosen...
+                        self.tpil.rect(
+                            (textX-2, textY), 
+                            (textX + font.getlength(char), textY+10), 
+                            color='WHITE'
+                            ) # draw box
+                        
+                        self.tpil.text((textX, textY), char, font=font, color="BLACK") # draw text after box 
+
+                    textX += div # move right for our next character
+
+                nextKeyRowIndex = kbRow.index(keyRow) + 1
+                try:
+                    nextKeyRowLength = len(kbRow[nextKeyRowIndex])
+                except:
+                    nextKeyRowIndex = 0
+
+                if len(keyRow) != nextKeyRowLength: # next row is gonna be a different size
+                    textX = 4 + textXOffset # do magic
+
+                maxPixelX -= textXOffset
+                textXOffset += 4
+                textY += 10
+
+
+            # show compiled image
+            self.tpil.show()
+
+            key = self.tpil.waitForKey(debounce=True)
+
+            if key == 'down': # moving on the x and y plane
+
+                """
+                stringsI += 1 if stringsI != len(kbRows)-1 else 0
+                chars = kbRows[stringsI]
+
+                if keyI > len(chars):
+                    keyI = len(chars)
+                """
+
+                keyRowIndex += 1
+                #characterIndex -= 1
+                if keyRowIndex > len(kbRow)-1 : keyRowIndex = len(kbRow)-1
+
+            elif key == 'up':
+
+                keyRowIndex -= 1
+                if 0 > keyRowIndex: keyRowIndex = 0
+
+                """
+                stringsI -= 1 if stringsI != 0 else 0
+                chars = kbRows[stringsI]
+
+                if keyI > len(chars):
+                    keyI = len(chars)
+                """
+
+            elif key == 'right': # moving on the y plane
+                if modifier:
+                    slice1 += 1 if slice1 != len(preStri) else 0
+                else:
+                    characterIndex += 1 if characterIndex != len(kbRow[keyRowIndex]) -1 else 0
+
+            elif key == 'left': # moving on the y plane
+                if modifier:
+                    ignoreOver = True
+                    slice1 -= 1 if slice1 != 0 else 0
+                    slice2 += 1 if slice1 != 0 else 0
+                else:
+                    characterIndex -= 1 if characterIndex != 0 else 0
+
+            elif key == 'press':
+                if chosenKey == "<=":
+                    compiledStri = compiledStri[:-1]
+                elif chosenKey[0] == "[" and chosenKey[-1] == "]" and chosenKey[1] == "_":
+                    compiledStri += " "
+                elif chosenKey == enter:
+                    return prefix + compiledStri + suffix
+                else:
+                    compiledStri += chosenKey
+
+                modifier = False
+                slice2 += 1
+
+            elif key == '3':
+                return prefix + compiledStri + suffix
+            elif key == '2':
+                if keyRowBlobIndex >= len(kbRows)-1:
+                    keyRowBlobIndex = 0
+                else:
+                    keyRowBlobIndex += 1
+            elif key == '1':
+                modifier = not modifier
+
+            # calculate our chosen key
+                
+            try:
+                chosenKey = kbRow[keyRowIndex][characterIndex]
+
+            except IndexError:
+                characterIndex = len(kbRow[keyRowIndex])-1 # we went over
+                chosenKey = kbRow[keyRowIndex][characterIndex]
+
+            if chosenKey == "~": chosenKey = "<="
+            if chosenKey == " ": chosenKey = spaceBar
+            if chosenKey == "%": chosenKey = enter
+
+    def menu(self, choices, disableBack=False, 
+             highlight=[], # won't be used here
+             index=None, # won't be used here either
+             ) -> str:
+        currentSelection = 0
+
+        if len(choices) == 0:
+            choices = ["empty"]
+        if "" in choices:
+            choices.remove("") # any whitespace
+
+        if not disableBack:
+            if ".." in choices:
+                choices.remove("..")
+            choices.insert(0, "..")
+            
+        listToPrint = self.getItems(choices, currentSelection)
+        selection = choices[currentSelection]
+
+        xCoord = 2
+        yCoord = 2
+
+        font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
+
+        for text in list(listToPrint): # do draw
+            if selection != text: # if our selection isnt the text iter gave us
+                #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
+            else: # it is our selection
+                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
+
+                    
+            yCoord += 14
+
+    def display(self, moduleList, currentSelection, icons):
+
+        listToPrint = self.getItems(moduleList, currentSelection)
+        selection = moduleList[currentSelection]
+
+
+        xCoord = 2
+        yCoord = 2
+
+        font = ImageFont.truetype('core/fonts/roboto.ttf', 11)
+
+        for text in list(listToPrint): # do draw
+            if selection != text: # if our selection isnt the text iter gave us
+                #createSelection(draw, text, xCoord, yCoord, selected=0, font=font) # draw it normally
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='BLACK', outline=255, font=font) # draw black text over rectangle
+            else: # it is our selection
+                self.draw.rectangle([(0, yCoord), (255, 13 + yCoord)], fill='BLACK', outline=255) # draw colored rectangle first
+                self.draw.text((xCoord, yCoord), text.replace("_", " "), fill='WHITE', outline=255, font=font) # draw black text over rectangle
+
+                    
+            yCoord += 14
+
+    def resizeCoordinate2Res(self, coordinate, axis='x'):
+        # for displays that aren't 128x64
+
+        if axis.lower() == 'x':
+            return round(coordinate*(self.disp.width) / 128)
+        elif axis.lower() == 'y':
+            return round(coordinate*(self.disp.height) / 64)
+        else:
+            raise ValueError("axis \"{}\" is not 'x' or 'y'".format(axis))
+        
+    def resizeCoords2Res(self, xy):
+        # resize both x and y from a list
+        return (
+            self.resizeCoordinate2Res(xy[0]),
+            self.resizeCoordinate2Res(xy[1])
+        )
+    
+    def rzxyr(self, *args, **kwargs):
+        # shorthand for resizeCoords2Res
+        return self.resizeCoords2Res(*args, **kwargs)
+    
+    def rzc2r(self, *args, **kwargs):
+        # shorthand for resizeCoordinate2Res
+        return self.resizeCoordinate2Res(*args, **kwargs)
+    
