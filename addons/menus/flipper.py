@@ -13,6 +13,16 @@ class Screen(BasePwnhyveScreen):
 
     def menu(self, choices,
             flipped=False, icons:dict=None, caption=None, disableBack=False, highlight=[], index=None):
+        """
+        let user pick something from set choices you give
+
+        @choices: a list of items the user can pick from. if you have complicated items, \
+            e.g. a randomly generated number, you can pass a dict instead with the assigned \
+            value for this function to return. sounds confusing, but if you did \
+            `menu({"a": "1", "b": "2"})` \
+            and the user chose "a", this function would return "1" instead
+            
+        """
         xCoord = 5
         yCoord = 5
         currentSelection = 0 # index of programs list

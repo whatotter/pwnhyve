@@ -35,7 +35,7 @@ class PWNTestOne(BasePwnhyvePlugin):
         tpil.waitForKey()
 
     def screenConsole(tpil):
-        a = tpil.gui.screenConsole(tpil)
+        a = tpil.gui.screenConsole()
 
         a.text = "hello world!" + "\n" + "text and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it"
 
@@ -58,7 +58,7 @@ class PWNTestOne(BasePwnhyvePlugin):
 
     def screenConsole2(tpil):
 
-        a = tpil.gui.screenConsole(tpil)
+        a = tpil.gui.screenConsole()
         threading.Thread(target=a.start, daemon=True).start()
         
         a.text = (scText("i like lucki\nand fornite\n and roblox\n12345678", "@{}hz | ASYNC-OOK".format("303.91")))
@@ -67,7 +67,7 @@ class PWNTestOne(BasePwnhyvePlugin):
         a.exit()
 
     def legend(tpil):
-        a = tpil.gui.keyLegend(tpil, {"right": "next", "press": "ok", "left": "back", "1": "record"})
+        a = tpil.gui.keyLegend({"right": "next", "press": "ok", "left": "back", "1": "record"})
 
         tpil.clear()
 
@@ -80,7 +80,7 @@ class PWNTestOne(BasePwnhyvePlugin):
     def carousel(tpil):
         tpil.clear()
         
-        a = tpil.gui.carouselMenu(tpil)
+        a = tpil.gui.carouselMenu()
 
         a.draw("text and a lot of it and a lot of it and a lot of it and a lot of it", "caption")
 

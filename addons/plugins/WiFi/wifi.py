@@ -317,7 +317,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         font = ImageFont.truetype('core/fonts/roboto.ttf', 10)
 
         try:
-            cli = bcap.Client(iface="wlan0")
+            cli = bcap.Client(iface=config["wifi"]["interface"])
             if not cli.successful: raise Exception("b") # why the fuck did i do this
         except Exception as e:
             tpil.clear()

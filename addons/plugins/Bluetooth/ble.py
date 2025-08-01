@@ -86,7 +86,7 @@ class PWNBluetooth(BasePwnhyvePlugin):
     def Enumerate_Clients(tpil:tinyPillow):
         chosenIndex = 0
         sliceIndex = 0
-        menu = tpil.gui.carouselMenu(tpil)
+        menu = tpil.gui.carouselMenu()
 
         while True:
             a = bcap.getBluetoothClients()
@@ -202,7 +202,7 @@ class PWNBluetooth(BasePwnhyvePlugin):
                                 break
                             else:
                                 key = isWrite.split(":",1)[0]
-                                sc = tpil.gui.screenConsole(tpil)
+                                sc = tpil.gui.screenConsole()
                                 sc.text = chosenCharacteristic[key]
                                 sc.update()
                                 sc.exit()

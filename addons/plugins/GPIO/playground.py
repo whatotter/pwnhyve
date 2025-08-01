@@ -1,11 +1,11 @@
 import gpiozero as gpioz
 from core.plugin import BasePwnhyvePlugin 
 import plugins.GPIO._pins as pinMGR
+from core.pil_simplify import tinyPillow
 
-def createPWM(tpil, pin):
+def createPWM(tpil:tinyPillow, pin):
 
-    slider = tpil.gui.slider(tpil, "PWM Hz", minimum=1, maximum=1000)
-    hz = slider.draw()
+    hz = tpil.gui.slider("PWM Hz", minimum=1, maximum=1000)
 
     clearPin(pin) # clear pin before changing to PWM
     pinObject = gpioz.PWMOutputDevice(pin, frequency=hz)
@@ -13,7 +13,7 @@ def createPWM(tpil, pin):
 
     return pinObject
 
-def createOut(tpil, pin):
+def createOut(tpil:tinyPillow, pin):
     
     clearPin(pin) # clear pin before changing
     print("out created on pin {}".format(pin))
@@ -22,7 +22,7 @@ def createOut(tpil, pin):
 
     return pinObject
 
-def createServo(tpil, pin):
+def createServo(tpil:tinyPillow, pin):
     
     clearPin(pin) # clear pin before changing
     pinObject = gpioz.Servo(pin)
@@ -42,7 +42,7 @@ class PWNPlayground(BasePwnhyvePlugin):
         "Playground": "./core/icons/tool.bmp",
     }
 
-    def Playground(tpil):
+    def Playground(tpil:tinyPillow):
         global pinObjects
         pinObjects = {}
         pinModeStrings = {}
@@ -74,10 +74,10 @@ class PWNPlayground(BasePwnhyvePlugin):
                         if todo == "Edit Frequency":
                             pinObjects[pin] = createPWM(tpil, pin)
                         elif todo == "Edit Value":
-                            pinObjects[pin].value = tpil.gui.slider(tpil, "PWM Value", 
+                            pinObjects[pin].value = tpil.gui.slider("PWM Value", 
                                                                     minimum=0, maximum=1, 
                                                                     step=0.01, bigstep=0.1,
-                                                                    ndigits=2).draw()
+                                                                    ndigits=2)
                         elif todo == "Pulse":
                             pinObjects[pin].pulse()
 
@@ -101,10 +101,10 @@ class PWNPlayground(BasePwnhyvePlugin):
                     if pin not in pinObjects or pinModes.get(pinName) != "Servo":
                         pinObjects[pin] = createServo(tpil, pin)
                     else:
-                        pinObjects[pin].value = tpil.gui.slider(tpil, "Servo Value", 
+                        pinObjects[pin].value = tpil.gui.slider("Servo Value", 
                                                                     minimum=-1, maximum=1, 
                                                                     step=0.01, bigstep=0.1,
-                                                                    ndigits=2).draw()
+                                                                    ndigits=2)
 
                     pinModeStrings[pinName] = "(Servo {})".format(pinObjects[pin].value)
                     pinModes[pinName] = "Servo"

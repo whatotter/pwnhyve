@@ -24,7 +24,7 @@ def manage(tpil, params, listOfAssertParams, isCreds=False, isWifiCreds=True):
     for param in params:
         hammer.addParam(param)
 
-    sc = tpil.gui.screenConsole(tpil)
+    sc = tpil.gui.screenConsole()
     sc.addText("starting EAPHammer..")
 
     if assertParams(sc, listOfAssertParams):
@@ -40,7 +40,7 @@ def manage(tpil, params, listOfAssertParams, isCreds=False, isWifiCreds=True):
         fileHandle = open("EAPHammer-{}-Creds.json".format(datetime.datetime.now()), "w")
         sc.exit()
 
-        carousel = tpil.gui.carouselMenu(tpil)
+        carousel = tpil.gui.carouselMenu()
         carousel.fontSize = 14
         credsIndex = 0
 

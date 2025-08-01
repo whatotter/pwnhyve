@@ -187,5 +187,9 @@ symbols = [
         '9',
         '0',
         '/',
-        " "
+        " ",
+        "ENTER",
+        "BACKSPACE",
+        "TAB",
+        "ESC",
         ]

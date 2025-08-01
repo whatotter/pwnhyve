@@ -125,7 +125,7 @@ class PWNLA(BasePwnhyvePlugin):
         CH2_HIGH = tpil.resizeCoordinate2Res(24)
         CH2_LOW = tpil.resizeCoordinate2Res(CH2_HIGH + 10)
 
-        keyLegends = tpil.gui.keyLegend(tpil, {"left": "", "right": "", "up": "+", "down": "-", "press": "REC"})
+        keyLegends = tpil.gui.keyLegend({"left": "", "right": "", "up": "+", "down": "-", "press": "REC"})
 
         previousBit = None
         activityPositions = []

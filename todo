@@ -1,31 +1,28 @@
-in chrono. order
-
 # to fix
-- the whole subghz plugin
-    - that shit is FUCKED
 
 # to add
-- add wifi tools like
-    - AP wardriving, using a phone for GPS
-        - this can be done with the new webui
 
+## top priority (asap)
+- finish the webui plugin system
+    - make webui addons for each plugin
+
+## medium priority (same week)
+- make an 'sdr-pro' version of PCB with a bpf for RPITX and a spot for a usb SDR
+    - pcb has been ordered (7/30/25)
+- implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
+
+## low priority (whenever)
 - implement ble right
     - BLE hacking
         - Bluejacking
         - [Bluesnarfing](https://github.com/kimbo/bluesnarfer)
         - ~Sour Apple~ impossible with linux ble stack, i *think*
 
-- more usb stuff
-    - ~hidx stealthlink from hak5 or something like that for reverse shell comms~
-        - no, it's way too convoluted and platform dependent that there's just no point in implementing it
-
-- implement network functions correctly, then implement these tools:
+- implement network connect functions correctly, then implement these tools:
     - https://github.com/vanhoefm/macstealer
     - MITM6 (https://github.com/dirkjanm/mitm6)
     - remote cracking with implementation of PSKracker (https://github.com/andrewjlamarche/PSKracker)
 
-
-- implement SPI flash dumping (https://github.com/stacksmashing/pico-serprog)
 - opensesame
 
 # what's done
@@ -33,3 +30,13 @@ in chrono. order
 - ~RSSI sniffing (e.g. look for a lost device by RSSI)~
 - ~EAPHammer~
 - ~make keystroke reflection DDR instead of SDR~
+
+# wontfix
+- more usb stuff
+    - ~hidx stealthlink from hak5 or something like that for reverse shell comms~
+        - no, it's way too convoluted and platform dependent that there's just no point in implementing it
+
+- add wifi tools like
+    - AP wardriving, using a phone for GPS
+        - ~this can be done with the new webui~ no it can't, location can't be over http and certs r annoying
+        - maybe sometime later, but definitely not on the roadmap yet

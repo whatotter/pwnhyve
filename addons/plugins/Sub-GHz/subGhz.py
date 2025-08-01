@@ -4,12 +4,11 @@ import time
 import core.cc1101.ccrf as ccrf
 import core.cc1101.binary as binTranslate
 import core.cc1101.flipsub as fsub
-import core.rpitx.rpitx as rpitx
 
 from core.plugin import BasePwnhyvePlugin 
 from core.utils import IPC
+from core.pil_simplify import tinyPillow
 
-fm = rpitx.PiFMRds()
 ui = IPC.WebUiLink("subghz")
 
 rbyt = {}
@@ -18,9 +17,6 @@ transceiverEnabled = False
 
 def blinkerSub(sender, **kw):
     print(f"Caught signal from {sender!r}, data {kw!r}")
-
-    if kw["action"] == "jam":
-        print("im supposed to be jamming")
 
 ui.subscribe(blinkerSub)
 
@@ -50,10 +46,10 @@ def scText(text, caption, maxln=6):
 
     return '\n'.join(s)
 
-def checkForTransciever(tpil):
+def checkForTransciever(tpil:tinyPillow):
 
     if not transceiverEnabled:
-        a = tpil.gui.screenConsole(tpil)
+        a = tpil.gui.screenConsole()
         a.addText("No CC1101 detected - this function is disabled")
 
         tpil.waitForKey()
@@ -71,16 +67,17 @@ class PWNsubGhz(BasePwnhyvePlugin):
         "Play_FM_Radio": "./core/icons/routeremit.bmp",
     }
     
-    def XCVR_Read_Raw(tpil):
+    def XCVR_Read_Raw(tpil:tinyPillow):
         global freq, rbyt
 
         if not checkForTransciever(tpil): return
 
         transceiver.rst()
 
-        a = tpil.gui.screenConsole(tpil)
+        a = tpil.gui.screenConsole()
         
-        a.setText( (scText("setting CC1101 to RX...", "{}hz | RAW | RX".format(strfrq))) )
+        a.setText("setting CC1101 to RX...")
+        a.addText("{}hz | RAW | RX".format(strfrq))
 
         transceiver.setupRawRecieve()
 
@@ -95,11 +92,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
         
         #a.addText("hit any key to start RX")
 
-        a.setText( scText("hit any key to start recording", "{}hz | RAW | RX".format(strfrq)) )
+        a.addText("hit any key to start recording")
 
         tpil.waitForKey()
 
-        a.setText( scText("hit any key to stop", "{}hz | RAW | RX".format(strfrq)) )
+        a.addText("hit any key to stop")
         
         transceiver.recvInf() # start reading
 
@@ -170,7 +167,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 hexs = binTranslate.octetsToHex(byts)
 
-                a = tpil.gui.screenConsole(tpil)
+                a = tpil.gui.screenConsole()
 
                 lines = []
                 curline = []
@@ -233,7 +230,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 transceiver.sleepMode()
                 return
 
-    def Set_XCVR_Power(tpil):
+    def Set_XCVR_Power(tpil:tinyPillow):
         if not checkForTransciever(tpil): return
 
         powerStrings = []
@@ -247,7 +244,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         transceiver.adjustOOKSensitivity(0, registerValue)
 
-    def XCVR_Replay_Data(tpil):
+    def XCVR_Replay_Data(tpil:tinyPillow):
         global strfrq, freq
         if not checkForTransciever(tpil): return
 
@@ -262,7 +259,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         bitData = fsubData.rawDataToBits()
 
 
-        a = tpil.gui.screenConsole(tpil)
+        a = tpil.gui.screenConsole()
 
         a.addText("preparing..")
         
@@ -318,12 +315,12 @@ class PWNsubGhz(BasePwnhyvePlugin):
         #strfrq = str(beforefreq)[:3]
         #transceiver.revertTransceiver()
 
-    def Set_XCVR_Frequency(tpil):
+    def Set_XCVR_Frequency(tpil:tinyPillow):
         global freq, strfrq
 
         if not checkForTransciever(tpil): return
 
-        a = tpil.gui.setFloat(tpil, "Frequency (300-950mhz)", _min=300.0, _max=950.0,
+        a = tpil.gui.setFloat("Frequency (300-950mhz)", _min=300.0, _max=950.0,
                               start=str(int(transceiver.currentFreq/1e6))+".000"
                               #    ^ round the float into an int       ^ then add THREE place values
                               ).start()
@@ -331,25 +328,3 @@ class PWNsubGhz(BasePwnhyvePlugin):
         transceiver.setFreq(a)
 
         print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
-
-    def Play_FM_Radio(tpil):
-        audio = "./addons/fm_audio/" + tpil.gui.menu(list(filter(lambda x: x.endswith(".wav"), os.listdir("./addons/fm_audio"))))
-        if audio == None: return
-
-        frequency = tpil.gui.slider(tpil, "FM Frequency", minimum=90, maximum=110, 
-                                    start=102.5, step=0.1, bigstep=1).draw()
-        
-
-        sc = tpil.gui.screenConsole(tpil)
-        sc.addText("Hit any key to stop\n\n\n" + "Playing FM @ {}\n{}".format(frequency, audio))
-        time.sleep(0.1) # finish writes to gpio
-
-        fm.freq = frequency
-
-        fm.play(audio)
-
-        tpil.waitForKey()
-
-        fm.stop()
-
-        print(audio)

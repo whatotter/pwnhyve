@@ -27,7 +27,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
     def Toggle_USB_Ethernet(tpil):
         global USBEthernetEnabled
 
-        sc = tpil.gui.screenConsole(tpil)
+        sc = tpil.gui.screenConsole()
 
         subprocess.getoutput("echo "" > {}UDC".format(kernelGadgetDir)) # udc off..
 
@@ -52,7 +52,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
     def Toggle_Mass_Storage(tpil):
         global usbMounted
 
-        sc = tpil.gui.screenConsole(tpil)
+        sc = tpil.gui.screenConsole()
 
         if usbMounted:
             sc.addText("Mounting mass storage\nfor reading...")
@@ -107,7 +107,7 @@ class PWN_Gadget(BasePwnhyvePlugin):
             os.mkdir(extractPoint)
         except: pass
 
-        handler = tpil.gui.screenConsole(tpil) # init handler
+        handler = tpil.gui.screenConsole() # init handler
 
         handler.addText("creating mountdir")
 

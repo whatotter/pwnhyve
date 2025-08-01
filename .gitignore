@@ -3,3 +3,4 @@
 .vscode/settings.json
 *.pyc
 *.log
+pwnhyve.log

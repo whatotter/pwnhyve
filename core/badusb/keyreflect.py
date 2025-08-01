@@ -1,3 +1,4 @@
+import threading
 import time
 from core.badusb.badusb import BadUSB
 
@@ -6,9 +7,15 @@ class KeyReflectionSocket():
     a socket that uses USB key reflection (capslock, scroll-lock, numlock) to transfer data
     """
 
-    def __init__(self, commtype="ddr") -> None:
+    def __init__(self, commtype="ddr", createUSB=True) -> None:
         self.commtype = commtype
-        self.usb = BadUSB()
+
+        if createUSB == True:
+            self.usb = BadUSB()
+            self.usbWasCreated = True
+        else:
+            self.usb = createUSB
+            self.usbWasCreated = False
 
         self.usb.keyReflectListeners.append(self.__update__)
         self.mode = 0 # 0 for recieve, 1 for transmit
@@ -17,6 +24,9 @@ class KeyReflectionSocket():
         self.byteBuffer = b""
         self.strBitBuffer = ""
         self.lastActivity = 0
+
+        self.bufferFilled = False
+        self.destroy = False
 
         self.encoded = {
             "ra": (self.usb.keys['null']*8).encode(),
@@ -27,15 +37,21 @@ class KeyReflectionSocket():
             "cmps": (self.usb.keys["null"]*2+chr(0x65)+self.usb.keys["null"]*5).encode(),
         }
 
+        self.bufThread = threading.Thread(target=self.__bufferThread__, daemon=True)
+        self.bufThread.start()
+
     def __bufferThread__(self):
         while True:
+            if self.destroy: return
             ctime = time.time()
 
-            if ctime-self.lastActivity >= 1:
+            if ctime-self.lastActivity >= 1 and len(self.byteBuffer) > 0:
                 print("[+] sent {} bytes to buffer".format(len(self.byteBuffer)))
 
                 self.recvBuffer.append(self.byteBuffer)
                 self.byteBuffer = b""
+
+            time.sleep(0.5)
 
     def __update__(self, caps, num, scroll, kana, compose):
 
@@ -61,7 +77,7 @@ class KeyReflectionSocket():
                 rdy = num
 
                 if clock:
-                    for bit in [tx1,tx2]:
+                    for bit in [tx1]:
                         if bit:
                             self.strBitBuffer += "1"
                         else:
@@ -101,10 +117,23 @@ class KeyReflectionSocket():
         #if ra: self.usb.releaseAll()
         if ra: self.usb.keyboard.write(self.encoded["ra"])
 
+    def destroy(self):
+        self.usb.keyReflectListeners.clear()
+        self.destroy = True
+
+        if self.usbWasCreated:
+            self.usb.close()
+
+        self.bufThread.join()
+
+        return True
 
     def recv(self):
         if not self.usb.capsLock and not self.usb.scrollLock and not self.usb.numLock:
             return self.recvBuffer.pop(0)
+        
+    def isDone(self):
+        return not self.usb.capsLock and not self.usb.scrollLock and not self.usb.numLock # all off
 
     def send(self, transmitBytes:bytes, clockDelay=0, bitDelay=0.001):
         # tx1 = numlock = first bit

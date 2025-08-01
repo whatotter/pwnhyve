@@ -47,7 +47,7 @@ class DuckyScriptInterpreter():
         self.percentage = 0
         self.printed = ''
 
-        self.handler = tpil.gui.screenConsole(tpil) # init handler
+        self.handler = tpil.gui.screenConsole() # init handler
 
         return
 
@@ -344,8 +344,11 @@ class BadUSB:
         """
         write a string, case sensitive, with a set keyDelay
         """
-        for x in [str(x) for x in string]:       
-            self.press(x, releaseDelay=pressDelay)
+        for x in [str(x) for x in string]:
+            if x == "\n":
+                self.press("ENTER", releaseDelay=pressDelay)
+            else:
+                self.press(x, releaseDelay=pressDelay)
 
             if jitter != False:
                 g = gauss(jitter[0], jitter[1])
@@ -356,6 +359,8 @@ class BadUSB:
                 sleep(g)
             else:
                 sleep(keyDelay)
+
+        self.releaseAll()
         return True
     
     def move(self, xPx:int, yPx:int):

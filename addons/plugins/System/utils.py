@@ -1,13 +1,11 @@
 from PIL import ImageFont
 import subprocess
 import os
-import random, string
-from threading import Thread
 from time import sleep
 import netifaces as ni
 from json import loads
 from core.plugin import BasePwnhyvePlugin
-from core.utils import config
+from core.pil_simplify import tinyPillow
 
 # TODO: revamp whole thing
 
@@ -26,7 +24,7 @@ font = ImageFont.truetype('core/fonts/roboto.ttf', 14)
 USBEthernetEnabled = os.path.exists("{}configs/c.1/rndis.usb0".format(kernelGadgetDir)) # ln -s functions/rndis.usb0 configs/c.1/
 
 class PWN_System(BasePwnhyvePlugin):
-    def Set_Variables(tpil):
+    def Set_Variables(tpil:tinyPillow):
 
         name, value = None, None
         
@@ -68,7 +66,7 @@ class PWN_System(BasePwnhyvePlugin):
 
     def System_Info(tpil):
 
-        z = tpil.gui.screenConsole(tpil)
+        z = tpil.gui.screenConsole()
 
         ifaces = {}
         jumbled = ""
@@ -94,7 +92,7 @@ class PWN_System(BasePwnhyvePlugin):
         tpil.waitForKey()
         z.exit()
     
-    def Connect_Wifi(tpil):
+    def Connect_Wifi(tpil:tinyPillow):
 
         tpil.clear()
 
@@ -120,9 +118,15 @@ class PWN_System(BasePwnhyvePlugin):
         # copied n edited from setEnviroVars
         
         pwd = None
+
+        menuDict = {
+            "ssid: {}".format(ssid): "ssid",
+            "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password": "pass",
+            "connect": "connect"
+        }
         
         while True:
-            choice = tpil.gui.menu(["ssid: {}".format(ssid), "password: {}".format(''.join(["*" for _ in pwd])) if pwd != None else "enter password", "connect"])
+            choice = tpil.gui.menu(menuDict)
             
             if choice == None or choice == "connect": break
             elif choice == "ssid: {}".format(ssid):
@@ -130,8 +134,11 @@ class PWN_System(BasePwnhyvePlugin):
             elif choice == "enter password" or choice == "password: {}".format(''.join(["*" for _ in pwd])):
                 pwd = tpil.gui.enterText(secret=True)
         
-        subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
-        
+            out = subprocess.getoutput("sudo nmcli dev wifi connect {} password \"{}\"".format(ssid, pwd))
+
+            if "No network" in out:
+                tpil.gui.toast("Network doesn't exist", [2,2], [tpil.width-2, 32])
+
     def Fix_Interfaces():
         # bandaid
         for x in ni.interfaces():
