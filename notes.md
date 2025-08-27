@@ -59,7 +59,7 @@ tinyPillow -> draw, disp, image
                      ||
                DisplayDriver.gui
                      \\
-                      BasePwnhyveScreen (e.g. ./menus/flipper.py)
+                      BasePwnhyveScreen (e.g. ./addons/menus/flipper.py)
 ```
 
 6/19/24 pls get python3-dev using apt

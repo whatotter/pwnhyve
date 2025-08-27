@@ -15,21 +15,30 @@ os.chdir(dname)
 import sys
 import time
 from PIL import ImageFont
-from core.utils import config
+from core.utils import *
 from core.plugin import *
 from core.pil_simplify import tinyPillow
+import core.bgworker as bgworker
 
 
 if __name__ == "__main__":
+
+    initializeLogfile()
     
     #region run usb gadget
-    print("[USB] initializing usb gadget...")
+    uWarn("[USB] initializing usb gadget...")
     os.system("/bin/pwnhyveUSB")
+
+    print("")
     #endregion
 
     #region setup display driver
+    print("")
     screenType = config["menu"]["screenType"]
     
+    uWarn("[Display] DisplayDriver target = {}".format(config["display"]["driver"]))
+    uWarn("[Display] Attempting to load..")
+
     menus = pwnhyveMenuLoader()
     selectedMenu = menus.modules[screenType]["module"]
     driverLoader = pwnhyveScreenLoader(config["display"]["driver"])
@@ -38,56 +47,66 @@ if __name__ == "__main__":
         driverLoader = pwnhyveScreenLoader("headless")
 
     dispDriver = driverLoader.driver
-        
-
-    print("[DISPLAY] initalizing display driver...", end="")
 
     disp = driverLoader.driver.DisplayDriver(selectedMenu)
     image, draw = disp.image, disp.draw
     tinypil = tinyPillow(draw, disp, image)
 
-    print("initalized.\n")
+    uSuccess("[Display] ...loaded.\n")
     #endregion end of display setup
 
     #region load plugins
-    print('[PLUGINS] initializing plugins and menus...', end="")
-    plugPath = config["plugins"]["pluginsPath"]
+    uWarn('[Plugins] initializing plugins and menus...')
+    basePluginsPath = config["plugins"]["pluginsPath"]
 
-    plugins = pwnhyvePluginLoader(folder=plugPath.replace("./", ""))
+    plugins = pwnhyvePluginLoader(folder=basePluginsPath.replace("./", ""))
 
-    plugins.moduleList += ["/"+x for x in os.listdir(plugPath) if os.path.isdir(plugPath+x) and not x.startswith("_")]
-    currentDirectory = ""
-
-    print("initalized.")
+    uSuccess("...initalized.\n")
     #endregion end of plugin load
 
-    print("[MENU] READY. HACK THE PLANET!")
+    #region load background threads
 
-    pluginsAndDirectories = plugins.moduleList
-    previousModuleLoaded = None
+    WorkerThreads = [
+        bgworker.ThreadedWorker(bgworker.USBNotifyWorker(), args=(tinypil,)),
+        bgworker.ThreadedWorker(bgworker.WebUIWorker(), args=(tinypil,))
+    ]
+
+    for worker in WorkerThreads:
+        worker.startWorker()
+
+    #endregion
+
+    print("")
+    uSuccess("READY. HACK THE PLANET!")
+    print("")
+
+    pluginsAndDirectories = plugins.moduleList + getFolders(basePluginsPath)
     finishedLoading = False
     extraLoadingText = ""
-    while 1:
+    currentDirectory = ""
+    while True:
 
-        selection = 0
         disp.fullClear(draw)
 
         # button stuff
         fontSize = round(disp.height / 8)
-        folders = ["/"+x for x in os.listdir(plugPath) if os.path.isdir("./"+plugPath) and not x.startswith("_") and ".py" not in x]
+        folders = getFolders(basePluginsPath)
         while True:
-            for folder in folders:
+            for folder in folders: # set default folder icon
                 plugins.icons[folder] = "./core/icons/folder.bmp"
                 
-            key = disp.gui.menu(
+            # ask user what they want (this is the menu, plugins and dirs)
+            userChoice = disp.gui.menu(
                 pluginsAndDirectories, 
                 disableBack=currentDirectory=="", 
                 icons=plugins.icons
                 )
 
-            if key == None: # user entered back, so go back 1 directory
-                a = currentDirectory.split("/")
-                currentDirectory = '/'.join(a[:len(a)-1])
+            if userChoice == None: # user entered back, so go back 1 directory
+                foldersSplit = currentDirectory.split("/") # "one/two/three" -> [one, two, three]
+                currentDirectory = '/'.join(
+                    foldersSplit[:len(foldersSplit)-1] # pop last ([one, two])
+                    ) # join back together ("one/two")
                 
                 if currentDirectory == "": # at main menu
                     for module, modulePtr in plugins.loadedPluginModules.copy().items(): # unload modules to save memory
@@ -100,28 +119,27 @@ if __name__ == "__main__":
                         except Exception as e:
                             print("[UNLOADER] unloaded plugin \"{}\": {}".format(module, e))
 
+                # calculate our new directory
+                newFullDirectory = robustJoin(
+                    basePluginsPath,
+                    currentDirectory
+                    )
 
-                dire = (plugPath.replace("./", "")+currentDirectory).replace("//", "/") # what the fuck am i doin
+                # load plugins in that new directory
+                plugins = pwnhyvePluginLoader(
+                    folder=newFullDirectory
+                    )
+                
+                # merge folders and plugins tg
+                pluginsAndDirectories = plugins.moduleList + getFolders(newFullDirectory)
 
-
-                plugins = pwnhyvePluginLoader(folder=dire)
-                pluginsAndDirectories = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire) and not x.startswith("_") and ".py" not in x]
-
-                #print("LDIR: {}".format(currentDirectory))
                 continue
             
-            # user selected a directory, so open the directory and load any plugins in it
-            pluginPath = (plugPath+currentDirectory).replace("//", "/")
-            if key in ['/'+pluginPathFolders for pluginPathFolders in os.listdir(pluginPath) if os.path.isdir(os.path.join(pluginPath, pluginPathFolders))]:
+            # if the users choice is a folder in the directory we're currently in,
+            if userChoice in getFolders( robustJoin(basePluginsPath, currentDirectory), base=""):
+                # load that folder
 
-                # example directory structure
-
-                # |- plugins
-                #    |- test
-                #    |  \ a.py
-                #    |- test2
-                #    |  \ b.py
-                #    | c.py
+                currentDirectory = robustJoin(currentDirectory, userChoice) # join the directory we want with the path we have
 
                 def threadedLoading(disp):
                     global finishedLoading
@@ -150,41 +168,47 @@ if __name__ == "__main__":
                     finishedLoading = False
                     extraLoadingText = ""
                     
-
+                # do the loading stuff
                 loadingThread = threading.Thread(target=threadedLoading, args=(disp,), daemon=True)
                 loadingThread.start()
-                    
-                currentDirectory += key
                 print("[MENU] loading "+currentDirectory)
-
                 extraLoadingText = "Loading {}".format(currentDirectory)
 
-                dire = (plugPath.replace("./", "")+currentDirectory+"/").replace("//", "/") # what the fuck am i doin
-                
-                plugins = pwnhyvePluginLoader(folder=dire) # "test"
-                pluginsAndDirectories = plugins.moduleList + ["/"+x for x in os.listdir(dire) if os.path.isdir("./"+dire+"/"+x) and not x.startswith("_") and ".py" not in x]
+                # calculate our full directory (pwd type)
+                newFullDirectory = robustJoin(
+                    basePluginsPath,
+                    currentDirectory
+                    )
 
+                # load plugins in that directory
+                plugins = pwnhyvePluginLoader(
+                    folder=newFullDirectory
+                    ) # "test"
+                
+                # merge loaded modules and folders
+                pluginsAndDirectories = plugins.moduleList + getFolders(newFullDirectory)
+
+                # stop loading
                 finishedLoading = True
                 loadingThread.join()
-
                 print('[MENU] finished loading')
 
-                break
+                continue
             
             else: # user selected a plugin module, so run the plugin module
-                print("[MENU] running plugin \"{}\"".format(currentDirectory+"/"+key))
+                print("[MENU] running plugin \"{}\"".format(currentDirectory+"/"+userChoice))
                 print("[MENU] DISCLAIMER: unless this is an official pwnhyve plugin, any errors that come up after this message are NOT ASSOCIATED WITH PWNHYVE. CONTACT THE PLUGIN'S DEVELOPER TO FIX IT.")
                 
                 print("\n" + "/\\"*30)
 
                 startPluginTime = time.time()
                 plugins.run(
-                    plugins.getOriginModule(key),
-                    key,
+                    plugins.getOriginModule(userChoice),
+                    userChoice,
                     tinypil
                     )
                 
                 print("/\\"*30)
 
-                print("\n[MENU] ran plugin \"{}\" - took {} seconds".format(currentDirectory+"/"+key, round(time.time()-startPluginTime, 3)))
-                break
+                print("\n[MENU] ran plugin \"{}\" - took {} seconds".format(currentDirectory+"/"+userChoice, round(time.time()-startPluginTime, 3)))
+                continue

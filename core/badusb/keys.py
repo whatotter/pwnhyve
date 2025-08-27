@@ -138,6 +138,7 @@ keys = {
         "MUTE": 0x7f, # Keyboard Mute,
         "VOLUMEUP": 0x80, # Keyboard Volume Up,
         "VOLUMEDOWN": 0x81, # Keyboard Volume Down,
+        "KANA": 0x88, # kana key
     }
 
 shifted = {
@@ -186,5 +187,9 @@ symbols = [
         '9',
         '0',
         '/',
-        " "
+        " ",
+        "ENTER",
+        "BACKSPACE",
+        "TAB",
+        "ESC",
         ]

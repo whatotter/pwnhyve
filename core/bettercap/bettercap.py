@@ -3,10 +3,12 @@ based off of pwnagotchi's bettercap system but slightly modified (i am too lazy 
 
 TODO: probably get it to use one instance of bettercap running in the BG
 """
+import json
 from core.utils import uStatus, uError
 import requests
 from requests.auth import HTTPBasicAuth
 from subprocess import getoutput
+from core.utils import config
 from threading import Thread
 from time import sleep
 from os import system
@@ -14,7 +16,7 @@ from os import system
 
 def decode(r):
     try:
-        return r.json()
+        return json.loads(r.text)
     except Exception as e:
         if r.status_code == 200 or r.status_code == 400:
             uError("error while decoding json: error='%s' resp='%s'" % (e, r.text))
@@ -24,7 +26,8 @@ def decode(r):
         return r.text
 
 def startBCAP(iface: str = "wlan0mon"):
-    getoutput('sudo /bin/bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
+    print('sudo /bin/bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
+    system('sudo /bin/bettercap --iface %s -eval "api.rest on" -no-colors -no-history > bettercap.log' % (iface))
 
 class Client(object):
     def __init__(
@@ -190,6 +193,6 @@ Thread(
     target=startBCAP,
     daemon=True,
     kwargs={
-        "iface": "wlan0",
+        "iface": config["wifi"]["interface"],
     },
 ).start()

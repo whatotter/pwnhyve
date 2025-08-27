@@ -47,7 +47,7 @@ class DuckyScriptInterpreter():
         self.percentage = 0
         self.printed = ''
 
-        self.handler = tpil.gui.screenConsole(tpil) # init handler
+        self.handler = tpil.gui.screenConsole() # init handler
 
         return
 
@@ -276,7 +276,7 @@ class BadUSB:
         self.mouseHidDirectory = mouseHidDirectory
         self.writeType=hidWriteType
 
-        self.keyboard = open(self.kbHidDirectory, self.writeType)
+        self.keyboard = open(self.kbHidDirectory, self.writeType, buffering=0)
 
         self.keys = usbKeys.keys
         self.shifted = usbKeys.shifted
@@ -285,69 +285,31 @@ class BadUSB:
         self.capsLock = False
         self.scrollLock = False
         self.numLock = False
+        self.compose = False
+        self.kana = False
+        self.keyReflectListeners = []
 
         threading.Thread(target=self.toggleCheck, daemon=True).start()
 
     def isUpper(self, string:str): return True if string.upper() == string else False
 
     def toggleCheck(self, hz=2048):
-        numLockValue = 1
-        capsLockValue = 2
-        scrollLockValue = 4
         while True:
-            r, w, e = select.select([ self.keyboard ], [], [], 0)
+            r, w, e = select.select([ self.keyboard ], [], [], None)
             if self.keyboard in r:
+
                 a = int.from_bytes(self.keyboard.read(1), byteorder='little')
 
-                if a == 0: # null/nothing toggled on
-                    self.capsLock = False
-                    self.scrollLock = False
-                    self.numLock = False
+                self.numLock    = bool(a & (1 << 0))
+                self.capsLock   = bool(a & (1 << 1))
+                self.scrollLock = bool(a & (1 << 2))
+                self.compose    = bool(a & (1 << 3))
+                self.kana       = bool(a & (1 << 4))
 
-                # base
+                for func in self.keyReflectListeners:
+                    func(self.capsLock, self.numLock, self.scrollLock, self.kana, self.compose)
 
-                elif a == capsLockValue:
-                    self.capsLock = True
-                    self.scrollLock = False
-                    self.numLock = False
-
-                # num
-                    
-
-                elif a == numLockValue:
-                    self.numLock = True
-                    self.capsLock = False
-                    self.scrollLock = False
-
-                elif a == numLockValue + capsLockValue:
-                    self.numLock = True
-                    self.capsLock = True
-                    self.scrollLock = False
-
-                # scrl
-                elif a == 4:
-                    self.scrollLock = True
-                    self.capsLock = False
-                    self.numLock = False
-
-                elif a == 6:
-                    self.scrollLock = True
-                    self.capsLock = True
-                    self.numLock = False
-
-                elif a == 4 + numLockValue:
-                    self.scrollLock = True
-                    self.numLock = True
-                    self.capsLock = False
-                
-                elif a == 7:
-                    self.numLock = True
-                    self.capsLock = True
-                    self.scrollLock = True
-
-            sleep(1/hz)
-
-    def kbRawWrite(self, direct, useAdditives=False):
+    def kbRawWrite(self, direct, useAdditives=False, flush=True):
         """
         write exact given arg directly to hid serial
         """
@@ -358,7 +320,8 @@ class BadUSB:
             text = self.keys["null"]*2+chr(direct)+self.keys["null"]*5
             self.keyboard.write(text.encode())
 
-        self.keyboard.flush()
+        if flush:
+            self.keyboard.flush()
 
     def mouseRawWrite(self, direct, useAdditives=False):
         """
@@ -381,8 +344,11 @@ class BadUSB:
         """
         write a string, case sensitive, with a set keyDelay
         """
-        for x in [str(x) for x in string]:       
-            self.press(x, releaseDelay=pressDelay)
+        for x in [str(x) for x in string]:
+            if x == "\n":
+                self.press("ENTER", releaseDelay=pressDelay)
+            else:
+                self.press(x, releaseDelay=pressDelay)
 
             if jitter != False:
                 g = gauss(jitter[0], jitter[1])
@@ -393,6 +359,8 @@ class BadUSB:
                 sleep(g)
             else:
                 sleep(keyDelay)
+
+        self.releaseAll()
         return True
     
     def move(self, xPx:int, yPx:int):
@@ -477,7 +445,7 @@ class BadUSB:
         a = self.keys['null']*8
         self.kbRawWrite(a.encode())
 
-    def press(self, key, releaseDelay=0):
+    def press(self, key, releaseDelay=0, noRelease=False):
         """
         press a certain key
         """
@@ -491,6 +459,9 @@ class BadUSB:
                     keyInt = self.shifted[key][0]
                 except:
                     raise
+
+        if noRelease:
+            releaseDelay = -1
 
         #print("{}: {}".format(key, keyInt))
 
@@ -510,10 +481,12 @@ class BadUSB:
                 text = chr(self.keys["LSHIFT"]) + self.keys["null"] + chr(keyInt)+self.keys["null"]*5
                 self.kbRawWrite(text.encode())
 
-        sleep(float(releaseDelay))
-
-        self.releaseAll()
-        return True
+        if releaseDelay != -1:
+            sleep(float(releaseDelay))
+            self.releaseAll()
+            return True
+        
+        return False
 
     def ctrl(self, key, noRelease:bool=False):
         """

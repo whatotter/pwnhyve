@@ -1,16 +1,31 @@
 # simplifies pillow's draw
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.__basemenu__ import BasePwnhyveScreen
 
 class tinyPillow:
-    def __init__(self, draw:ImageDraw.Draw, disp, image):
+
+    def __init__(self, draw:ImageDraw.Draw, disp, image, gui=None):
         self.draw = draw
         self.disp = disp
         self.image = image
-        self.gui = disp.gui
+
+        self.gui : "BasePwnhyveScreen" = None
+
+        try:
+            self.gui: "BasePwnhyveScreen" = disp.gui
+        except AttributeError:
+            self.gui: "BasePwnhyveScreen" = gui
+
         self.pinout = self.disp.pinout
 
         self.instantDraw = False
         self.font = ImageFont.truetype('core/fonts/monospace.ttf', 12)
+
+        self.height = self.image.height
+        self.width = self.image.width
 
         return
     

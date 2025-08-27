@@ -11,3 +11,10 @@ cc1101
 websockets
 RPi.GPIO
 lgpio
+
+# webui stuff
+paramiko
+flask-socketio
+Flask
+python-pam
+gevent

@@ -38,12 +38,21 @@
         - Can use Flipper Zero `.sub` files
         - Can also save recorded frames as `.sub` files
     - FM radio hijacking
+    - RPITX toolset
+
 - IO
     - 2 channel 1.5mHz Logic analyzer, compatible with sigrok/pulseview (by CSV export)
     - Flipper Zero-like breakout
     - IO playground (PWM, input/output)
     - ~~SPI flash dumping~~ WIP
     - ~~Serial to TTL converter~~ WIP
+
+- Remote
+    - Can be controlled completely remotely
+        - Complete SSH shell in browser
+        - Control display in browser
+        - Execute payloads
+        - Upload payloads, plugins
 - other
     - looks cool
 

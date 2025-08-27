@@ -1,0 +1,14 @@
+{
+    "name": "pwnhyve",
+    "start_url": "/",
+    "icons": [
+      {
+        "src": "favicon.svg",
+        "sizes": "48x48",
+        "type": "image/svg+xml"
+      }
+    ],
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000"
+  }

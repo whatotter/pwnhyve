@@ -1,4 +1,5 @@
 from PIL import Image, ImageOps, ImageDraw
+from core.utils import *
 from time import sleep
 from core.plugin import pwnhyveMenuLoader
 from io import BytesIO
@@ -17,9 +18,6 @@ class DispDummy():
 class DisplayDriver():
     def __init__(self, screen) -> None:
         global mr
-        print("[DISPLAY] initalizing display driver...", end="")
-
-
         self.image = Image.new('1', (128, 64), "WHITE") # init display
         self.draw = ImageDraw.Draw(self.image) # dsiayp
         self.GPIO = None
@@ -51,7 +49,7 @@ class DisplayDriver():
         # these are variables due to PPI differences
         self.recommendedFontSize = 16 # font size for decent readability
         self.iconSize = 12
-        
+
         mr = self
 
         pass
@@ -107,7 +105,7 @@ class DisplayDriver():
 
         return False
 
-    def checkIfKey(self):
+    def checkIfKey(self, **kwargs):
         """check if there is a key being pressed"""
 
         if h.checkSocketINput():
@@ -115,7 +113,7 @@ class DisplayDriver():
 
         return False
 
-    def getKey(self):
+    def getKey(self, **kwargs):
         """get key without waiting; return current key pressed"""
 
         a = h.checkSocketINput()
