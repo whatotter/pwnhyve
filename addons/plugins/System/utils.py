@@ -64,7 +64,7 @@ class PWN_System(BasePwnhyvePlugin):
         subprocess.getoutput("sudo reboot")
         return
 
-    def System_Info(tpil:tinyPillow):
+    def Interface_Info(tpil:tinyPillow):
 
         z = tpil.gui.screenConsole()
 

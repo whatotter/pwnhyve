@@ -345,7 +345,7 @@ textarea {
 
 #displayCanvas {
     border-radius: 12px;
-    width: 100vh;
+    width: 100%;
     background-color: black;
     transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 } #displayCanvas[blurry] {

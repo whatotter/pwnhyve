@@ -61,6 +61,9 @@ def loadAddons():
     existingAddons = []
 
     for addon in addons:
+        if addon[0] == "_":
+            continue
+        
         items = os.listdir(
             os.path.join(base, addon)
             )
