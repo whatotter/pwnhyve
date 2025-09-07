@@ -1,27 +1,25 @@
 import core.bettercap.bettercap as bcap
 from core.utils import *
-from random import choice, randrange,randint
+from random import choice
 from PIL import Image, ImageFont
 from threading import Thread
 from time import sleep
 from subprocess import getoutput
-
 from core.plugin import BasePwnhyvePlugin
+from core.pil_simplify import tinyPillow
 
 class vars:
     beaconExit = False
     framesSent = 0
 
 class PwnagotchiScreen():
-    def __init__(self, canvas, disp, image, headerFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), faceFont=ImageFont.truetype('core/fonts/hack.ttf', 18), consoleFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), flipped=False) -> None:
+    def __init__(self, tpil:tinyPillow, headerFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), faceFont=ImageFont.truetype('core/fonts/hack.ttf', 18), consoleFont=ImageFont.truetype('core/fonts/roboto.ttf', 10), flipped=False) -> None:
         self.console = ""
         self.handshakes = 0
         self.aps = 0
         self.face = "(◕‿‿◕)"
 
-        self.draw = canvas
-        self.disp = disp
-        self.image = image
+        self.tpil = tpil
         self.headerFont = headerFont
         self.faceFont = faceFont
         self.consoleFont = consoleFont
@@ -45,7 +43,7 @@ class PwnagotchiScreen():
 
     def _keythread(self):
         while True:
-            if self.disp.checkIfKey() or self.exited:
+            if self.tpil.checkIfKey() or self.exited:
                 break
             
             sleep(0.05)
@@ -59,23 +57,23 @@ class PwnagotchiScreen():
         Thread(target=self._keythread, daemon=True).start()
 
         while 1:
-            self.disp.fullClear(self.draw)
+            self.tpil.clear()
 
-            self.draw.rectangle([(24, 64), (24, 66)], fill=0, outline=255) # divider
+            self.tpil.rect((24, 64), (24, 66)) # divider
 
-            self.draw.text((2, 2), "HS: {}".format(self.handshakes), fill=0, outline=255, font=self.headerFont) # handshakes
-            self.draw.text((2, 12), "APS: {}".format(self.aps), fill=0, outline=255, font=self.headerFont) # access points found
-            self.draw.text((2, 22), "CLI: {}".format(self.clients), fill=0, outline=255, font=self.headerFont) # clients found
+            self.tpil.text((2, 2),  "HS: {}".format(self.handshakes), font=self.headerFont) # handshakes
+            self.tpil.text((2, 12), "APS: {}".format(self.aps), font=self.headerFont) # access points found
+            self.tpil.text((2, 22), "CLI: {}".format(self.clients), font=self.headerFont) # clients found
 
             #self.draw.text((2, 32), "CLI: {}".format(self.clients), fill=0, outline=255, font=self.headerFont) # clients found
 
-            self.draw.text((48, 6), self.face, fill=0, outline=255, font=self.faceFont) # lil face
+            self.tpil.text((48, 6), self.face, font=self.faceFont) # lil face
 
-            self.draw.text((2, 48), self.console, fill=0, outline=255, font=self.consoleFont) # console
+            self.tpil.text((2, 48), self.console, font=self.consoleFont) # console
 
-            self.disp.screenShow(self.disp, self.image, flipped=self.flipped)
+            self.tpil.show()
 
-            sleep(0.25) # minimize writes
+            sleep(0.1) # minimize writes
 
 class airmon:        
     def startMonitorMode():
@@ -93,9 +91,9 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
         "pwnagotchi": "./core/icons/routeremit.bmp"
     }
     
-    def pwnagotchi(draw, disp, image, GPIO, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:int=10, checkDelay:float=float(1), nextDelay:float=float(10), fileLocation="/home/pwnagotchi/handshakes", debug:bool=False, prettyDebug:bool=True):
+    def pwnagotchi(tpil:tinyPillow, deauthBurst:int=2, deauthMaxTries:int=3, checkHandshakeTries:int=10, checkDelay:float=float(1), nextDelay:float=float(10), fileLocation="/home/pwnagotchi/handshakes", debug:bool=False, prettyDebug:bool=True):
 
-        screen = PwnagotchiScreen(draw, disp, image, GPIO)
+        screen = PwnagotchiScreen(tpil)
 
         oldValues = {
             "aps": 0,
@@ -106,9 +104,9 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
 
         whitelist = []
 
-        disp.fullClear(draw)
-        draw.text([4,4], "starting interface and bcap\npress any key to cancel", font=ImageFont.truetype('core/fonts/roboto.ttf', 10))
-        disp.screenShow(disp, image)
+        tpil.clear()
+        tpil.text([4,4], "starting interface and bcap\npress any key to cancel", font=ImageFont.truetype('core/fonts/roboto.ttf', 10))
+        tpil.show()
 
         print("[PWNAGOTCHI] whitelist: {}".format(', '.join(whitelist)))
         airmon.startMonitorMode()
@@ -129,7 +127,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
 
         while cli.successful is None:
 
-            if disp.checkIfKey(GPIO):
+            if tpil.checkIfKey():
                 return
 
             sleep(0.05)
