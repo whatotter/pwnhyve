@@ -123,7 +123,7 @@ class PWNagotchi(BasePwnhyvePlugin): # i'm a genious
         print("[PWNAGOTCHI] interface: {}".format(interface))
 
 
-        cli = bcap.Client(iface=interface)
+        cli = bcap.Client()
 
         while cli.successful is None:
 
@@ -315,7 +315,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         font = ImageFont.truetype('core/fonts/roboto.ttf', 10)
 
         try:
-            cli = bcap.Client(iface=config["wifi"]["interface"])
+            cli = bcap.Client()
             if not cli.successful: raise Exception("b") # why the fuck did i do this
         except Exception as e:
             tpil.clear()
