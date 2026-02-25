@@ -11,6 +11,7 @@ cc1101
 websockets
 RPi.GPIO
 lgpio
+six
 
 # webui stuff
 paramiko

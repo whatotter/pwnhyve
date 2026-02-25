@@ -172,6 +172,7 @@ class PWNBluetooth(BasePwnhyvePlugin):
                     menuDictionary[name] = uuid
 
                 while True:
+                    #print(menuDictionary)
                     enumChoice = tpil.gui.menu(menuDictionary)
                     if enumChoice == None:
                         break

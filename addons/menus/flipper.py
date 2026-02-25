@@ -38,7 +38,7 @@ class Screen(BasePwnhyveScreen):
 
         # manage parameters
         if len(choices) == 0:
-            choices = [random.choice(["pretty quiet..", "...", "empty", "!?!?!?", "hellooo?"])]
+            choices = [random.choice(["nothing here.."])]
         if "" in choices:
             choices.remove("") # any whitespace
 

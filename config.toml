@@ -1,13 +1,13 @@
 [display]
 invert = false                          # whether invert the display vertically.
-driver = "sh1106"
-debugAll = false # new: used for a custom plugin that uses pwnhyve remotely to test plugins, ci/cd type of thing
+driver = "headless"
+debugAll = false                        # new: used for a custom plugin that uses pwnhyve remotely to test plugins, ci/cd type of thing
 
-[driver_options] # supposed to be like an argument type of thing for display drivers
+[driver_options]                        # supposed to be like an argument type of thing for display drivers
 spi = true
 
 [menu]
-screenType = "flipper"             # the theme/screen type to use, must match it's python file name
+screenType = "flipper"                  # the theme/screen type to use, must match it's python file name
 disableWrite = false                    # DEBUG
 
 [controls]
@@ -19,7 +19,7 @@ enableVNC  = true                       # whether to stream the display (and con
 vncControl = true                       # if you allow remote control of the display 
 
 [wifi] 
-interface = "wlan0"                     # interface to use for wifi hacking
+interface = "wlp0s20f3"                     # interface to use for wifi hacking
 
 [badusb]
 usbBin       = "/piusb.bin"             # path to usb storage bin file - must have leading forward slash
@@ -53,4 +53,4 @@ exfilFiles   = [                        # files to exfiltrate when found on a us
 
 
 [plugins]
-pluginsPath  = "./addons/plugins/"             # path to the plugins folder
+pluginsPath  = "./addons/plugins/"      # path to the plugins folder
