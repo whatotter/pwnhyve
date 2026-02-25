@@ -18,7 +18,7 @@ const greetings = [
     "Good to see you, #.",
     "Good luck, #.",
     "Greetings, #.",
-    "Good evening, #."
+    "Good evening, #.",
 ]
 
 sshIO.on("sshtx", (msg) => {

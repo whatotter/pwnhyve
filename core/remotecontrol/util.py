@@ -21,8 +21,13 @@ class ShellThread():
     def __init__(self, username, password) -> None:
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect("127.0.0.1", username=username, password=password)
 
+        try:
+            self.ssh.connect("127.0.0.1", username=username, password=password)
+        except:
+            self.ssh = None
+            return
+        
         self.chnl = self.ssh.invoke_shell()
 
         self.stdin = self.chnl.makefile('wb')
@@ -35,6 +40,7 @@ class ShellThread():
         threading.Thread(target=self.read, daemon=True).start()
 
     def writeByte(self, byte:bytes):
+        if self.ssh == None: return
         self.stdin.write(byte)
         #self.stdin.flush()
 
@@ -52,6 +58,7 @@ class ShellThread():
                 self.buffer = b'\n'.join( self.buffer.split(b"\n")[1000:] )
 
     def close(self):
+        if self.ssh == None: return
         self.chnl.close()
         self.ssh.close()
 
