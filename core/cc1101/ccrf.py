@@ -1,659 +1,537 @@
 import logging
 import os
 import time
-from RPi import GPIO
+from typing import List, Optional, Tuple, Union
 
+from RPi import GPIO
 import gpiozero as gpioz
 from core.pio.fastio import FastIO
 
 import core.cc1101.lib as cc1101
 from core.cc1101.lib.options import (
     _TransceiveMode,
+    ModulationFormat,
+    SyncMode,
+    PacketLengthMode,
 )
-from cc1101.addresses import (
+from core.cc1101.lib.addresses import (
     ConfigurationRegisterAddress,
     FIFORegisterAddress,
     PatableAddress,
     StatusRegisterAddress,
     StrobeAddress,
 )
-
+from core.cc1101.lib import MainRadioControlStateMachineState
 
 logging.basicConfig(level=logging.INFO)
-usleep = lambda ms: 1 if 1 > ms else [x for x in range(ms*3)]
+logger = logging.getLogger(__name__)
 
-GDO0 = 12  # BCM12
+GDO0 = 12
 GDO2 = 23
 CSN = 18
 
-#GDO0Device = gpioz.DigitalOutputDevice(_GDO0_PIN, active_high = True, initial_value =False)
-#GDO2Device = gpioz.DigitalInputDevice(GDO2, active_state=True)
-
 fio = FastIO()
 
-def deleteTrailingNull(bits):
-    _bytes = []
-    for x in range(0, len(bits), 8):
-        _bytes.append(bits[x:8+x])
 
-class pCC1101():
-    def __init__(self, spi_bus=0, spi_chip_select=1, retries=5):
+class pCC1101:
+    PATABLE_433MHZ = {
+        0x1b: "-16.2dBm",
+        0x1e: "-14.3dBm",
+        0x26: "-9.9dBm",
+        0x6c: "-7.1dBm",
+        0x37: "-5.6dBm",
+        0x2c: "-4.7dBm",
+        0x2e: "-3.5dBm",
+        0x65: "-2.9dBm",
+        0x3b: "-2.5dBm",
+        0x64: "-2.3dBm",
+        0x54: "-2.2dBm",
+        0x3c: "-2.1dBm",
+        0x3e: "-1.4dBm",
+        0x61: "-0.5dBm",
+        0x8c: "1.9dBm",
+        0x87: "4.0dBm",
+        0xCD: "5.5dBm",
+        0xca: "6.4dBm",
+        0xc9: "6.8dBm",
+        0xc8: "7.1dBm",
+        0xc7: "7.4dBm",
+        0xc6: "7.8dBm",
+        0xc5: "8.1dBm",
+        0xc4: "8.5dBm",
+        0xc3: "8.8dBm",
+        0xc2: "9.2dBm",
+        0xc1: "9.5dBm",
+        0xc0: "9.9dBm",
+    }
 
+    def __init__(self, spi_bus: int = 0, spi_chip_select: int = 1, retries: int = 5):
+        self.trs: Optional[cc1101.CC1101] = None
         self.success = False
-        self.err = None
+        self.err: Optional[Exception] = None
+
         for x in range(retries):
             try:
-                self.trs = cc1101.CC1101(spi_bus=spi_bus, spi_chip_select=spi_chip_select).__enter__()
-                print("[CC1101] successful init")
+                self.trs = cc1101.CC1101(
+                    spi_bus=spi_bus, spi_chip_select=spi_chip_select
+                ).__enter__()
+                logger.info("CC1101 init successful")
                 self.success = True
                 break
             except Exception as e:
                 self.err = e
-                print(e)
-                print("[CC1101] executing cc1101 CSN reset")
+                logger.warning("CC1101 init attempt %d failed: %s", x + 1, e)
                 self._csnRst()
-                print("[CC1101] finished with CSN reset")
 
         if not self.success:
-            raise self.err
-        
+            raise RuntimeError("CC1101 init failed after %d retries" % retries) from self.err
+
         self.snval = 0
-        self.currentFreq = 303.81e6
+        self.currentFreq: float = 303.81e6
         self.power = 0xC0
+        self.patable = dict(self.PATABLE_433MHZ)
 
-        self.patable = {
-            # compressed version of https://www.ti.com/lit/an/swra151a/swra151a.pdf / pg 7
-            # targeted @ 433mhz
-            # lowest dBm -> highest dBm
-            # must be 28 items
+        self._m4RxBw = 0
+        self._pc0WDATA = 0
+        self._pc0PktForm = 0
+        self._pc0CRC_EN = 0
+        self._pc0LenConf = 0
 
-            # page 8
-            0x1b: "-16.2dBm", # -16.2dBm @ 12.8mA
-            0x1e: "-14.3dBm",
-            0x26: "-9.9dBm",
-            0x6c: "-7.1dBm",
-            0x37: "-5.6dBm",
-            0x2c: "-4.7dBm",
-            0x2e: "-3.5dBm",
-            0x65: "-2.9dBm",
-            0x3b: "-2.5dBm",
-            0x64: "-2.3dBm",
-            0x54: "-2.2dBm",
-
-            # page 7
-            0x3c: "-2.1dBm",
-            0x3e: "-1.4dBm",
-            0x61: "-0.5dBm",
-            0x8c: "1.9dBm",
-            0x87: "4.0dBm",
-            0xCD: "5.5dBm",
-            0xca: "6.4dBm",
-            0xc9: "6.8dBm",
-            0xc8: "7.1dBm",
-            0xc7: "7.4dBm",
-            0xc6: "7.8dBm",
-            0xc5: "8.1dBm",
-            0xc4: "8.5dBm",
-            0xc3: "8.8dBm",
-            0xc2: "9.2dBm",
-            0xc1: "9.5dBm",
-            0xc0: "9.9dBm", # 9.9dBm @ 29.1mA
-        }
+        self.mode: str = "tx"
 
         self._setDefaults()
-
         self.setupRawTransmission()
-
         self.adjustOOKSensitivity(0, self.power)
-
         self.rawTransmit2("10101010", delayms=10)
 
+    # ------------------------------------------------------------------
+    #  Sleep / Reset / Close
+    # ------------------------------------------------------------------
+
+    def sleepMode(self) -> None:
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        self.trs._command_strobe(StrobeAddress.SPWD)
+
+    def rst(self) -> None:
+        self._setDefaults()
+        logger.info("cc1101 defaults restored")
+        self.setupRawTransmission()
+        logger.info("cc1101 set to TX")
+        self.rawTransmit2("10101010", delayms=100)
+        logger.info("transmitted example bits")
         self.mode = "tx"
 
-        #time.sleep(0.5)
-
-        pass
-
-    def sleepMode(self):
-        self.trs._command_strobe(0x36) # exit rx/tx, turn off freq synth and exit
-        self.trs._command_strobe(0x39) # enter powerdown mode when CSn goes high
-    
-    def _setDefaults(self):
-        #self.setRxBW(812.0)
-        #self.currentFreq = 303.81e6
-
-        self.trs._command_strobe(StrobeAddress.SIDLE)
-
-        self.setRxBW(650.0)
-
-        #self.trs.set_symbol_rate_baud(9600)
-
-        self.setCCMode(0)
-        self.trs.set_base_frequency_hertz(self.currentFreq)
-
-        time.sleep(0.5)
-        
-        abcd = self.trs.get_base_frequency_hertz()
-
-        print("-*"* 30)
-        print(self.currentFreq)
-        print(abcd)
-        print(f"base_frequency={(abcd / 1e6):.2f}MHz",)
-        print("-*"* 30)
-
-        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG1,  [0x02]);
-        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG0,  [0xF8]);
-        self.trs._write_burst(ConfigurationRegisterAddress.DEVIATN,  [0x90]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FREND1,   [0x56]);
-        self.trs._write_burst(ConfigurationRegisterAddress.MCSM0 ,   [0x18]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FOCCFG,   [0x16]);
-        self.trs._write_burst(ConfigurationRegisterAddress.BSCFG,    [0x1C]);
-        self.trs._write_burst(0x1B, [0xC7]);
-        self.trs._write_burst(0x1C, [0x00]);
-        self.trs._write_burst(0x1D, [0xB2]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL3,   [0xE9]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL2,   [0x2A]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL1,   [0x00]);
-        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL0,   [0x1F]);
-        self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL1, [0x04]);
-        self.trs._write_burst(ConfigurationRegisterAddress.ADDR,     [0x00]);
-        self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN,   [0x00]);
-    
-    def close(self):
-        #GDO0Device.value = 1
+    def close(self) -> None:
         self.rst()
         self.trs._command_strobe(StrobeAddress.SIDLE)
 
-    def csn(self, value):
-        return
+    # ------------------------------------------------------------------
+    #  GPIO helpers
+    # ------------------------------------------------------------------
 
-    def setFreq(self, val, doCalc=True):
+    def csn(self, value: int) -> None:
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(CSN, GPIO.OUT)
+        GPIO.output(CSN, value)
 
-        #self.setRxBW(812.50)
-        #self.setCCMode(0)
-
-        #self.currentFreq = eval("{}e6".format(val))
-
-        self.trs._command_strobe(StrobeAddress.SIDLE)
-
-        if doCalc:
-            self.currentFreq = val * 10**6
-        else:
-            self.currentFreq = val
-
-        print(self.currentFreq)
-        self.trs.set_base_frequency_hertz(self.currentFreq)
-        time.sleep(.01)
-        abcd = self.trs.get_base_frequency_hertz()
-
-        print("-*"* 30)
-        print("REQUESTED: {}".format(val))
-        print("FREQ \"{}\" -> \"{}\"".format(self.currentFreq, abcd / 1e6))
-        print("-*"* 30)
-
-        #if rst:
-            #self._setDefaults() # TODO: figure out why the fuck 303.91mhz turns into 1.04mhz in the cc1101 # i figured it out its cause it wasn't in SIDLE
-
-    def _csnRst(self):
-
+    def _csnRst(self) -> None:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(CSN, GPIO.IN)
-
         time.sleep(2.5)
-
         GPIO.setup(CSN, GPIO.OUT)
         GPIO.output(CSN, 1)
         time.sleep(0.5)
         GPIO.cleanup()
 
-    def rawTransmit(self, bt:bytes) -> None:
-        """
-        Turn hexadecimal bytes (```\\x0F```) into binary, and send bits to the CC1101.
+    # ------------------------------------------------------------------
+    #  Frequency
+    # ------------------------------------------------------------------
 
-        e.g. ```rawTransmit(b"\\x02\\x0F\\xFF")```
-        """
-        
-        os.remove("fastio.bin")
-        with open('fastio.bin', "wb") as f:
-            f.write(bt)
-            f.flush()
+    def setFreq(self, val: float, doCalc: bool = True) -> None:
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        if doCalc:
+            self.currentFreq = val * 10**6
+        else:
+            self.currentFreq = val
+        logger.info("setting frequency to %s Hz", self.currentFreq)
+        self.trs.set_base_frequency_hertz(self.currentFreq)
+        time.sleep(0.01)
+        abcd = self.trs.get_base_frequency_hertz()
+        logger.info(
+            "REQUESTED: %s -> ACTUAL: %.2f MHz", val, abcd / 1e6
+        )
 
-        fio.send(GDO0, "fastio.bin")
+    def getFreqMHz(self) -> float:
+        return self.trs.get_base_frequency_hertz() / 1e6
 
-    def oldRawTransmit2(self, lbt, delayms=1, inverse=False) -> None:
-        """
-        Play bits through the CC1101 via a list.
-        e.g. ```rawTransmit2([0,1,1,0,1])```
-        """
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(GDO0, GPIO.OUT)
+    # ------------------------------------------------------------------
+    #  Modulation
+    # ------------------------------------------------------------------
 
-        #with self.trs.asynchronous_transmission():
-        bits = [int(x) for x in lbt]
-        output = GPIO.output
-        gdoPin = GDO0
-        for bit in bits:
-            output(gdoPin, bit)
-            if delayms != 0:
-                usleep(delayms)
-        output(gdoPin, self.snval)
+    def setModulation(self, mod: Union[str, ModulationFormat]) -> None:
+        if isinstance(mod, str):
+            table = {
+                "2fsk": ModulationFormat.FSK2,
+                "gfsk": ModulationFormat.GFSK,
+                "ook": ModulationFormat.ASK_OOK,
+                "4fsk": ModulationFormat.FSK4,
+                "msk": ModulationFormat.MSK,
+            }
+            mod = table[mod.lower()]
+        self.trs._set_modulation_format(mod)
+        logger.info("modulation set to %s", mod.name)
 
-    def rawTransmit2(self, lbt, **kwargs) -> None:
-        """
-        Play bits through the CC1101 via a list.
+    def getModulation(self) -> ModulationFormat:
+        return self.trs.get_modulation_format()
 
-        e.g. ```rawTransmit2([0,1,1,0,1])```
-        """
-        #with self.trs.asynchronous_transmission():
+    # ------------------------------------------------------------------
+    #  Symbol / Data Rate
+    # ------------------------------------------------------------------
 
-        fio.send(GDO0, [int(x) for x in lbt], ns=500)
+    def setDataRate(self, baud: float) -> None:
+        self.trs.set_symbol_rate_baud(baud)
 
-    def rawTransmitBin(self, binfile) -> None:
-        """
-        play bits through the CC1101 from a bin file
+    def getDataRate(self) -> float:
+        return self.trs.get_symbol_rate_baud()
 
-        e.g. ```rawTransmitBin("binfile.bin")```
-        """
+    # ------------------------------------------------------------------
+    #  RX Bandwidth
+    # ------------------------------------------------------------------
 
-        fio.send(GDO0, binfile, ns=500)
-
-    def flipperTransmit(self, RAW_Data) -> None:
-        """
-        Play flipper RAW_Data.
-
-        e.g. ```flipperTransmit("100 -100 100 -100...")```
-        """
-        #with self.trs.asynchronous_transmission():
-
-        fio.flipperSend(GDO0, RAW_Data)
-
-    def recvSamples(self, bits:int, delayms=5) -> list:
-        """
-        Recieve bits through the GDO2 pin.
-        This sends no data to the CC1101.
-
-        Returns a list of bits.
-        """
-
-        fio.setNS(delayms*1000)
-        return fio.readSamples(GDO2, bits)
-    
-    def recvInf(self) -> None:
-        """
-        Recieve bits through the GDO2 pin.
-        This runs infinitely in the background, until you call recvStop()
-
-        Returns None.
-        """
-
-        fio.setNS(1*1000)
-        fio.infread(GDO2, filename="/tmp/rawrx")
-
-    def recvStop(self) -> list:
-        """
-        Stops recvInf (if running)
-
-        Returns bits read, as a list.
-        """
-
-        fio.close()
-
-        return fio.__parseBin__(GDO2, binf="/tmp/rawrx", remove=True)
-
-    def flipperRecv(self):
-        """
-        Recieve data through the GDO2 pin, outputting it in flipper zero's RAW format.
-        """
-        raise NotImplementedError("use flipperconv class")
-
-    def split_PKTCTRL0(self):
-        global pc0CRC_EN, pc0LenConf, pc0WDATA, pc0PktForm
-        calc = self.trs._read_status_register(ConfigurationRegisterAddress.PKTCTRL0)
-
-        pc0WDATA = 0
-        pc0PktForm = 0
-        pc0CRC_EN = 0
-        pc0LenConf = 0
-
+    def _split_MDMCFG4(self) -> None:
+        calc = self.trs._read_status_register(ConfigurationRegisterAddress.MDMCFG4)
+        self._m4RxBw = 0
+        m4DaRa = 0
         while True:
             if calc >= 64:
                 calc -= 64
-                pc0WDATA += 64
-
+                self._m4RxBw += 64
             elif calc >= 16:
                 calc -= 16
-                pc0PktForm += 16
-
-            elif calc >= 4:
-                calc -= 4
-                pc0CRC_EN += 4
-
-            else:
-                pc0LenConf = calc
-                break
-
-    def Split_MDMCFG4(self):
-        global m4RxBw, m4DaRa
-        """
-        void ELECHOUSE_CC1101::Split_MDMCFG4(void){
-            int calc = SpiReadStatus(16);
-            m4RxBw = 0;
-            m4DaRa = 0;
-            for (bool i = 0; i==0;){
-                if (calc >= 64){calc-=64; m4RxBw+=64;}
-                else if (calc >= 16){calc -= 16; m4RxBw+=16;}
-                else{m4DaRa = calc; i=1;}
-            }
-        }
-        """
-
-        calc = self.trs._read_status_register(16)
-
-        m4RxBw = 0;
-        m4DaRa = 0;
-
-        while True:
-            if calc >= 64:
-                calc -= 64 
-                m4RxBw += 64
-
-            elif calc >= 16:
-                calc -= 16
-                m4RxBw += 16
+                self._m4RxBw += 16
             else:
                 m4DaRa = calc
                 break
-    
-    def _setGDO0(self, val):
-        GDO2Device.value = val
+        self._m4DaRa = m4DaRa
 
-    def _setGDO2(self, val):
-        """depreciated"""
-        return
-
-    def setRxBW(self, f):
-        global m4RxBw
-        """
-        Set the bandwidth for the CC1101's RX.
-        Default is 812.50
-        """
-        """
-        void ELECHOUSE_CC1101::setRxBW(float f){
-            Split_MDMCFG4();
-            int s1 = 3;
-            int s2 = 3;
-            for (int i = 0; i<3; i++){
-                if (f > 101.5625){f/=2; s1--;}
-                else{i=3;}
-            }
-            for (int i = 0; i<3; i++){
-                if (f > 58.1){f/=1.25; s2--;}
-                else{i=3;}
-            }
-            s1 *= 64;
-            s2 *= 16;
-            m4RxBw = s1 + s2;
-            SpiWriteReg(16,m4RxBw+m4DaRa);
-        }
-        """
-
-        self.Split_MDMCFG4()
-
+    def setRxBW(self, f: float) -> None:
+        self._split_MDMCFG4()
         s1 = 3
         s2 = 3
-
-        for x in range(3):
+        for _ in range(3):
             if f > 101.5625:
-                f = f/2
+                f /= 2
                 s1 -= 1
             else:
                 break
-
-        for x in range(3):
-            if f> 58.1:
-                f = f/1.25
+        for _ in range(3):
+            if f > 58.1:
+                f /= 1.25
                 s2 -= 1
             else:
                 break
+        s1 *= 64
+        s2 *= 16
+        self._m4RxBw = s1 + s2
+        self.trs._write_burst(
+            ConfigurationRegisterAddress.MDMCFG4, [self._m4RxBw + self._m4DaRa]
+        )
 
-        s1 = s1*64
-        s2 = s2*16
+    # ------------------------------------------------------------------
+    #  CCMode (raw asynchronous serial mode)
+    # ------------------------------------------------------------------
 
-        m4RxBw = s1 + s2
-        self.trs._write_burst(16,[m4RxBw+m4DaRa])
-
-    def rst(self):
-        self._setDefaults()
-        print('[+] set cc1101 defaults')
-
-        self.setupRawTransmission()
-        print('[+] set cc1101 to TX')
-
-        #self.adjustOOKSensitivity(0, 0x51)
-        #print('[+] set cc1101 OOK to 0x51')
-
-        self.rawTransmit2("10101010", delayms=100)
-        print('[+] transmitted some example bits')
-
-        self.mode = "tx"
-
-    def revertTransceiver(self) -> None:
-        """
-        Revert the CC1101 back to normal settings, without actually resetting the chip.
-        """
-
-        """
-        SpiWriteReg(CC1101_IOCFG2,      0x0B);
-        SpiWriteReg(CC1101_IOCFG0,      0x06);
-        SpiWriteReg(CC1101_PKTCTRL0,    0x05);
-        SpiWriteReg(CC1101_MDMCFG3,     0xF8);
-        SpiWriteReg(CC1101_MDMCFG4,11+m4RxBw);
-        """
-
-        #self.setCCMode(0)
-
-        # end of ccmode
-
-
-        self.trs._command_strobe(StrobeAddress.SIDLE)
-        self.trs._command_strobe(StrobeAddress.SRX)
-        #self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL)
-        #self.trs._command_strobe(StrobeAddress.SFTX)
-        #self.trs._command_strobe(StrobeAddress.SFRX)
-        #self.trs._command_strobe(StrobeAddress.SRX)
-
-    def setCCMode(self, v):
-
-        if v==1:
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG2, [0x0B])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG0, [0x06])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.PKTCTRL0, [0x05])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0x05])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [11+m4RxBw])
+    def setCCMode(self, v: int) -> None:
+        if v == 1:
+            self.trs._write_burst(ConfigurationRegisterAddress.IOCFG2, [0x0B])
+            self.trs._write_burst(ConfigurationRegisterAddress.IOCFG0, [0x06])
+            self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL0, [0x05])
+            self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG3, [0x05])
+            self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG4, [11 + self._m4RxBw])
         else:
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG2, [0x0D])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG0, [0x0D])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.PKTCTRL0, [0x32])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0x93])
-            self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [7+m4RxBw])
+            self.trs._write_burst(ConfigurationRegisterAddress.IOCFG2, [0x0D])
+            self.trs._write_burst(ConfigurationRegisterAddress.IOCFG0, [0x0D])
+            self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL0, [0x32])
+            self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG3, [0x93])
+            self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG4, [7 + self._m4RxBw])
+        self.trs._set_modulation_format(ModulationFormat.ASK_OOK)
 
-        self.trs._set_modulation_format(0b011) # OOK
-        #self.trs._set_modulation_format(0b000) # 2FSK
-        #self.trs._set_modulation_format(0b001) # GFSK
-        #self.trs._set_modulation_format(0b100) # 4FSK
-        
-    def setupRawTransmission(self, output_power=0xCB) -> None:
-        """
-        Sets up the CC1101 to transmit.
-        """
-        #self.setRxBW(812.50)
+    # ------------------------------------------------------------------
+    #  TX Setup
+    # ------------------------------------------------------------------
 
-        """
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG2, [0x0B])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG0, [0x06])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.PKTCTRL0, [0x05])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0xF8])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [11+m4RxBw])
-        """
-
-        #self.setRxBW(812.50)
-
-        # set cc mode
-
-        """
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG2, [0x0D])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG0, [0x0D])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.PKTCTRL0, [0x32])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0x93])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [7+m4RxBw])
-
-        self.trs._set_modulation_format(0b011)
-        """
-
-        #self.setCCMode(0)
-
-        # end of setting cc mode
-
-        
-        #v = 3
-        #split_PKTCTRL0(trans)
-        #pc0PktForm = v*16;
-        #trans._write_burst(ConfigurationRegisterAddress.PKTCTRL0, [pc0WDATA+pc0PktForm+pc0CRC_EN+pc0LenConf]);
-
-        #self.trs._set_modulation_format(0b011)
-        #self.trs.set_output_power((0, 0xCB))  # OOK modulation: (off, on)
-
-        #self.trs._command_strobe(StrobeAddress.SFRX)
-
+    def setupRawTransmission(self, output_power: int = 0xCB) -> None:
         self.setCCMode(0)
-        
-        self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL) # setPktFormat(3)
-        
-        #self.adjustOOKSensitivity(0, self.power)
-
+        self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL)
         self.trs._command_strobe(StrobeAddress.SIDLE)
         self.trs._command_strobe(StrobeAddress.STX)
-
         self.mode = "tx"
-        #self.setFreq(self.currentFreq)
         self.adjustOOKSensitivity(0, self.power)
-        #self.trs.set_symbol_rate_baud(115200)
-        #self.trs._command_strobe(StrobeAddress.SIDLE)
 
-    def adjustOOKSensitivity(self, zero, one) -> None:
-        """
-        Adjusts the logic levels of 0 and 1 for OOK modulation. This can also increase TX power.
-        Increase "one" if you're recieving too much static, decrease if you aren't recieving anything.
-
-        See "Table 39: Optimum PATABLE Settings for Various Output Power Levels [...]"
-        and section "24 Output Power Programming".
-
-        Recommended value is 0xC6.
-        """
-        assert 0xFF >= zero and 0xFF >= one and zero >= 0 and one >= 1 # sanity check
-
-        self.trs.set_output_power((zero, one))
-
-    def setupRawRecieve(self) -> None:
-        """
-        Set the CC1101 to recieve raw data through the GDO2 pin.
-        If no data is recieved but you know data is being transmitted, adjust the OOK sensitivity using ```self.adjustOOKSensitivity```.
-        """
-        global pc0CRC_EN, pc0LenConf, pc0WDATA, pc0PktForm, m4RxBw
-
-
-        """
-        SpiWriteReg(CC1101_IOCFG2,      0x0D);
-        SpiWriteReg(CC1101_IOCFG0,      0x0D);
-        SpiWriteReg(CC1101_PKTCTRL0,    0x32);
-        SpiWriteReg(CC1101_MDMCFG3,     0x93);
-        SpiWriteReg(CC1101_MDMCFG4, 7+m4RxBw);
-        """
-
-        #self.setRxBW(812.50)
-
-        # set cc mode
-
-        """
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG2, [0x0D])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.IOCFG0, [0x0D])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.PKTCTRL0, [0x32])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG3, [0x93])
-        self.trs._write_burst(cc1101.ConfigurationRegisterAddress.MDMCFG4, [7+m4RxBw])
-
-        self.trs._set_modulation_format(0b011)
-        """
-
-        #self.setCCMode(0)
-
-        # end of setting cc mode
-
-        
-        #v = 3
-        #split_PKTCTRL0(trans)
-        #pc0PktForm = v*16;
-        #trans._write_burst(ConfigurationRegisterAddress.PKTCTRL0, [pc0WDATA+pc0PktForm+pc0CRC_EN+pc0LenConf]);
-
-        #self.trs._set_modulation_format(0b011)
-        #self.trs.set_output_power((0, 0xCB))  # OOK modulation: (off, on)
-
-        #self.trs._command_strobe(StrobeAddress.SFTX)
-        self.setCCMode(0)
-        
-        self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL) # setPktFormat(3)
-        
+    def revertTransceiver(self) -> None:
         self.trs._command_strobe(StrobeAddress.SIDLE)
         self.trs._command_strobe(StrobeAddress.SRX)
-        #self.setFreq(self.currentFreq)
 
-        #self.adjustOOKSensitivity(0, self.power)
+    # ------------------------------------------------------------------
+    #  RX Setup
+    # ------------------------------------------------------------------
 
-        #self.trs.set_symbol_rate_baud(99_970)
-
+    def setupRawRecieve(self) -> None:
+        self.setCCMode(0)
+        self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL)
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        self.trs._command_strobe(StrobeAddress.SRX)
         self.mode = "rx"
 
-    def setPktFormat(self, val):
+    # ------------------------------------------------------------------
+    #  Power / PATABLE
+    # ------------------------------------------------------------------
+
+    def adjustOOKSensitivity(self, zero: int, one: int) -> None:
+        assert 0 <= zero <= 0xFF, "zero out of range"
+        assert 0 <= one <= 0xFF, "one out of range"
+        self.trs.set_output_power((zero, one))
+
+    def getOutputPower(self) -> Tuple[int, ...]:
+        return self.trs.get_output_power()
+
+    def setPowerdBm(self, dbm: float) -> None:
+        closest = min(
+            self.PATABLE_433MHZ.items(),
+            key=lambda kv: abs(float(kv[1].replace("dBm", "")) - dbm),
+        )
+        reg_val, label = closest
+        logger.info("setting power to %s (0x%02X)", label, reg_val)
+        self.adjustOOKSensitivity(0, reg_val)
+
+    # ------------------------------------------------------------------
+    #  TX methods
+    # ------------------------------------------------------------------
+
+    def rawTransmit(self, bt: bytes) -> None:
+        os.remove("fastio.bin")
+        with open("fastio.bin", "wb") as f:
+            f.write(bt)
+            f.flush()
+        fio.send(GDO0, "fastio.bin")
+
+    def rawTransmit2(self, lbt, **kwargs) -> None:
+        fio.send(GDO0, [int(x) for x in lbt], ns=500)
+
+    def rawTransmitBin(self, binfile: str) -> None:
+        fio.send(GDO0, binfile, ns=500)
+
+    def flipperTransmit(self, RAW_Data: str) -> None:
+        fio.flipperSend(GDO0, RAW_Data)
+
+    # ------------------------------------------------------------------
+    #  RX methods
+    # ------------------------------------------------------------------
+
+    def recvSamples(self, bits: int, delayms: int = 5) -> list:
+        fio.setNS(delayms * 1000)
+        return fio.readSamples(GDO2, bits)
+
+    def recvInf(self) -> None:
+        fio.setNS(1000)
+        fio.infread(GDO2, filename="/tmp/rawrx")
+
+    def recvStop(self) -> list:
+        fio.close()
+        return fio.__parseBin__(GDO2, binf="/tmp/rawrx", remove=True)
+
+    def flipperRecv(self):
+        raise NotImplementedError("use flipperconv class")
+
+    # ------------------------------------------------------------------
+    #  Register-level helpers
+    # ------------------------------------------------------------------
+
+    def readRegister(self, addr: int) -> int:
+        return self.trs._read_single_byte(ConfigurationRegisterAddress(addr))
+
+    def writeRegister(self, addr: int, value: int) -> None:
+        self.trs._write_burst(ConfigurationRegisterAddress(addr), [value])
+
+    def readBurst(self, start_addr: int, length: int) -> List[int]:
+        return self.trs._read_burst(ConfigurationRegisterAddress(start_addr), length)
+
+    def writeBurst(self, start_addr: int, values: List[int]) -> None:
+        self.trs._write_burst(ConfigurationRegisterAddress(start_addr), values)
+
+    def dumpRegisters(self) -> None:
+        for reg in ConfigurationRegisterAddress:
+            val = self.trs._read_single_byte(reg)
+            logger.info("  0x%02X (%s) = 0x%02X", reg.value, reg.name, val)
+
+    def readStatusRegister(self, addr: int) -> int:
+        return self.trs._read_status_register(StatusRegisterAddress(addr))
+
+    def readRSSI(self) -> float:
+        raw = self.trs._read_status_register(StatusRegisterAddress.RSSI)
+        if raw >= 128:
+            return (raw - 256) / 2 - 74
+        return raw / 2 - 74
+
+    def readLQI(self) -> int:
+        return self.trs._read_status_register(StatusRegisterAddress.LQI) & 0b01111111
+
+    def getMarcState(self) -> MainRadioControlStateMachineState:
+        return self.trs.get_main_radio_control_state_machine_state()
+
+    def getPartNumber(self) -> int:
+        return self.trs._read_status_register(StatusRegisterAddress.PARTNUM)
+
+    def getVersion(self) -> int:
+        return self.trs._read_status_register(StatusRegisterAddress.VERSION)
+
+    def getFrequencyEstimate(self) -> int:
+        return self.trs._read_status_register(StatusRegisterAddress.FREQEST)
+
+    # ------------------------------------------------------------------
+    #  Sync word
+    # ------------------------------------------------------------------
+
+    def setSyncWord(self, word: bytes) -> None:
+        self.trs.set_sync_word(word)
+
+    def getSyncWord(self) -> bytes:
+        return self.trs.get_sync_word()
+
+    # ------------------------------------------------------------------
+    #  Preamble
+    # ------------------------------------------------------------------
+
+    def setPreambleLength(self, length: int) -> None:
+        self.trs.set_preamble_length_bytes(length)
+
+    def getPreambleLength(self) -> int:
+        return self.trs.get_preamble_length_bytes()
+
+    def setPreambleIndex(self, index: int) -> None:
+        self.trs._set_preamble_length_index(index)
+
+    # ------------------------------------------------------------------
+    #  Packet format helpers
+    # ------------------------------------------------------------------
+
+    def setPktFormat(self, val: str) -> None:
         if val == "async":
             self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL)
         elif val == "fifo":
             self.trs._set_transceive_mode(_TransceiveMode.FIFO)
+        elif val == "sync":
+            self.trs._set_transceive_mode(_TransceiveMode.SYNCHRONOUS_SERIAL)
+        elif val == "random":
+            self.trs._set_transceive_mode(_TransceiveMode.RANDOM_TRANSMISSION)
 
-"""
-if __name__ == "__main__":
-    with cc1101.CC1101(spi_bus=1) as transceiver:
-        transceiver.set_base_frequency_hertz(303.91e6)
-        #transceiver.set_symbol_rate_baud(300)
-        print("starting transmission")
+    def setPacketLengthMode(self, mode: str) -> None:
+        table = {"fixed": PacketLengthMode.FIXED, "variable": PacketLengthMode.VARIABLE}
+        self.trs.set_packet_length_mode(table[mode.lower()])
 
-        # lower value = more
-        transceiver.set_output_power((0, 0x0D))  # OOK modulation: (off, on)
-        #transceiver._enable_receive_mode()
+    def setPacketLength(self, length: int) -> None:
+        self.trs.set_packet_length_bytes(length)
 
-        # TESTING
-        # TESTING
-        
-        setupRawRecieve(transceiver)
+    def getPacketLength(self) -> int:
+        return self.trs.get_packet_length_bytes()
 
-        bt = [x for x in "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111110000000000000000000000000000000000000000000000000000000000001110000011111110000000000110000000000111000000000111000000000111000000000011100000111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111000011111111100000000111100000000111100000000111100000000111100000111111110000000011110000000011110000000011111000000001110000000001111000011111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111000011111111000000000111000000000111000000000111100000000111100001111111100000000111100000000011110000000011110000000011110000000011110000111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011110000111111110000000001110000000001111000000001111000000001111000011111111000000000111100000000111100000000111100000000011110000000011110000111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111100001111111100000000011110000000011110000000011110000000011110000111111111000000001111000000001111000000001111000000000111000000000111100001111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111100001111111100000000111100000000111110000000011110000000011110000111111110000000011110000000001111000000001111000000001111000000001111000011111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011111000011111111000000001111000000001111000000000111100000000111100001111111100000000111100000000111100000000111100000000011110000000011110000111111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111100001111111100000000011110000000011110000000011110000000001111000011111111000000001111000000001111000000000111100000001111000000000111100001111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111100001111111100000000111100000000111100000000011110000000011110000111111110000000011110000000001111000000001111000000001111000000001111100011111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111000011111111000000001111000000000111000000000111100000000111100001111111100000000011100000000011110000000011110000000001111000000001111000011111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011111000111111111000000001111000000001111000000001111000000000111100001111111100000000111100000000111100000000111110000000111110000000011110000000011110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111100001111111100000000111100000000111100000000111100000000011110000111111110000000011110000000011110000000001110000000001111000000000111000000000111100000000000000000000000000000000000000000000000000000000000000000000000000"]
-        time.sleep(1)
+    # ------------------------------------------------------------------
+    #  Checksum / Whitening
+    # ------------------------------------------------------------------
 
-        os.system('clear')
+    def disableChecksum(self) -> None:
+        self.trs.disable_checksum()
 
+    def enableManchester(self) -> None:
+        self.trs.enable_manchester_code()
 
-        print(''.join([str(x) for x in bt]))
-        input("...")
+    # ------------------------------------------------------------------
+    #  Sync mode
+    # ------------------------------------------------------------------
 
-        print("TRANASMIT")
-        setupRawTransmission(transceiver)
-        rawTransmit2(transceiver, bt, delayms=1)
-        print("FINISH")
+    def setSyncMode(self, mode: str) -> None:
+        table = {
+            "none": SyncMode.NO_PREAMBLE_AND_SYNC_WORD,
+            "16_15": SyncMode.TRANSMIT_16_MATCH_15_BITS,
+            "16_16": SyncMode.TRANSMIT_16_MATCH_16_BITS,
+            "32_30": SyncMode.TRANSMIT_32_MATCH_30_BITS,
+        }
+        self.trs.set_sync_mode(table[mode.lower()])
 
-        time.sleep(0.25)
+    def getSyncMode(self) -> str:
+        return self.trs.get_sync_mode().name.lower()
 
-        revertTransceiver(transceiver)
+    # ------------------------------------------------------------------
+    #  CCA / Channel assessment
+    # ------------------------------------------------------------------
 
-        #transceiver._reset()
-        transceiver.unlock_spi_device()
-        transceiver._spi.close()
-        time.sleep(0.25)
-"""
+    def isChannelClear(self) -> bool:
+        rssi = self.readRSSI()
+        return rssi < -80
+
+    def getRSSIdBm(self) -> float:
+        return self.readRSSI()
+
+    def getChannelNumber(self) -> int:
+        return self.trs._read_single_byte(ConfigurationRegisterAddress.CHANNR)
+
+    def setChannel(self, ch: int) -> None:
+        assert 0 <= ch <= 0xFF
+        self.trs._write_burst(ConfigurationRegisterAddress.CHANNR, [ch])
+
+    # ------------------------------------------------------------------
+    #  Defaults
+    # ------------------------------------------------------------------
+
+    def _setDefaults(self) -> None:
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        self.setRxBW(650.0)
+        self.setCCMode(0)
+        self.trs.set_base_frequency_hertz(self.currentFreq)
+        time.sleep(0.5)
+        abcd = self.trs.get_base_frequency_hertz()
+        logger.info("base_frequency=%.2f MHz", abcd / 1e6)
+        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG1, [0x02])
+        self.trs._write_burst(ConfigurationRegisterAddress.MDMCFG0, [0xF8])
+        self.trs._write_burst(ConfigurationRegisterAddress.DEVIATN, [0x90])
+        self.trs._write_burst(ConfigurationRegisterAddress.FREND1, [0x56])
+        self.trs._write_burst(ConfigurationRegisterAddress.MCSM0, [0x18])
+        self.trs._write_burst(ConfigurationRegisterAddress.FOCCFG, [0x16])
+        self.trs._write_burst(ConfigurationRegisterAddress.BSCFG, [0x1C])
+        self.trs._write_burst(0x1B, [0xC7])
+        self.trs._write_burst(0x1C, [0x00])
+        self.trs._write_burst(0x1D, [0xB2])
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL3, [0xE9])
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL2, [0x2A])
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL1, [0x00])
+        self.trs._write_burst(ConfigurationRegisterAddress.FSCAL0, [0x1F])
+        self.trs._write_burst(ConfigurationRegisterAddress.PKTCTRL1, [0x04])
+        self.trs._write_burst(ConfigurationRegisterAddress.ADDR, [0x00])
+        self.trs._write_burst(ConfigurationRegisterAddress.PKTLEN, [0x00])
+
+    # ------------------------------------------------------------------
+    #  Legacy compat: split_PKTCTRL0 / Split_MDMCFG4 (kept for API compat)
+    # ------------------------------------------------------------------
+
+    def split_PKTCTRL0(self):
+        calc = self.trs._read_status_register(ConfigurationRegisterAddress.PKTCTRL0)
+        self._pc0WDATA = 0
+        self._pc0PktForm = 0
+        self._pc0CRC_EN = 0
+        self._pc0LenConf = 0
+        while True:
+            if calc >= 64:
+                calc -= 64
+                self._pc0WDATA += 64
+            elif calc >= 16:
+                calc -= 16
+                self._pc0PktForm += 16
+            elif calc >= 4:
+                calc -= 4
+                self._pc0CRC_EN += 4
+            else:
+                self._pc0LenConf = calc
+                break
+
+    def Split_MDMCFG4(self):
+        self._split_MDMCFG4()
