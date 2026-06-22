@@ -3,6 +3,7 @@ import signal
 import subprocess
 import threading
 import typing
+import numpy as np
 
 class PiFMRds:
     def __init__(self, location="../PiFmAdv/pi_fm_adv") -> None:
@@ -58,6 +59,9 @@ class rpitxTypes:
         modType_OOK = 0 # OOK
         modType_OOK_PWM = 1 # OOK PWM
         modType_OOK_PPM = 2 # OOK PPM
+    class FileTypes:
+        FLOAT32 = 0
+        COMPLEX16S = 1
     
 class rpitx():
     """
@@ -145,6 +149,28 @@ class rpitx():
             self.__arg__("-r", repeats),
             self.__arg__("-m", modType),
             bits
+        ])
+
+        return self.__runCommand__(args)
+    
+    def sendIQ(self, filePath:str, sampleRate:int, fileFormat=rpitxTypes.FileTypes.FLOAT32):
+        if fileFormat == rpitxTypes.FileTypes.FLOAT32:
+            pass
+        else:
+            if rpitxTypes.FileTypes.COMPLEX16S:
+                # translate to float32
+                data = np.fromfile(filePath, dtype=np.int16)
+                data = data.astype(np.float32) / 32768.0
+                data.tofile('/tmp/rpitx.iq')
+                print("numpy translated COMPLEX16S -> float32 (/tmp/rpitx.iq)")
+                filePath = "/tmp/rpitx.iq"
+
+        args = self.__mergeArgs__([
+            self.__getExecutable__("rpitx"),
+            "-f {}".format(self.freq),
+            self.__arg__("-m", "IQFLOAT"),
+            self.__arg__("-i", filePath),
+            self.__arg__("-s", sampleRate)
         ])
 
         return self.__runCommand__(args)

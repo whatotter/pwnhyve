@@ -227,8 +227,8 @@ class FastIO:
 
         cmd = [self._executable_] + self.__compileArgs__()
 
-        if self.nice is not None:
-            cmd = ["nice", "-n", "-20"] + cmd
+        #if self.nice is not None:
+        #    cmd = ["nice", "-n", "-20"] + cmd
 
         print("[+] {}".format(' '.join(cmd)))
 
