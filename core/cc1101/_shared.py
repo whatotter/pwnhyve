@@ -9,7 +9,7 @@ def get_instance():
         try:
             _instance = pCC1101()
         except Exception:
-            pass
+            _instance = False
     return _instance
 
 

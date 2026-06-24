@@ -1,5 +1,5 @@
 from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
-from .modulation import Modulation
+from .modulation import Modulation, modulation_name
 
 
 def _build_result(name, count, data, te, mod_name):
@@ -99,7 +99,8 @@ class GenericDecoder(BaseProtocolDecoder):
             return
         if self._encoding == "HL":
             if dur_diff(duration, self.te_short) < self.te_delta:
-                self.step = self.SAVE_DUR
+                self.te_last = duration
+                self.step = self.CHECK_DUR
                 self.decode_data = 0
                 self.decode_count_bit = 0
         else:
@@ -112,14 +113,14 @@ class GenericDecoder(BaseProtocolDecoder):
             if level:
                 self.te_last = duration
                 self.step = self.CHECK_DUR
-            elif duration >= self.te_short * (self._end_min_te_mult + 2) - self.te_delta:
+            elif duration >= self.te_long * self._end_min_te_mult:
                 self._emit_if_ready()
                 self.reset()
             else:
                 self.step = self.RESET
         else:
             if not level:
-                if duration >= self.te_short * self._end_min_te_mult:
+                if duration >= self.te_long * self._end_min_te_mult:
                     self._emit_if_ready()
                     self.reset()
                     return
@@ -131,7 +132,7 @@ class GenericDecoder(BaseProtocolDecoder):
     def _check_dur(self, level, duration):
         if self._encoding == "HL":
             if not level:
-                end_thresh = self.te_short * self._end_min_te_mult
+                end_thresh = self.te_long * self._end_min_te_mult
                 if duration >= end_thresh:
                     self._emit_if_ready()
                     self.reset()
@@ -141,7 +142,7 @@ class GenericDecoder(BaseProtocolDecoder):
                 self.step = self.RESET
         else:
             if level:
-                if duration >= self.te_short * self._end_min_te_mult:
+                if duration >= self.te_long * self._end_min_te_mult:
                     self._emit_if_ready()
                     self.reset()
                     return

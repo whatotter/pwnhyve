@@ -40,25 +40,13 @@ class PrincetonDecoder(BaseProtocolDecoder):
                 self.te_last = duration
                 self.te += duration
                 self.step = self.CHECK_DUR
+            elif duration >= self.te_long * 2:
+                self._on_gap(duration)
 
         elif self.step == self.CHECK_DUR:
             if not level:
                 if duration >= self.te_long * 2:
-                    self.step = self.SAVE_DUR
-                    if self.decode_count_bit == self.min_count_bit:
-                        if self.last_data == self.decode_data and self.last_data:
-                            self.te //= (self.decode_count_bit * 4 + 1)
-                            self.guard_time = round(duration / self.te) if self.te else 30
-                            if self.guard_time < 15 or self.guard_time > 72:
-                                self.guard_time = 30
-                            self.serial = self.decode_data >> 4
-                            self.btn = self.decode_data & 0xF
-                            if self.callback:
-                                self.callback(self)
-                    self.last_data = self.decode_data
-                    self.decode_data = 0
-                    self.decode_count_bit = 0
-                    self.te = 0
+                    self._on_gap(duration)
                     return
 
                 self.te += duration
@@ -78,6 +66,35 @@ class PrincetonDecoder(BaseProtocolDecoder):
                     self.step = self.RESET
             else:
                 self.step = self.RESET
+
+    def _on_gap(self, duration):
+        if self.decode_count_bit == self.min_count_bit - 1:
+            short_last = dur_diff(self.te_last, self.te_short) < self.te_delta
+            long_last = dur_diff(self.te_last, self.te_long) < self.te_delta * 3
+            if short_last:
+                add_bit(self, 0)
+            elif long_last:
+                add_bit(self, 1)
+            else:
+                self.step = self.RESET
+                return
+
+        if self.decode_count_bit == self.min_count_bit:
+            if self.last_data == self.decode_data and self.last_data:
+                self.te //= (self.decode_count_bit * 4 + 1)
+                self.guard_time = round(duration / self.te) if self.te else 30
+                if self.guard_time < 15 or self.guard_time > 72:
+                    self.guard_time = 30
+                self.serial = self.decode_data >> 4
+                self.btn = self.decode_data & 0xF
+                if self.callback:
+                    self.callback(self)
+            self.last_data = self.decode_data
+
+        self.decode_data = 0
+        self.decode_count_bit = 0
+        self.te = 0
+        self.step = self.SAVE_DUR
 
     def result_string(self) -> str:
         rev = reverse_key(self.decode_data, self.min_count_bit)

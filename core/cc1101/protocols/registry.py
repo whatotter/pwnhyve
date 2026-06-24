@@ -26,7 +26,13 @@ class ProtocolRegistry:
         return dec
 
     def _on_match(self, decoder):
-        self._matched.append(decoder)
+        # decoder has valid data at this point; capture before reset
+        self._matched.append(RecognizedSignal(
+            protocol_name=decoder.name,
+            details=decoder.result_string(),
+            data=decoder.decode_data,
+            bit_count=decoder.decode_count_bit,
+        ))
 
     def feed_all(self, level: bool, duration: int):
         for dec in self._decoders:
@@ -53,6 +59,16 @@ class ProtocolRegistry:
     def get_results(self):
         results = []
         seen_hashes = set()
+
+        for sig in self._matched:
+            h = sig.data
+            h ^= h >> 16
+            h ^= h >> 8
+            h &= 0xFF
+            if h not in seen_hashes:
+                seen_hashes.add(h)
+                results.append(sig)
+
         for dec in self._decoders:
             if dec.decode_count_bit >= dec.min_count_bit:
                 h = dec.get_hash()
@@ -64,6 +80,7 @@ class ProtocolRegistry:
                         data=dec.decode_data,
                         bit_count=dec.decode_count_bit,
                     ))
+
         self._matched.clear()
         return results
 
