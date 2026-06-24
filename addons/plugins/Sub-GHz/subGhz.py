@@ -20,6 +20,7 @@ def blinkerSub(sender, **kw):
 
 ui.subscribe(blinkerSub)
 
+"""
 try:
     transceiver = ccrf.pCC1101()
     freq = transceiver.currentFreq
@@ -27,8 +28,22 @@ try:
     transceiverEnabled = True
 except Exception:
     print("[+] CC1101 not detected")
+"""
 
-def scText(text, caption, maxln=6):
+from core.cc1101._shared import get_instance as _get_cc1101
+try:
+    transceiver = _get_cc1101()
+    freq = transceiver.currentFreq
+    strfrq = str(int(freq / 1e6))
+except:
+    transceiver = None
+    freq = 0
+    strfrq = "0"
+
+transceiverEnabled = transceiver is not None
+
+
+def scText(text, caption, maxln=5):
     global sctext
     s = (sctext + "\n" + str(text)).strip().split("\n")
     lines = len(s)
@@ -100,10 +115,10 @@ class PWNsubGhz(BasePwnhyvePlugin):
             )
 
             if mnu == "save to file":
+                name = tpil.gui.enterText(suffix=".sub")
+
                 octets = binTranslate.bitsToOctet(bits)
                 hexs = binTranslate.octetsToHex(octets)
-
-                name = tpil.gui.enterText(suffix=".sub")
                 path = os.path.join(".", "addons", "subghz", name)
                 with open(path, "w") as f:
                     fdata = (
@@ -126,12 +141,13 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 return
 
             elif mnu == "view":
+                a = tpil.gui.screenConsole()
+
                 byts = binTranslate.bitsToOctet(
                     binTranslate.deleteTrailingNull(bits)
                 )
                 hexs = binTranslate.octetsToHex(byts)
 
-                a = tpil.gui.screenConsole()
                 lines = _formatHexView(hexs)
                 offset = 0
 
@@ -148,6 +164,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
                         offset = max(0, offset - 1)
                     elif z == "left":
                         break
+                    elif z == "3":
+                        tpil.gui.toast([
+                            "Up/Down: Scroll",
+                            "Left: Exit"
+                            ])
 
                 a.exit()
 
@@ -213,7 +234,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         while True:
             a.text = scText(
-                "press dpad to play data\ndpad left to exit\nup, down to edit bit delay ({}ns)".format(slpval),
+                "Bit delay ({}ns)".format(slpval),
                 "{} MHz | TX".format(strfrq),
             )
             a.forceUpdate()
@@ -249,6 +270,9 @@ class PWNsubGhz(BasePwnhyvePlugin):
             elif key == 'down':
                 slpval = max(100, slpval - 100)
 
+            elif key == "3":
+                tpil.gui.toast("L3: Transmit (repeat while held)\nUp: Increase bit delay\nDown: Decrease bit delay\nLeft: Exit")
+
         a.exit()
         transceiver.sleepMode()
 
@@ -266,7 +290,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
             _min=300.0,
             _max=950.0,
             start=startFreq,
-        ).start()
+        )
 
         transceiver.setFreq(a)
         _syncFreqDisplay()

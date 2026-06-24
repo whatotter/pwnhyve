@@ -1,20 +1,15 @@
 import time
 import os
 
-import core.cc1101.ccrf as ccrf
 import core.cc1101.binary as binTranslate
 import core.cc1101.flipsub as fsub
+from core.cc1101._shared import get_instance as _get_cc1101
 from core.cc1101.protocols.registry import build_default_registry
 from core.plugin import BasePwnhyvePlugin
 from core.pil_simplify import tinyPillow
 
-transceiverEnabled = False
-
-try:
-    transceiver = ccrf.pCC1101()
-    transceiverEnabled = True
-except Exception:
-    pass
+transceiver = _get_cc1101()
+transceiverEnabled = transceiver is not None
 
 
 class PWNSignalID(BasePwnhyvePlugin):
@@ -31,7 +26,7 @@ class PWNSignalID(BasePwnhyvePlugin):
             return
 
         reg = build_default_registry()
-        term = tpil.gui.screenConsole(tpil)
+        term = tpil.gui.screenConsole()
         term.addText("setting CC1101 to RX...")
         transceiver.setupRawRecieve()
         transceiver.recvInf()
@@ -66,7 +61,7 @@ class PWNSignalID(BasePwnhyvePlugin):
         try:
             files = os.listdir(subdir)
         except FileNotFoundError:
-            term = tpil.gui.screenConsole(tpil)
+            term = tpil.gui.screenConsole()
             term.addText("no subghz/ directory")
             tpil.waitForKey()
             return
@@ -86,7 +81,7 @@ class PWNSignalID(BasePwnhyvePlugin):
                 bits = [int(x) for x in bit_data.split(" ") if x]
 
         reg = build_default_registry()
-        term = tpil.gui.screenConsole(tpil)
+        term = tpil.gui.screenConsole()
         term.addText("analyzing: " + fle)
 
         if pulses:
@@ -111,7 +106,7 @@ class PWNSignalID(BasePwnhyvePlugin):
         tpil.waitForKey()
 
     def ID_From_Bits(tpil: tinyPillow):
-        term = tpil.gui.screenConsole(tpil)
+        term = tpil.gui.screenConsole()
         term.addText("enter hex string or bit string")
         term.addText("hex: AA BB CC")
         term.addText("bits: 10101010")
@@ -152,7 +147,7 @@ def _match_by_bitlen(bit_count):
 
 
 def _no_hw(tpil):
-    term = tpil.gui.screenConsole(tpil)
+    term = tpil.gui.screenConsole()
     term.addText("No CC1101 detected")
     tpil.waitForKey()
 

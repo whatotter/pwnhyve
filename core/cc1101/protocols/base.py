@@ -6,8 +6,8 @@ def dur_diff(a: int, b: int) -> int:
 
 
 def add_bit(decoder, bit: int):
-    decoder["decode_data"] = (decoder["decode_data"] << 1) | bit
-    decoder["decode_count_bit"] += 1
+    decoder.decode_data = (decoder.decode_data << 1) | bit
+    decoder.decode_count_bit += 1
 
 
 def reverse_key(data: int, bits: int) -> int:
@@ -23,6 +23,7 @@ class BaseProtocolDecoder:
     te_long = 0
     te_delta = 0
     min_count_bit = 0
+    modulation = 0
 
     def __init__(self, callback: Optional[Callable] = None):
         self.callback = callback

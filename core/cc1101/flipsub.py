@@ -61,6 +61,9 @@ class flipperConv:
 
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         return self.p.get(key, default)
+    
+    def sset(self, key: str, value: any):
+        self.p[key] = value
 
 
 def bitsToRawData(bits: Union[str, List[int]], uslp: int = 1) -> List[int]:

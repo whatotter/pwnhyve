@@ -102,7 +102,7 @@ class pCC1101:
         self._setDefaults()
         self.setupRawTransmission()
         self.adjustOOKSensitivity(0, self.power)
-        self.rawTransmit2("10101010", delayms=10)
+        self.rawTransmitBits("10101010", delayms=10)
 
     # ------------------------------------------------------------------
     #  Sleep / Reset / Close
@@ -117,7 +117,7 @@ class pCC1101:
         logger.info("cc1101 defaults restored")
         self.setupRawTransmission()
         logger.info("cc1101 set to TX")
-        self.rawTransmit2("10101010", delayms=100)
+        self.rawTransmitBits("10101010", delayms=100)
         logger.info("transmitted example bits")
         self.mode = "tx"
 
@@ -268,6 +268,21 @@ class pCC1101:
         self.mode = "tx"
         self.adjustOOKSensitivity(0, self.power)
 
+    def setCarrier(self) -> None:
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        self.trs._set_transceive_mode(_TransceiveMode.ASYNCHRONOUS_SERIAL)
+        self.setCCMode(0)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(GDO0, GPIO.OUT)
+        GPIO.output(GDO0, GPIO.HIGH)
+        self.trs._command_strobe(StrobeAddress.STX)
+        self.mode = "tx"
+
+    def unsetCarrier(self) -> None:
+        self.trs._command_strobe(StrobeAddress.SIDLE)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(GDO0, GPIO.IN)
+
     def revertTransceiver(self) -> None:
         self.trs._command_strobe(StrobeAddress.SIDLE)
         self.trs._command_strobe(StrobeAddress.SRX)
@@ -308,15 +323,21 @@ class pCC1101:
     #  TX methods
     # ------------------------------------------------------------------
 
-    def rawTransmit(self, bt: bytes) -> None:
+    def rawTransmitBytes(self, bt: bytes) -> None:
+        """
+        Transmit !BYTES! onto GDO0
+        """
         os.remove("fastio.bin")
         with open("fastio.bin", "wb") as f:
             f.write(bt)
             f.flush()
         fio.send(GDO0, "fastio.bin")
 
-    def rawTransmit2(self, lbt, **kwargs) -> None:
-        fio.send(GDO0, [int(x) for x in lbt], ns=500)
+    def rawTransmitBits(self, bits, **kwargs) -> None:
+        """
+        Transmit !BITS! onto GDO0 
+        """
+        fio.send(GDO0, [int(x) for x in bits], ns=500)
 
     def rawTransmitBin(self, binfile: str) -> None:
         fio.send(GDO0, binfile, ns=500)

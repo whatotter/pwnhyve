@@ -16,7 +16,7 @@ def transtest(a:rf.pCC1101, bits):
 
     #print(bits)
 
-    a.rawTransmit2(bits, delayms=100)
+    a.rawTransmitBits(bits, delayms=100)
     #a.oldRawTransmit2(bits, delayms=100)
 
 def recvtest(a):

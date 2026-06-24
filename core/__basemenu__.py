@@ -242,7 +242,14 @@ class slider:
         self.value = start
         self._step = step
 
-        assert start >= minimum and maximum >= start
+        try:
+            assert start >= minimum and maximum >= start
+        except AssertionError:
+            raise AssertionError("Start must be above minimum, and below maximum. Omitting the `start` keyword can cause this. (start={} minimum={} maximum={})".format(
+                start,
+                self.min,
+                self.max
+            ))
 
         self._draw = draw
         self.disp = disp
@@ -602,7 +609,7 @@ class BasePwnhyveScreen():
 
         return screenConsole(self.tpil, **kwargs)
 
-    def toast(self, text:str, xy1:list, xy2:list, timeout:int=-1, textYOffset:int=0):
+    def toast(self, text:str|list, xy1:list[int]=[2,2], xy2:list[int]=[128-4, 64-4], timeout:int=-1, textYOffset:int=0):
         """
         toast the user with a notification, and go away when the user clicks a key
 
@@ -613,26 +620,48 @@ class BasePwnhyveScreen():
         @textYOffset: text offset from top of the body (e.g. margin-top)
 
         """
+        if type(text) == str:
+            textLines = text.split("\n")
+        else:
+            textLines = text
+
+        currentOffset = 0
         originalImage = self.image.tobytes('raw', '1')
-        #originalImage = self.image.tobitmap()
         # since we're overlaying on an image that we want to restore after \
         # a bit, we save the image before we do anything with it to load \
         # it back after
 
-        # draw toast box
-        self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
-        self.draw.rounded_rectangle((xy1, xy2), radius=3)
+        def __drawToast__(offset=0):
+            #originalImage = self.image.tobitmap()
 
-        self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], text, font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8))
+            # draw toast box
+            self.draw.rounded_rectangle(([xy1[0]-1, xy1[1]-1], [xy2[0]+1, xy2[1]+1]), fill=1, radius=3)
+            self.draw.rounded_rectangle((xy1, xy2), radius=3)
 
-        self.tpil.show(clear=False)
+            self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], 
+                           '\n'.join(textLines[offset:5+offset]), 
+                           font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8)
+                           )
+
+            self.tpil.show(clear=False)
+
+        __drawToast__(offset=0)
 
         # wait for user to read, or something
         if timeout == None:
             return
         else:
             if 0 > timeout:
-                self.tpil.waitForKey(debounce=True) # let user continue when they want
+                while True:
+                    key = self.tpil.waitForKey(debounce=True) # let user continue when they want
+                    if key == "down":
+                        currentOffset += 1
+                        __drawToast__(offset=currentOffset)
+                    elif key == "up":
+                        currentOffset -= 1
+                        __drawToast__(offset=currentOffset)
+                    else:
+                        break
             else:
                 time.sleep(timeout) # wait for toast to go away
 

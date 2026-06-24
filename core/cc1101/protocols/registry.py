@@ -84,6 +84,13 @@ class ProtocolRegistry:
 
 
 def build_default_registry(callback: Optional[Callable] = None) -> ProtocolRegistry:
+    reg = ProtocolRegistry()
+    _register_special(reg)
+    _register_generic(reg)
+    return reg
+
+
+def _register_special(reg):
     from .princeton import PrincetonDecoder
     from .came import CameDecoder
     from .holtek import HoltekDecoder
@@ -93,7 +100,6 @@ def build_default_registry(callback: Optional[Callable] = None) -> ProtocolRegis
     from .intertechno import IntertechnoDecoder
     from .secplus_v1 import SecPlusV1Decoder
 
-    reg = ProtocolRegistry()
     reg.register(PrincetonDecoder)
     reg.register(CameDecoder)
     reg.register(HoltekDecoder)
@@ -102,4 +108,10 @@ def build_default_registry(callback: Optional[Callable] = None) -> ProtocolRegis
     reg.register(SomfyTelisDecoder)
     reg.register(IntertechnoDecoder)
     reg.register(SecPlusV1Decoder)
-    return reg
+
+
+def _register_generic(reg):
+    from .protocol_db import define_protocols
+    for decoder in define_protocols():
+        decoder.callback = reg._on_match
+        reg._decoders.append(decoder)
