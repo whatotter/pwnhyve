@@ -106,7 +106,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         term.addText("Recording signal")
         term.addText("Press any key to stop.")
 
-        transceiver.recvInf()
+        transceiver.recvInf(ns=1000)
 
         while True:
             if tpil.checkIfKey():
@@ -256,7 +256,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
         transceiver.setupRawTransmission()
 
         binfile = ccrf.fio.calcBinFile(bitData, "/tmp/CC1101_TX.bin")
-        slpval = 500
+        slpval = 250
 
         while True:
             a.text = scText(
@@ -276,7 +276,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 repeats = 0
                 while True:
                     print("transmission repeat {}".format(repeats))
-                    transceiver.rawTransmitBin(binfile)
+                    transceiver.rawTransmitBin(binfile, ns=slpval)
                     repeats += 1
 
                     print("freq={:.2f} MHz".format(transceiver.getFreqMHz()))

@@ -349,8 +349,8 @@ class pCC1101:
         """
         fio.send(GDO0, [int(x) for x in bits], ns=500)
 
-    def rawTransmitBin(self, binfile: str) -> None:
-        fio.send(GDO0, binfile, ns=500)
+    def rawTransmitBin(self, binfile: str, ns:int=500) -> None:
+        fio.send(GDO0, binfile, ns=ns)
 
     def flipperTransmit(self, RAW_Data: str) -> None:
         fio.flipperSend(GDO0, RAW_Data)
@@ -371,8 +371,8 @@ class pCC1101:
 
         return fio.readSamples(GDO2, bits)[0]
 
-    def recvInf(self) -> None:
-        fio.setNS(1000)
+    def recvInf(self, ns:int=1000) -> None:
+        fio.setNS(ns)
         fio.infread(GDO2, filename="/tmp/rawrx")
 
     def recvStop(self) -> list:

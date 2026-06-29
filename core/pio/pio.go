@@ -187,8 +187,6 @@ func main() {
 		for {
 			n, err := file.Read(buffer)
 			if n > 0 {
-				bitIdx := 0
-				txStart := time.Now()
 				for i := 0; i < n; i++ {
 					b := buffer[i]
 					for j := 7; j >= 0; j-- {
@@ -197,8 +195,7 @@ func main() {
 						} else {
 							pin.Write(rpio.Low)
 						}
-						bitIdx++
-						spinUntil(txStart.Add(time.Duration(bitIdx) * period))
+						time.Sleep(period)
 					}
 				}
 			}

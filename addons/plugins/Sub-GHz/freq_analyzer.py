@@ -60,7 +60,15 @@ class PWNFreqAnalyzer(BasePwnhyvePlugin):
 
             print("changing value by {} (underlineTextIndex = {})".format(value, underlineTextIndex))
 
-            transceiver.setFreq(frequency+(value*direction))
+            newFreq = frequency+(value*direction)
+
+            if transceiver.minFreq >= newFreq: # limit freq at the min xcvr freq
+                newFreq = transceiver.minFreq
+            
+            if newFreq >= 999: # limit freq at 999, because that's the max we can visualize. also who tf wants a cc1101 to go up that high?
+                newFreq = 999.0
+
+            transceiver.setFreq(newFreq)
             frequency = round(transceiver.getFreqMHz(), 4)
             transceiver.setupRawRecieve() # redo this.. for some reason?
 
