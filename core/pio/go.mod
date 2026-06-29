@@ -1,4 +1,4 @@
-module github.com/stianeikeland/go-rpio
+module pio
 
 go 1.20
 

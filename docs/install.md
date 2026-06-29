@@ -16,10 +16,11 @@ python3 -m venv .
 pip install -r requirements.txt
 ```
 
-4. build FastIO
+4. build FastIO (requires gcc for ARM cycle counter timing)
 ```
+sudo apt install gcc
 cd ./core/pio
-go build pio.go
+go build .
 cd ../..
 ```
 
