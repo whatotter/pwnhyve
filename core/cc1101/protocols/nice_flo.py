@@ -1,4 +1,4 @@
-from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
+from .base import BaseProtocolDecoder, dur_diff, soft_score, add_bit, reverse_key
 
 
 class NiceFloDecoder(BaseProtocolDecoder):
@@ -52,19 +52,29 @@ class NiceFloDecoder(BaseProtocolDecoder):
 
         elif self.step == self.CHECK_DUR:
             if level:
-                short_te = dur_diff(self.te_last, self.te_short) < self.te_delta
-                long_te = dur_diff(self.te_last, self.te_long) < self.te_delta
-                dur_short = dur_diff(duration, self.te_short) < self.te_delta
-                dur_long = dur_diff(duration, self.te_long) < self.te_delta
+                short_last_score = soft_score(self.te_last, self.te_short, self.te_delta)
+                long_last_score = soft_score(self.te_last, self.te_long, self.te_delta)
+                short_dur_score = soft_score(duration, self.te_short, self.te_delta)
+                long_dur_score = soft_score(duration, self.te_long, self.te_delta)
 
-                if short_te and dur_long:
+                score0 = short_last_score * long_dur_score
+                score1 = long_last_score * short_dur_score
+
+                if score0 >= score1 and score0 >= 0.3:
                     add_bit(self, 0)
-                    self.step = self.SAVE_DUR
-                elif long_te and dur_short:
+                    self.confidence *= score0
+                elif score1 >= 0.3:
                     add_bit(self, 1)
-                    self.step = self.SAVE_DUR
+                    self.confidence *= score1
+                elif max(score0, score1) > 0:
+                    bit = 0 if score0 >= score1 else 1
+                    add_bit(self, bit)
+                    self.confidence *= max(score0, score1) * 0.5
                 else:
-                    self.step = self.RESET
+                    add_bit(self, 0)
+                    self.confidence *= 0.1
+
+                self.step = self.SAVE_DUR
             else:
                 self.step = self.RESET
 
@@ -72,5 +82,6 @@ class NiceFloDecoder(BaseProtocolDecoder):
         return (
             f"{self.name} {self.decode_count_bit}bit\n"
             f"Key:0x{self.decode_data:08X}\n"
-            f"Rev:0x{reverse_key(self.decode_data, self.decode_count_bit):08X}"
+            f"Rev:0x{reverse_key(self.decode_data, self.decode_count_bit):08X}\n"
+            f"Conf:{self.confidence:.2f}"
         )

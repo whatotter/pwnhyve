@@ -70,6 +70,8 @@ class pCC1101:
         self.success = False
         self.err: Optional[Exception] = None
 
+        self.minFreq = 287.8
+
         for x in range(retries):
             try:
                 self.trs = cc1101.CC1101(

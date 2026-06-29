@@ -12,10 +12,10 @@ from core.pil_simplify import tinyPillow
 class PWNSignalGen(BasePwnhyvePlugin):
 
     _icons = {
-        "XCVR_Tone":      "./core/icons/tool.bmp",
+        "Transmit_Tone":      "./core/icons/tool.bmp",
     }
 
-    def XCVR_Tone(tpil: tinyPillow):
+    def Transmit_Tone(tpil: tinyPillow):
         if not transceiverEnabled:
             _no_hw(tpil)
             return

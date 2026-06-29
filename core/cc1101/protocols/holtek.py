@@ -1,4 +1,4 @@
-from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
+from .base import BaseProtocolDecoder, dur_diff, soft_score, add_bit, reverse_key
 
 
 HOLTEK_HEADER_MASK = 0xF000000000
@@ -60,19 +60,29 @@ class HoltekDecoder(BaseProtocolDecoder):
 
         elif self.step == self.CHECK_DUR:
             if level:
-                short_te = dur_diff(self.te_last, self.te_short) < self.te_delta
-                long_te = dur_diff(self.te_last, self.te_long) < self.te_delta * 2
-                dur_short = dur_diff(duration, self.te_short) < self.te_delta
-                dur_long = dur_diff(duration, self.te_long) < self.te_delta * 2
+                short_last_score = soft_score(self.te_last, self.te_short, self.te_delta)
+                long_last_score = soft_score(self.te_last, self.te_long, self.te_delta * 2)
+                short_dur_score = soft_score(duration, self.te_short, self.te_delta)
+                long_dur_score = soft_score(duration, self.te_long, self.te_delta * 2)
 
-                if short_te and dur_long:
+                score0 = short_last_score * long_dur_score
+                score1 = long_last_score * short_dur_score
+
+                if score0 >= score1 and score0 >= 0.3:
                     add_bit(self, 0)
-                    self.step = self.SAVE_DUR
-                elif long_te and dur_short:
+                    self.confidence *= score0
+                elif score1 >= 0.3:
                     add_bit(self, 1)
-                    self.step = self.SAVE_DUR
+                    self.confidence *= score1
+                elif max(score0, score1) > 0:
+                    bit = 0 if score0 >= score1 else 1
+                    add_bit(self, bit)
+                    self.confidence *= max(score0, score1) * 0.5
                 else:
-                    self.step = self.RESET
+                    add_bit(self, 0)
+                    self.confidence *= 0.1
+
+                self.step = self.SAVE_DUR
             else:
                 self.step = self.RESET
 
@@ -95,5 +105,6 @@ class HoltekDecoder(BaseProtocolDecoder):
         return (
             f"{self.name} {self.decode_count_bit}bit\n"
             f"Key:0x{hi:08X}{lo:08X}\n"
-            f"Sn:0x{self.serial:05X} Btn:{self.btn >> 4:X} {btn_label}"
+            f"Sn:0x{self.serial:05X} Btn:{self.btn >> 4:X} {btn_label}\n"
+            f"Conf:{self.confidence:.2f}"
         )

@@ -82,7 +82,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
     # ── Read / Record ──────────────────────────────────────────────
 
-    def XCVR_Read_Raw(tpil: tinyPillow):
+    def Read_Raw_Signal(tpil: tinyPillow):
         global freq, rbyt
 
         if not checkForTransciever(tpil):
@@ -113,8 +113,8 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 break
 
         bits = transceiver.recvStop()
-        a.exit()
 
+        term.exit()
         transceiver.sleepMode()
 
         while True:
@@ -204,7 +204,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
     # ── Power ──────────────────────────────────────────────────────
 
-    def Set_XCVR_Power(tpil: tinyPillow):
+    def XCVR_Power(tpil: tinyPillow):
         if not checkForTransciever(tpil):
             return
 
@@ -218,7 +218,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
     # ── Replay ─────────────────────────────────────────────────────
 
-    def XCVR_Replay_Data(tpil: tinyPillow):
+    def Replay_Signals(tpil: tinyPillow):
         global strfrq, freq
 
         if not checkForTransciever(tpil):
@@ -304,7 +304,7 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
     # ── Frequency ──────────────────────────────────────────────────
 
-    def Set_XCVR_Frequency(tpil: tinyPillow):
+    def XCVR_Frequency(tpil: tinyPillow):
         global freq, strfrq
 
         if not checkForTransciever(tpil):

@@ -1,4 +1,4 @@
-from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
+from .base import BaseProtocolDecoder, dur_diff, soft_score, add_bit, reverse_key
 
 
 class IntertechnoDecoder(BaseProtocolDecoder):
@@ -58,10 +58,11 @@ class IntertechnoDecoder(BaseProtocolDecoder):
                 self.step = self.RESET
 
         elif self.step == self.SAVE_DUR:
-            if level and dur_diff(duration, self.te_short) < self.te_delta:
-                self.step = self.CHECK_DUR
-            elif level:
-                self.step = self.RESET
+            if level:
+                if soft_score(duration, self.te_short, self.te_delta) > 0:
+                    self.step = self.CHECK_DUR
+                else:
+                    self.step = self.RESET
 
         elif self.step == self.CHECK_DUR:
             if not level:
@@ -72,14 +73,19 @@ class IntertechnoDecoder(BaseProtocolDecoder):
                             self.callback(self)
                     self.reset()
                     return
-                if dur_diff(duration, self.te_short) < self.te_delta:
+                score0 = soft_score(duration, self.te_short, self.te_delta)
+                score1 = soft_score(duration, self.te_long, self.te_delta)
+                if score0 >= score1 and score0 >= 0.3:
                     add_bit(self, 0)
-                    self.step = self.CONSUME_HIGH
-                elif dur_diff(duration, self.te_long) < self.te_delta:
+                    self.confidence *= score0
+                elif score1 >= 0.3:
                     add_bit(self, 1)
-                    self.step = self.CONSUME_HIGH
+                    self.confidence *= score1
                 else:
-                    self.step = self.RESET
+                    bit = 0 if score0 >= score1 else 1
+                    add_bit(self, bit)
+                    self.confidence *= max(score0, score1, 0.01) * 0.5
+                self.step = self.CONSUME_HIGH
             else:
                 self.step = self.RESET
 
@@ -97,12 +103,15 @@ class IntertechnoDecoder(BaseProtocolDecoder):
                     if self.callback:
                         self.callback(self)
                 self.reset()
-            elif dur_diff(duration, self.te_short) < self.te_delta:
-                self.step = self.SAVE_DUR
-            elif dur_diff(duration, self.te_long) < self.te_delta:
-                self.step = self.SAVE_DUR
             else:
-                self.step = self.RESET
+                short_score = soft_score(duration, self.te_short, self.te_delta)
+                long_score = soft_score(duration, self.te_long, self.te_delta)
+                if short_score >= long_score and short_score > 0:
+                    self.step = self.SAVE_DUR
+                elif long_score > 0:
+                    self.step = self.SAVE_DUR
+                else:
+                    self.step = self.RESET
 
     def result_string(self) -> str:
         serial = (self.decode_data >> 6) & 0x3FFFFFF
@@ -117,5 +126,6 @@ class IntertechnoDecoder(BaseProtocolDecoder):
             f"{self.name} {self.decode_count_bit}bit\n"
             f"Key:0x{self.decode_data:08X}\n"
             f"Rev:0x{rev:08X}\n"
-            f"Sn:{serial:06X} Ch:{ch} {btn}"
+            f"Sn:{serial:06X} Ch:{ch} {btn}\n"
+            f"Conf:{self.confidence:.2f}"
         )

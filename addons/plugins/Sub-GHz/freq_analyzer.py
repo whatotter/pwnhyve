@@ -22,7 +22,7 @@ class PWNFreqAnalyzer(BasePwnhyvePlugin):
         a.setText("setting CC1101 to RX...")
 
         transceiver.setupRawRecieve()
-        time.sleep(1)
+        time.sleep(0.1)
 
         fftRatios = []
         maxFFTs = 52
@@ -110,9 +110,11 @@ class PWNFreqAnalyzer(BasePwnhyvePlugin):
 
             key = tpil.getKey(debounce=True)
             if key == "right":
-                underlineTextIndex += 1
+                if 6 > underlineTextIndex:
+                    underlineTextIndex += 1
             elif key == "left":
-                underlineTextIndex -= 1
+                if underlineTextIndex != 0:
+                    underlineTextIndex -= 1
             elif key == "up":
                 interpretFrequencyChange(1)
             elif key == "down":

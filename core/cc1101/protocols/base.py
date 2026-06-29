@@ -1,8 +1,20 @@
 from typing import Callable, Optional
 
 
+CONFIDENCE_RESET_THRESHOLD = 0.01
+
+
 def dur_diff(a: int, b: int) -> int:
     return abs(a - b)
+
+
+def soft_score(actual: int, expected: int, tolerance: int) -> float:
+    diff = abs(actual - expected)
+    if diff < tolerance:
+        return 1.0
+    if diff < tolerance * 4:
+        return max(0.0, 1.0 - (diff - tolerance) / (tolerance * 3))
+    return 0.0
 
 
 def add_bit(decoder, bit: int):
@@ -38,6 +50,7 @@ class BaseProtocolDecoder:
         self.btn = 0
         self.cnt = 0
         self.te = 0
+        self.confidence = 1.0
 
     def feed(self, level: bool, duration: int):
         raise NotImplementedError

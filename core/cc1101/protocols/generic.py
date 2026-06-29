@@ -1,4 +1,4 @@
-from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
+from .base import BaseProtocolDecoder, dur_diff, soft_score, add_bit, reverse_key
 from .modulation import Modulation, modulation_name
 
 
@@ -53,6 +53,7 @@ class GenericDecoder(BaseProtocolDecoder):
         self._end_min_te_mult = end_min_te_mult
         self._header_mask = header_mask
         self._header_val = header_val
+        self._long_tol = long_tol
 
         BaseProtocolDecoder.__init__(self, callback)
         self.reset()
@@ -151,41 +152,60 @@ class GenericDecoder(BaseProtocolDecoder):
                 self.step = self.RESET
 
     def _decode_bit_hl(self, low_dur):
-        short_last = dur_diff(self.te_last, self.te_short) < self.te_delta
-        long_last = dur_diff(self.te_last, self.te_long) < self.te_delta * 3
-        short_dur = dur_diff(low_dur, self.te_short) < self.te_delta
-        long_dur = dur_diff(low_dur, self.te_long) < self.te_delta * 3
+        long_tol = self._long_tol if self._long_tol is not None else self.te_delta * 3
+
+        short_last_score = soft_score(self.te_last, self.te_short, self.te_delta)
+        long_last_score = soft_score(self.te_last, self.te_long, long_tol)
+        short_dur_score = soft_score(low_dur, self.te_short, self.te_delta)
+        long_dur_score = soft_score(low_dur, self.te_long, long_tol)
 
         if self._invert:
-            bit0_cond = long_last and short_dur
-            bit1_cond = short_last and long_dur
+            score0 = long_last_score * short_dur_score
+            score1 = short_last_score * long_dur_score
         else:
-            bit0_cond = short_last and long_dur
-            bit1_cond = long_last and short_dur
+            score0 = short_last_score * long_dur_score
+            score1 = long_last_score * short_dur_score
 
-        if bit0_cond:
+        if score0 >= score1 and score0 >= 0.3:
             add_bit(self, 0)
-            self.step = self.SAVE_DUR
-        elif bit1_cond:
+            self.confidence *= score0
+        elif score1 >= 0.3:
             add_bit(self, 1)
-            self.step = self.SAVE_DUR
+            self.confidence *= score1
+        elif max(score0, score1) > 0:
+            bit = 0 if score0 >= score1 else 1
+            add_bit(self, bit)
+            self.confidence *= max(score0, score1) * 0.5
         else:
-            self.step = self.RESET
+            add_bit(self, 0)
+            self.confidence *= 0.1
+
+        self.step = self.SAVE_DUR
 
     def _decode_bit_lh(self, high_dur):
-        short_last = dur_diff(self.te_last, self.te_short) < self.te_delta
-        long_last = dur_diff(self.te_last, self.te_long) < self.te_delta
-        short_dur = dur_diff(high_dur, self.te_short) < self.te_delta
-        long_dur = dur_diff(high_dur, self.te_long) < self.te_delta
+        short_last_score = soft_score(self.te_last, self.te_short, self.te_delta)
+        long_last_score = soft_score(self.te_last, self.te_long, self.te_delta)
+        short_dur_score = soft_score(high_dur, self.te_short, self.te_delta)
+        long_dur_score = soft_score(high_dur, self.te_long, self.te_delta)
 
-        if short_last and long_dur:
+        score0 = short_last_score * long_dur_score
+        score1 = long_last_score * short_dur_score
+
+        if score0 >= score1 and score0 >= 0.3:
             add_bit(self, 0)
-            self.step = self.SAVE_DUR
-        elif long_last and short_dur:
+            self.confidence *= score0
+        elif score1 >= 0.3:
             add_bit(self, 1)
-            self.step = self.SAVE_DUR
+            self.confidence *= score1
+        elif max(score0, score1) > 0:
+            bit = 0 if score0 >= score1 else 1
+            add_bit(self, bit)
+            self.confidence *= max(score0, score1) * 0.5
         else:
-            self.step = self.RESET
+            add_bit(self, 0)
+            self.confidence *= 0.1
+
+        self.step = self.SAVE_DUR
 
     def _emit_if_ready(self):
         if self.decode_count_bit >= self.min_count_bit:

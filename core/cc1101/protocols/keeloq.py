@@ -1,4 +1,4 @@
-from .base import BaseProtocolDecoder, dur_diff, add_bit, reverse_key
+from .base import BaseProtocolDecoder, dur_diff, soft_score, add_bit, reverse_key
 
 
 KEE_LOQ_KNOWN_MFR = {
@@ -64,19 +64,29 @@ class KeeLoqDecoder(BaseProtocolDecoder):
                     self.reset()
                     return
 
-                short_te = dur_diff(self.te_last, self.te_short) < self.te_delta
-                long_te = dur_diff(self.te_last, self.te_long) < self.te_delta * 3
-                dur_short = dur_diff(duration, self.te_short) < self.te_delta
-                dur_long = dur_diff(duration, self.te_long) < self.te_delta * 3
+                short_last_score = soft_score(self.te_last, self.te_short, self.te_delta)
+                long_last_score = soft_score(self.te_last, self.te_long, self.te_delta * 3)
+                short_dur_score = soft_score(duration, self.te_short, self.te_delta)
+                long_dur_score = soft_score(duration, self.te_long, self.te_delta * 3)
 
-                if short_te and dur_long:
-                    add_bit(self, 1)
-                    self.step = self.SAVE_DUR
-                elif long_te and dur_short:
+                score1 = short_last_score * long_dur_score
+                score0 = long_last_score * short_dur_score
+
+                if score0 >= score1 and score0 >= 0.3:
                     add_bit(self, 0)
-                    self.step = self.SAVE_DUR
+                    self.confidence *= score0
+                elif score1 >= 0.3:
+                    add_bit(self, 1)
+                    self.confidence *= score1
+                elif max(score0, score1) > 0:
+                    bit = 0 if score0 >= score1 else 1
+                    add_bit(self, bit)
+                    self.confidence *= max(score0, score1) * 0.5
                 else:
-                    self.step = self.RESET
+                    add_bit(self, 0)
+                    self.confidence *= 0.1
+
+                self.step = self.SAVE_DUR
             else:
                 self.step = self.RESET
 
@@ -90,5 +100,6 @@ class KeeLoqDecoder(BaseProtocolDecoder):
             f"{self.name} {self.decode_count_bit}bit\n"
             f"Key:0x{self.decode_data:016X}\n"
             f"Rev:0x{rev:016X}\n"
-            f"Mfr:{mfr} Ser:{serial} Cnt:{cnt}"
+            f"Mfr:{mfr} Ser:{serial} Cnt:{cnt}\n"
+            f"Conf:{self.confidence:.2f}"
         )

@@ -2,17 +2,19 @@ from typing import Callable, Optional
 
 
 class RecognizedSignal:
-    def __init__(self, protocol_name: str, details: str, data: int, bit_count: int):
+    def __init__(self, protocol_name: str, details: str, data: int, bit_count: int,
+                 confidence: float = 1.0):
         self.protocol_name = protocol_name
         self.details = details
         self.data = data
         self.bit_count = bit_count
+        self.confidence = confidence
 
     def __repr__(self):
         return f"[{self.protocol_name}] {self.details}"
 
     def __str__(self):
-        return f"{self.protocol_name} | {self.details}"
+        return f"{self.protocol_name} | {self.details} | conf:{self.confidence:.2f}"
 
 
 class ProtocolRegistry:
@@ -32,6 +34,7 @@ class ProtocolRegistry:
             details=decoder.result_string(),
             data=decoder.decode_data,
             bit_count=decoder.decode_count_bit,
+            confidence=decoder.confidence,
         ))
 
     def feed_all(self, level: bool, duration: int):
@@ -79,9 +82,11 @@ class ProtocolRegistry:
                         details=dec.result_string(),
                         data=dec.decode_data,
                         bit_count=dec.decode_count_bit,
+                        confidence=dec.confidence,
                     ))
 
         self._matched.clear()
+        results.sort(key=lambda s: s.confidence, reverse=True)
         return results
 
     def recognize(self, pulses):
