@@ -16,39 +16,111 @@ class PWNFreqAnalyzer(BasePwnhyvePlugin):
     }
 
     def Frequency_Analyzer(tpil: tinyPillow):
-        if not transceiverEnabled:
-            _no_hw(tpil)
-            return
+        global frequency
 
-        from core.cc1101.protocols.modulation import Modulation
+        a = tpil.gui.screenConsole()
+        a.setText("setting CC1101 to RX...")
 
-        term = tpil.gui.screenConsole()
-        term.addText("Frequency Analyzer")
-        term.addText("shows active freqs")
+        transceiver.setupRawRecieve()
+        time.sleep(1)
 
-        freq_start = tpil.gui.slider("Start MHz", minimum=300, maximum=500)
-        freq_end = tpil.gui.slider("End MHz", minimum=freq_start + 1, maximum=1000)
+        fftRatios = []
+        maxFFTs = 52
+        fftLineHeight = 1
+        underlineTextIndex = 0
 
-        mod_choice = tpil.gui.menu(["OOK", "2FSK"])
-        mod = Modulation.OOK if mod_choice == "OOK" else Modulation.FSK2
+        frequency = round(transceiver.getFreqMHz(), 4)
+        def drawFrequency():
+            textWidth = 4
+            textHeight = 10
+            textOffset = 2
 
-        term.clearText()
-        term.addText("scanning {:d}-{:d} MHz".format(freq_start, freq_end))
-        term.addText("mod: " + mod_choice)
-        term.addText("PRESS ANY KEY TO STOP")
+            textInitialX, textInitialY = 1,1
 
-        results = _scan_freqs(freq_start, freq_end, mod, term, tpil)
+            # draw target frequency aswell
+            tpil.text(
+                [textInitialX,textInitialY], 
+                f"{frequency:.3f}  MHz", 
+                fontSize=16
+                )
+            
+            if underlineTextIndex >= 3: # decimal point is in the way, so add to offset
+                textInitialX += 2
 
-        term.clearText()
-        if not results:
-            term.addText("no signals found")
-        else:
-            term.addText("Active frequencies:")
-            for f, rssi in results[:10]:
-                bar = "#" * max(1, min(20, int((rssi + 120) / 3)))
-                term.addText("{:.1f}MHz {:3.0f}dBm {}".format(f, rssi, bar))
+            underlineStartX = textInitialX+(underlineTextIndex*(textOffset+textWidth))
+            tpil.rect(
+                [underlineStartX, textInitialY+textHeight], 
+                [underlineStartX+textWidth, textInitialY+textHeight]
+                )
 
-        tpil.waitForKey()
+        def interpretFrequencyChange(direction):
+            global frequency
+
+            value = 100 / (10**underlineTextIndex)
+
+            print("changing value by {} (underlineTextIndex = {})".format(value, underlineTextIndex))
+
+            transceiver.setFreq(frequency+(value*direction))
+            frequency = round(transceiver.getFreqMHz(), 4)
+            transceiver.setupRawRecieve() # redo this.. for some reason?
+
+
+        def drawFFT():
+            yCoord = 16
+
+            xCoordCenter = 128/2
+            maxFFTLineWidth = 64
+            fftRatiosReversed = fftRatios.copy()[::-1]
+
+            for fftRatio in fftRatiosReversed:
+                fftLineWidth = maxFFTLineWidth*fftRatio
+                fftHalfLineWidth = fftLineWidth/2
+
+                tpil.rect(
+                    [xCoordCenter-fftHalfLineWidth, yCoord], 
+                    [xCoordCenter+fftHalfLineWidth, yCoord+fftLineHeight]
+                    )
+                yCoord += fftLineHeight
+
+        a.exit()
+        transceiver.setMS(5)
+        while True:
+            hasLiveBits = 0
+            samplesToTake = 250
+
+            samples = transceiver.recvSamples(samplesToTake, delayms=-1)
+
+            for sample in samples:
+                if sample:
+                    hasLiveBits += 1
+
+            if hasLiveBits and hasLiveBits > 10: # debug
+                print("has live bits: {}/{} ({} ratio)".format(
+                    hasLiveBits, samplesToTake,
+                    hasLiveBits/samplesToTake
+                ))
+
+            fftRatios.append(hasLiveBits/samplesToTake) # save ratio of 1s and 0s
+            fftRatios = fftRatios[-maxFFTs:] # get last 100 FFT ratios
+
+            tpil.clear()
+            drawFFT()
+            drawFrequency()
+            tpil.show()
+
+            key = tpil.getKey(debounce=True)
+            if key == "right":
+                underlineTextIndex += 1
+            elif key == "left":
+                underlineTextIndex -= 1
+            elif key == "up":
+                interpretFrequencyChange(1)
+            elif key == "down":
+                interpretFrequencyChange(-1)
+            elif key == "press":
+                break
+
+        a.exit()
 
 
 def _no_hw(tpil):

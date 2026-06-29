@@ -163,7 +163,7 @@ class FastIO:
         if output != None:
             self.args["file"] = output
         else:
-            self.args["file"] = 'samples'
+            self.args["file"] = '/tmp/samples'
 
         proc = self.__launchProcess__(bg=bg)
 
@@ -217,8 +217,10 @@ class FastIO:
         """
         set polling rate to X nanoseconds (min is ~500ns, overhead)
         """
-        self.args["sleep"] = int(ns-500 if ns-500 > 0 else 0)
-        print("[+] set PIO sleep to {}ns".format(ns))
+        calculatedSleep = int(ns-500 if ns-500 > 0 else 0)
+        if calculatedSleep != self.args["sleep"]:
+            self.args["sleep"] = calculatedSleep
+            print("[+] set PIO sleep to {}ns".format(ns))
 
     def __launchProcess__(self, bg=False) -> None:
         """
@@ -230,7 +232,7 @@ class FastIO:
         #if self.nice is not None:
         #    cmd = ["nice", "-n", "-20"] + cmd
 
-        print("[+] {}".format(' '.join(cmd)))
+        #print("[+] {}".format(' '.join(cmd)))
 
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         
@@ -260,7 +262,7 @@ class FastIO:
 
         return x
     
-    def __parseBin__(self, pin, binf="samples", remove=False) -> str:
+    def __parseBin__(self, pin, binf="/tmp/samples", remove=False) -> str:
         """parse bin file to bits"""
         bits = []
 

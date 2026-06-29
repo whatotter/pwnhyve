@@ -4,6 +4,7 @@ import time
 import core.cc1101.ccrf as ccrf
 import core.cc1101.binary as binTranslate
 import core.cc1101.flipsub as fsub
+from core.cc1101.protocols.registry import build_default_registry
 
 from core.plugin import BasePwnhyvePlugin
 from core.utils import IPC
@@ -72,11 +73,11 @@ def _syncFreqDisplay():
 class PWNsubGhz(BasePwnhyvePlugin):
 
     _icons = {
-        "XCVR_Read_Raw":         "./core/icons/router.bmp",
-        "Set_XCVR_Power":        "./core/icons/router.bmp",
-        "Set_XCVR_Frequency":    "./core/icons/router.bmp",
-        "XCVR_Replay_Data":      "./core/icons/routeremit.bmp",
-        "Play_FM_Radio":         "./core/icons/routeremit.bmp",
+        "Read_Raw_Signal":         "./core/icons/router.bmp",
+        "XCVR_Power":        "./core/icons/router.bmp",
+        "XCVR_Frequency":    "./core/icons/router.bmp",
+        "Replay_Signals":      "./core/icons/routeremit.bmp",
+        "FM_Transmit":         "./core/icons/routeremit.bmp",
     }
 
     # ── Read / Record ──────────────────────────────────────────────
@@ -87,17 +88,23 @@ class PWNsubGhz(BasePwnhyvePlugin):
         if not checkForTransciever(tpil):
             return
 
-        a = tpil.gui.screenConsole()
-        a.setText("setting CC1101 to RX...")
-        a.addText("{} MHz | RAW | RX".format(strfrq))
+        term = tpil.gui.screenConsole()
 
+        term.clearText()
         transceiver.setupRawRecieve()
-        time.sleep(1)
+        time.sleep(0.1)
 
-        a.addText("hit any key to start recording")
-        tpil.waitForKey()
+        term.addText(f"RXing @ {transceiver.getFreqMHz():.3f}MHz")
+        term.addText(f"Hit 'Left' to exit.")
+        term.addText(f"Waiting on your key..")
 
-        a.addText("recording... hit any key to stop")
+        key = tpil.waitForKey()
+        if key == "left":
+            return
+
+        term.clearText()
+        term.addText("Recording signal")
+        term.addText("Press any key to stop.")
 
         transceiver.recvInf()
 
@@ -108,13 +115,15 @@ class PWNsubGhz(BasePwnhyvePlugin):
         bits = transceiver.recvStop()
         a.exit()
 
+        transceiver.sleepMode()
+
         while True:
             mnu = tpil.gui.menu(
-                ["continue", "save to file", "retry", "view", "discard"],
+                ["Save to File", "Retry", "View", "Discard", "Identify"],
                 disableBack=True,
             )
 
-            if mnu == "save to file":
+            if mnu == "Save to File":
                 name = tpil.gui.enterText(suffix=".sub")
 
                 octets = binTranslate.bitsToOctet(bits)
@@ -136,11 +145,11 @@ class PWNsubGhz(BasePwnhyvePlugin):
                     f.write("\n".join(fdata))
                     f.flush()
 
-            elif mnu == "retry":
+            elif mnu == "Retry":
                 PWNsubGhz.XCVR_Read_Raw(tpil)
                 return
 
-            elif mnu == "view":
+            elif mnu == "View":
                 a = tpil.gui.screenConsole()
 
                 byts = binTranslate.bitsToOctet(
@@ -172,7 +181,24 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
                 a.exit()
 
-            elif mnu in ("continue", "discard"):
+            elif mnu == "Identify":
+                identTerm = tpil.gui.screenConsole()
+
+                reg = build_default_registry()
+
+                pulses = fsub.bitsToRawData(bits)
+                results = reg.recognize(pulses)
+
+                if results:
+                    for r in results:
+                        identTerm.addText(str(r))
+                else:
+                    identTerm.addText("No protocol matched.")
+
+                tpil.waitForKey()
+                identTerm.exit()
+
+            elif mnu in ("Continue", "Discard"):
                 transceiver.sleepMode()
                 return
 

@@ -148,6 +148,14 @@ class pCC1101:
     # ------------------------------------------------------------------
 
     def setFreq(self, val: float, doCalc: bool = True) -> None:
+        """
+        Set frequency. `val` must be a float, ergo `303.914`.
+
+        Set `doCalc` to `False` if targeting a very specific frequency, this disables the `val * 10**6` calculation needed for the CC1101.
+
+        Highly recommended to redo your configuration, so if you're trying to recieve, run `xcvr.setupRawRecieve()` after.
+        Or, if doing TX, `xcvr.setupRawTransmission()`
+        """
         self.trs._command_strobe(StrobeAddress.SIDLE)
         if doCalc:
             self.currentFreq = val * 10**6
@@ -349,9 +357,17 @@ class pCC1101:
     #  RX methods
     # ------------------------------------------------------------------
 
-    def recvSamples(self, bits: int, delayms: int = 5) -> list:
+    def setMS(self, delayms:int) -> None:
+        """
+        Sets FastIO speed, in microseconds
+        """
         fio.setNS(delayms * 1000)
-        return fio.readSamples(GDO2, bits)
+
+    def recvSamples(self, bits: int, delayms: int = 5) -> list[bool]:
+        if delayms != -1: # don't change FastIO speed if it's not requested to
+            fio.setNS(delayms * 1000)
+
+        return fio.readSamples(GDO2, bits)[0]
 
     def recvInf(self) -> None:
         fio.setNS(1000)

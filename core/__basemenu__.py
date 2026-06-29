@@ -640,7 +640,7 @@ class BasePwnhyveScreen():
 
             self.tpil.text([xy1[0]+4, xy1[1]+2+textYOffset], 
                            '\n'.join(textLines[offset:5+offset]), 
-                           font=ImageFont.truetype('core/fonts/Tiny5-Regular.ttf', 8)
+                           fontSize=16
                            )
 
             self.tpil.show(clear=False)

@@ -13,9 +13,7 @@ class PWNRAWTools(BasePwnhyvePlugin):
 
     _icons = {
         "Signal_Browser":    "./core/icons/router.bmp",
-        "RT_Info":      "./core/icons/router.bmp",
-        "RT_Convert":   "./core/icons/router.bmp",
-        "RT_Replay":    "./core/icons/router.bmp",
+        "Signal_Library_Info":      "./core/icons/router.bmp",
     }
 
     def Signal_Browser(tpil: tinyPillow):
