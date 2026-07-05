@@ -1,25 +1,25 @@
-from .base import BaseProtocolDecoder, dur_diff
+from .base import BaseProtocolDecoder, dur_diff, soft_score
 
 
 PACKET_TRITS = 21
 TRITS_TO_BITS = {0: 0, 1: 1, 2: 0}
 
 
-def _decode_trit(low_dur: int, high_dur: int, te: int, td: int) -> int:
-    low_short = dur_diff(low_dur, te) < td
-    low_med = dur_diff(low_dur, te * 2) < td
-    low_long = dur_diff(low_dur, te * 3) < td * 2
-    high_short = dur_diff(high_dur, te) < td
-    high_med = dur_diff(high_dur, te * 2) < td
-    high_long = dur_diff(high_dur, te * 3) < td * 2
+def _decode_trit(low_dur: int, high_dur: int, te: int, td: int) -> tuple:
+    s_low_short = soft_score(low_dur, te, td)
+    s_low_med = soft_score(low_dur, te * 2, td)
+    s_low_long = soft_score(low_dur, te * 3, td * 2)
+    s_high_short = soft_score(high_dur, te, td)
+    s_high_med = soft_score(high_dur, te * 2, td)
+    s_high_long = soft_score(high_dur, te * 3, td * 2)
 
-    if low_short and high_long:
-        return 2
-    if low_med and high_med:
-        return 1
-    if low_long and high_short:
-        return 0
-    return -1
+    score2 = s_low_short * s_high_long
+    score1 = s_low_med * s_high_med
+    score0 = s_low_long * s_high_short
+
+    scores = {0: score0, 1: score1, 2: score2}
+    best = max(scores, key=scores.get)
+    return best, scores[best]
 
 
 class SecPlusV1Decoder(BaseProtocolDecoder):
@@ -67,19 +67,17 @@ class SecPlusV1Decoder(BaseProtocolDecoder):
 
         elif self.step == self.CHECK_HIGH:
             if level:
-                trit = _decode_trit(self.te_last, duration,
-                                    self.te_short, self.te_delta)
-                if trit >= 0:
-                    self._trits.append(trit)
-                    self.decode_data = (self.decode_data << 2) | trit
-                    self.decode_count_bit += 1
-                    if len(self._trits) >= PACKET_TRITS:
-                        self._pkt1 = self.decode_data
-                        self.step = self.GAP_LOW
-                    else:
-                        self.step = self.SAVE_LOW
+                trit, trit_conf = _decode_trit(self.te_last, duration,
+                                               self.te_short, self.te_delta)
+                self.confidence *= trit_conf if trit_conf > 0 else 0.1
+                self._trits.append(trit)
+                self.decode_data = (self.decode_data << 2) | trit
+                self.decode_count_bit += 1
+                if len(self._trits) >= PACKET_TRITS:
+                    self._pkt1 = self.decode_data
+                    self.step = self.GAP_LOW
                 else:
-                    self.step = self.RESET
+                    self.step = self.SAVE_LOW
             else:
                 self.step = self.RESET
 
@@ -107,21 +105,19 @@ class SecPlusV1Decoder(BaseProtocolDecoder):
 
         elif self.step == self.SECOND_CHECK_HIGH:
             if level:
-                trit = _decode_trit(self.te_last, duration,
-                                    self.te_short, self.te_delta)
-                if trit >= 0:
-                    self._trits2.append(trit)
-                    self.decode_data = (self.decode_data << 2) | trit
-                    self.decode_count_bit += 1
-                    if len(self._trits2) >= PACKET_TRITS:
-                        self._pkt2 = self.decode_data
-                        if self.callback:
-                            self.callback(self)
-                        self.reset()
-                    else:
-                        self.step = self.SECOND_SAVE_LOW
+                trit, trit_conf = _decode_trit(self.te_last, duration,
+                                               self.te_short, self.te_delta)
+                self.confidence *= trit_conf if trit_conf > 0 else 0.1
+                self._trits2.append(trit)
+                self.decode_data = (self.decode_data << 2) | trit
+                self.decode_count_bit += 1
+                if len(self._trits2) >= PACKET_TRITS:
+                    self._pkt2 = self.decode_data
+                    if self.callback:
+                        self.callback(self)
+                    self.reset()
                 else:
-                    self.step = self.RESET
+                    self.step = self.SECOND_SAVE_LOW
             else:
                 self.step = self.RESET
 
@@ -143,5 +139,6 @@ class SecPlusV1Decoder(BaseProtocolDecoder):
             f"Pkt1:0x{pkt1:032X}\n"
             f"Pkt2:0x{pkt2:032X}\n"
             f"Fixed:0x{fixed_code:08X}\n"
-            f"Roll:0x{rolling_code:08X}"
+            f"Roll:0x{rolling_code:08X}\n"
+            f"Conf:{self.confidence:.2f}"
         )
