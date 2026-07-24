@@ -5,6 +5,7 @@ from PIL import Image, ImageFont
 from threading import Thread
 from time import sleep
 from subprocess import getoutput
+from core.pil_simplify import tinyPillow
 
 from core.plugin import BasePwnhyvePlugin
 
@@ -297,7 +298,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
     _icons = {
         "AP_Scanner": "./core/icons/router.bmp"
     }
-    def AP_Scanner(tpil):
+    def AP_Scanner(tpil:tinyPillow):
 
         class abVars:
             stri = []
@@ -317,7 +318,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
         font = ImageFont.truetype('core/fonts/roboto.ttf', 10)
 
         try:
-            cli = bcap.Client(iface=config["wifi"]["interface"])
+            cli = bcap.Client()
             if not cli.successful: raise Exception("b") # why the fuck did i do this
         except Exception as e:
             tpil.clear()
@@ -344,6 +345,8 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 abVars.json = cli.getPairs()
                 #print(abVars.json)
 
+                print(abVars.json)
+
                 for bssid in abVars.json:
 
                     if bssid in abVars.stri:
@@ -360,7 +363,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 if len(abVars.stri) != 0:
                     break
 
-                tpil.text((3, 16), loading, fill=0, outline=255, font=None)
+                tpil.text((3, 16), loading)
                 loading += "."
 
                 if len(loading) == 24: loading = "."
@@ -370,13 +373,13 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 sleep(1)
         
 
-            tpil.rect([(0, 0), (200, 14)], fill=0, outline=255)
+            tpil.rect((0, 0), (200, 14))
 
             try:
-                tpil.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]), fill=1, outline=255, font=None)
+                tpil.text((3, 1), ''.join([str(x) for x in abVars.json[abVars.stri[ch]][0][:16]]))
             except:
                 tpil.text((3, 1), "n/a", fill=1, outline=255, font=None)
-            tpil.text((100, 1), "{}/{}".format(abVars.stri.index(abVars.stri[ch]), len(abVars.stri) - 1), fill=1, outline=255, font=font)
+            tpil.text((100, 1), "{}/{}".format(abVars.stri.index(abVars.stri[ch]), len(abVars.stri) - 1))
 
             compiledJson = []
 
@@ -396,7 +399,7 @@ class PWN_Essensials(BasePwnhyvePlugin):
                 compiledJson.pop(0)
 
             # TODO: finish this; scroll left and right
-            tpil.text((3, 16), '\n'.join(compiledJson), fill=0, outline=255, font=font)
+            tpil.text((3, 16), '\n'.join(compiledJson))
 
             tpil.show()
 

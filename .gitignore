@@ -4,6 +4,7 @@
 /bin
 pyvenv.cfg
 pwnhyve.log
+bettercap.log
 /share
 /include
 __pycache__
