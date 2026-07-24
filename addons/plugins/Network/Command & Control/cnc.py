@@ -10,7 +10,12 @@ class PWNCNC(BasePwnhyvePlugin):
         pass
 
     def CatwalkC2(tpil):
+        # self plug :)
         pass
 
     def Villain(tpil):
+        pass
+
+    def PwnCat(tpil):
+        # https://github.com/cytopia/pwncat
         pass
