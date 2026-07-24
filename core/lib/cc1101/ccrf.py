@@ -5,23 +5,23 @@ from typing import List, Optional, Tuple, Union
 
 from RPi import GPIO
 import gpiozero as gpioz
-from core.pio.fastio import FastIO
+from core.lib.pio.fastio import FastIO
 
-import core.cc1101.lib as cc1101
-from core.cc1101.lib.options import (
+import core.lib.cc1101.lib as cc1101
+from core.lib.cc1101.lib.options import (
     _TransceiveMode,
     ModulationFormat,
     SyncMode,
     PacketLengthMode,
 )
-from core.cc1101.lib.addresses import (
+from core.lib.cc1101.lib.addresses import (
     ConfigurationRegisterAddress,
     FIFORegisterAddress,
     PatableAddress,
     StatusRegisterAddress,
     StrobeAddress,
 )
-from core.cc1101.lib import MainRadioControlStateMachineState
+from core.lib.cc1101.lib import MainRadioControlStateMachineState
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 import time
 
-from core.cc1101._shared import get_instance as _get_cc1101
+from core.lib.cc1101._shared import get_instance as _get_cc1101
 
 transceiver = _get_cc1101()
 transceiverEnabled = transceiver is not None

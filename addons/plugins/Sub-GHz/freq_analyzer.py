@@ -1,7 +1,7 @@
 import time
 import math
 
-from core.cc1101._shared import get_instance as _get_cc1101
+from core.lib.cc1101._shared import get_instance as _get_cc1101
 transceiver = _get_cc1101()
 transceiverEnabled = transceiver is not None
 
@@ -144,7 +144,7 @@ def _scan_freqs(f_start, f_end, mod, term, tpil):
     step_mhz = 0.5
     f = f_start
 
-    from core.cc1101.protocols.modulation import MOD_NAMES
+    from core.lib.cc1101.protocols.modulation import MOD_NAMES
     mod_name = MOD_NAMES.get(mod, "OOK")
 
     while f <= f_end:

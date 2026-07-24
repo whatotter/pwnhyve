@@ -75,7 +75,7 @@ def extract_from_pcap(path, fields):
                 raise KeyError("Could not find field [ENCRYPTION]")
         elif field == WifiInfo.CHANNEL:
             from scapy.all import sniff, RadioTap
-            from core.bettercap.bettercap import freq_to_channel
+            from core.lib.bettercap.bettercap import freq_to_channel
             packets = sniff(offline=path, count=1)
             try:
                 results[field] = freq_to_channel(packets[0][RadioTap].ChannelFrequency)
@@ -83,7 +83,7 @@ def extract_from_pcap(path, fields):
                 raise KeyError("Could not find field [CHANNEL]")
         elif field == WifiInfo.RSSI:
             from scapy.all import sniff, RadioTap
-            from core.bettercap.bettercap import freq_to_channel
+            from core.lib.bettercap.bettercap import freq_to_channel
             packets = sniff(offline=path, count=1)
             try:
                 results[field] = packets[0][RadioTap].dBm_AntSignal

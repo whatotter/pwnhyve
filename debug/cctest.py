@@ -1,6 +1,6 @@
 import time
-import core.cc1101.ccrf as rf
-import core.cc1101.binary as binTranslate
+import core.lib.cc1101.ccrf as rf
+import core.lib.cc1101.binary as binTranslate
 
 a = rf.pCC1101()
 

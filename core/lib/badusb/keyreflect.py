@@ -1,6 +1,6 @@
 import threading
 import time
-from core.badusb.badusb import BadUSB
+from core.lib.badusb.badusb import BadUSB
 
 class KeyReflectionSocket():
     """

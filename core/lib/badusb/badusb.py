@@ -7,7 +7,7 @@ import os
 from random import randint, gauss
 
 import jinja2
-import core.badusb.keys as usbKeys
+import core.lib.badusb.keys as usbKeys
 from core.utils import config
 import select
 

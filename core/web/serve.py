@@ -5,7 +5,7 @@ from flask import Flask, Response, send_from_directory, request
 from flask_socketio import SocketIO
 import pam as PAMAuth
 from core.utils import *
-from core.remotecontrol.util import *
+from core.web.util import *
 
 app = Flask(__name__)
 socketio = SocketIO(app) 
@@ -34,13 +34,13 @@ def generateSession(token, u, p):
 #region flask stuff
 @app.route("/")
 def index():
-    return open("./core/remotecontrol/site/control.html", "r").read()
+    return open("./core/web/site/control.html", "r").read()
 
 @app.route("/pwa-manifest.json")
 def pwa():
-    #return open("./core/remotecontrol/manifest.json", "r").read()
+    #return open("./core/web/manifest.json", "r").read()
     return Response(
-        open("./core/remotecontrol/site/manifest.json", "r").read(), 
+        open("./core/web/site/manifest.json", "r").read(), 
         status=200, headers={"Content-Type": "application/manifest+json"}
         )
 
@@ -85,7 +85,7 @@ def webuiaddons(file):
 @app.route("/<path:file>")
 def files(file):
     try:
-        #return open("./core/remotecontrol/site/{}".format(file), "rb").read()
+        #return open("./core/web/site/{}".format(file), "rb").read()
         return send_from_directory("./site", file)
     except FileNotFoundError:
         return Response("404", status=404)

@@ -1,7 +1,7 @@
 import time
 from PIL import ImageFont
-from core.badusb.badusb import BadUSB, DuckyScriptInterpreter
-from core.badusb.keyreflect import KeyReflectionSocket
+from core.lib.badusb.badusb import BadUSB, DuckyScriptInterpreter
+from core.lib.badusb.keyreflect import KeyReflectionSocket
 import os
 from core.plugin import BasePwnhyvePlugin
 

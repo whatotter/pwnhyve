@@ -1,6 +1,6 @@
 import json
 import time
-from core.bettercap.bettercap import Client
+from core.lib.bettercap.bettercap import Client
 from core.plugin import BasePwnhyvePlugin
 from core.pil_simplify import tinyPillow
 from textwrap import wrap

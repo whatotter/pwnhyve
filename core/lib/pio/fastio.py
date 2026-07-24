@@ -61,7 +61,7 @@ class FastIO:
     def __init__(self) -> None:
         self.delayNS = 0
 
-        self._executable_ = "./core/pio/pio"
+        self._executable_ = "./core/lib/pio/pio"
         self._process_ = None
         self.defaultArgs = {
             "samples": "-1",

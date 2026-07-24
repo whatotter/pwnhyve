@@ -1,4 +1,4 @@
-import core.bettercap.bettercap as bcap
+import core.lib.bettercap.bettercap as bcap
 from core.utils import *
 from random import choice, randrange,randint
 from PIL import Image, ImageFont

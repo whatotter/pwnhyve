@@ -1,6 +1,6 @@
 import os
 
-from core.rpitx.rpitx import rpitx, rpitxTypes, PiFMRds
+from core.lib.rpitx.rpitx import rpitx, rpitxTypes, PiFMRds
 from core.plugin import BasePwnhyvePlugin
 from core.pil_simplify import tinyPillow
 import time

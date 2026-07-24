@@ -1,4 +1,4 @@
-from core.cc1101.ccrf import pCC1101
+from core.lib.cc1101.ccrf import pCC1101
 
 _instance = None
 

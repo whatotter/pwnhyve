@@ -1,7 +1,7 @@
 import datetime
 import json
 from core.plugin import BasePwnhyvePlugin
-from core.EAPHammer.eaphammer import EAPHammer
+from core.lib.EAPHammer.eaphammer import EAPHammer
 
 hammer = EAPHammer("eaphammer")
 hammer.bootstrap()

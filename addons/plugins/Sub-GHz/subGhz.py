@@ -1,10 +1,10 @@
 import os
 import time
 
-import core.cc1101.ccrf as ccrf
-import core.cc1101.binary as binTranslate
-import core.cc1101.flipsub as fsub
-from core.cc1101.protocols.registry import build_default_registry
+import core.lib.cc1101.ccrf as ccrf
+import core.lib.cc1101.binary as binTranslate
+import core.lib.cc1101.flipsub as fsub
+from core.lib.cc1101.protocols.registry import build_default_registry
 
 from core.plugin import BasePwnhyvePlugin
 from core.utils import IPC
@@ -31,7 +31,7 @@ except Exception:
     print("[+] CC1101 not detected")
 """
 
-from core.cc1101._shared import get_instance as _get_cc1101
+from core.lib.cc1101._shared import get_instance as _get_cc1101
 try:
     transceiver = _get_cc1101()
     freq = transceiver.currentFreq
