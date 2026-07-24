@@ -1,11 +1,12 @@
 import os
 import time
 
-import core.cc1101.ccrf as ccrf
-import core.cc1101.binary as binTranslate
-import core.cc1101.flipsub as fsub
+import core.lib.cc1101.ccrf as ccrf
+import core.lib.cc1101.binary as binTranslate
+import core.lib.cc1101.flipsub as fsub
+from core.lib.cc1101.protocols.registry import build_default_registry
 
-from core.plugin import BasePwnhyvePlugin 
+from core.plugin import BasePwnhyvePlugin
 from core.utils import IPC
 from core.pil_simplify import tinyPillow
 
@@ -20,85 +21,92 @@ def blinkerSub(sender, **kw):
 
 ui.subscribe(blinkerSub)
 
+"""
 try:
     transceiver = ccrf.pCC1101()
     freq = transceiver.currentFreq
-    strfrq = str(freq)[:3]
+    strfrq = str(int(freq / 1e6))
     transceiverEnabled = True
-except:
+except Exception:
     print("[+] CC1101 not detected")
+"""
 
-def scText(text, caption, maxln=6):
+from core.lib.cc1101._shared import get_instance as _get_cc1101
+try:
+    transceiver = _get_cc1101()
+    freq = transceiver.currentFreq
+    strfrq = str(int(freq / 1e6))
+except:
+    transceiver = None
+    freq = 0
+    strfrq = "0"
+
+transceiverEnabled = transceiver is not None
+
+
+def scText(text, caption, maxln=5):
     global sctext
-
-    s = (sctext+"\n"+str(text)).strip().split("\n")
+    s = (sctext + "\n" + str(text)).strip().split("\n")
     lines = len(s)
-
-    if lines > maxln-1:
-        while len(s) > maxln-1:
-            print("pop!")
+    if lines > maxln - 1:
+        while len(s) > maxln - 1:
             s.pop(0)
-    elif lines != maxln-1:
-        while len(s) != maxln-1:
+    elif lines != maxln - 1:
+        while len(s) != maxln - 1:
             s.append("")
-
     s.append(caption)
-
     return '\n'.join(s)
 
-def checkForTransciever(tpil:tinyPillow):
-
+def checkForTransciever(tpil: tinyPillow):
     if not transceiverEnabled:
         a = tpil.gui.screenConsole()
         a.addText("No CC1101 detected - this function is disabled")
-
         tpil.waitForKey()
         return False
-    
     return True
+
+def _syncFreqDisplay():
+    global freq, strfrq
+    freq = transceiver.currentFreq
+    strfrq = str(int(freq / 1e6))
 
 class PWNsubGhz(BasePwnhyvePlugin):
 
     _icons = {
-        "XCVR_Read_Raw": "./core/icons/router.bmp",
-        "Set_XCVR_Power": "./core/icons/router.bmp",
-        "Set_XCVR_Frequency": "./core/icons/router.bmp",
-        "XCVR_Replay_Data": "./core/icons/routeremit.bmp",
-        "Play_FM_Radio": "./core/icons/routeremit.bmp",
+        "Read_Raw_Signal":         "./core/icons/router.bmp",
+        "XCVR_Power":        "./core/icons/router.bmp",
+        "XCVR_Frequency":    "./core/icons/router.bmp",
+        "Replay_Signals":      "./core/icons/routeremit.bmp",
+        "FM_Transmit":         "./core/icons/routeremit.bmp",
     }
-    
-    def XCVR_Read_Raw(tpil:tinyPillow):
+
+    # ── Read / Record ──────────────────────────────────────────────
+
+    def Read_Raw_Signal(tpil: tinyPillow):
         global freq, rbyt
 
-        if not checkForTransciever(tpil): return
+        if not checkForTransciever(tpil):
+            return
 
-        transceiver.rst()
+        term = tpil.gui.screenConsole()
 
-        a = tpil.gui.screenConsole()
-        
-        a.setText("setting CC1101 to RX...")
-        a.addText("{}hz | RAW | RX".format(strfrq))
-
+        term.clearText()
         transceiver.setupRawRecieve()
+        time.sleep(0.1)
 
-        time.sleep(1)
+        term.addText(f"RXing @ {transceiver.getFreqMHz():.3f}MHz")
+        term.addText(f"Hit 'Left' to exit.")
+        term.addText(f"Waiting on your key..")
 
-        """
-        while True:
-            a = transceiver.rawRecv(100)
-            print(''.join([str(x) for x in a]))
-            time.sleep(0.25)
-        """
-        
-        #a.addText("hit any key to start RX")
+        key = tpil.waitForKey()
+        if key == "left":
+            return
 
-        a.addText("hit any key to start recording")
+        term.clearText()
+        term.addText("Recording signal")
+        term.addText("Press any key to stop.")
 
-        tpil.waitForKey()
-
-        a.addText("hit any key to stop")
-        
-        transceiver.recvInf() # start reading
+        transceiver.recvInf(ns=1000)
 
         while True:
             if tpil.checkIfKey():
@@ -106,192 +114,173 @@ class PWNsubGhz(BasePwnhyvePlugin):
 
         bits = transceiver.recvStop()
 
-        #print(hexs)
-
-
-        """
-        while True:
-            a.text = "recording.."
-            bits = transceiver.rawRecv(1000, uslp=0.5)
-            a.text = "waiting.."
-            z = disp.waitForKey()
-            if z == disp.pinout["KEY_LEFT_PIN"]:
-                break
-        
-        rbyt["data"] = bits
-        """
-
-        #a.addText("done recording")
-
-        #disp.waitForKey()
-        a.exit() 
-
-        transceiver.csn(0)
+        term.exit()
+        transceiver.sleepMode()
 
         while True:
-            mnu = tpil.gui.menu(["continue", "save to file", "retry", "view", "discard"], disableBack=True)
+            mnu = tpil.gui.menu(
+                ["Save to File", "Retry", "View", "Discard", "Identify"],
+                disableBack=True,
+            )
 
-            if mnu == "save to file":
+            if mnu == "Save to File":
+                name = tpil.gui.enterText(suffix=".sub")
 
-                octets = binTranslate.bitsToOctet(
-                    bits
-                )
-
+                octets = binTranslate.bitsToOctet(bits)
                 hexs = binTranslate.octetsToHex(octets)
-
-                with open("./addons/subghz/"+tpil.gui.enterText(suffix=".sub"), "w") as f:
+                path = os.path.join(".", "addons", "subghz", name)
+                with open(path, "w") as f:
                     fdata = (
                         "Filetype: Flipper SubGhz RAW File",
                         "Version: 1",
                         "Frequency: {}".format(round(freq)),
-                        "Preset: FuriHalSubGhzPresetOok650Async", # am i confident this is correct? fuck no
+                        "Preset: FuriHalSubGhzPresetOok650Async",
                         "Protocol: RAW",
                         "RAW_Data: {}".format(
-                            ' '.join([str(x) for x in fsub.bitsToRawData(bits)])
-                            ),
+                            " ".join(str(x) for x in fsub.bitsToRawData(bits))
+                        ),
                         "HEX_Data: {}".format(" ".join(hexs)),
-                        "BIT_Data: {}".format(' '.join([str(x) for x in bits]))
+                        "BIT_Data: {}".format(" ".join(str(x) for x in bits)),
                     )
                     f.write("\n".join(fdata))
                     f.flush()
 
-            elif mnu == "retry":
-                PWNsubGhz.Read_Raw(tpil) # kids, don't do this
+            elif mnu == "Retry":
+                PWNsubGhz.XCVR_Read_Raw(tpil)
                 return
-            
-            elif mnu == "view":
+
+            elif mnu == "View":
+                a = tpil.gui.screenConsole()
 
                 byts = binTranslate.bitsToOctet(
                     binTranslate.deleteTrailingNull(bits)
                 )
-
                 hexs = binTranslate.octetsToHex(byts)
 
-                a = tpil.gui.screenConsole()
-
-                lines = []
-                curline = []
-                maxhexperline = 6
-
-                elipsesAdded = False
-                currentHexVal = -100
-
-                for hexa in hexs:
-                    if hexa == currentHexVal: # if current hexadecimal is the same as the most recent
-                        if not elipsesAdded:
-                            curline.append('...') # add elipses
-                            elipsesAdded = True
-                        
-                        #continue
-                    else: # if its not
-                        if elipsesAdded: # but the most recent addition is elipses
-                            if hexa == currentHexVal: # and if the current hex value is the same as the most recent hex value (NOT elipses)
-                                print("unoriginal")
-                                #continue # then continue, we don't want more elipses
-                            else:
-                                print("original")
-                                elipsesAdded = False
-                                curline.append(hexa)
-
-                    currentHexVal = hexa
-
-                    print(curline)
-
-                    if len(curline) == maxhexperline:
-                        lines.append(' '.join(curline))
-                        curline.clear()
-                        
-                if len(curline) != 0:
-                    lines.append(' '.join(curline))
-
-                lines.append("EOF.")
-
+                lines = _formatHexView(hexs)
                 offset = 0
 
                 while True:
-                    selectedLines = lines[0+offset:6+offset]
-
+                    selectedLines = lines[offset:offset + 6]
                     a.text = '\n'.join(selectedLines)
-
                     a.update()
                     z = tpil.waitForKey()
 
                     if z == "down":
-                        offset += 1 if selectedLines[0] != "EOF." else 0
+                        if selectedLines and selectedLines[0] != "EOF.":
+                            offset += 1
                     elif z == "up":
-                        offset -= 1 if offset != 0 else 0
+                        offset = max(0, offset - 1)
                     elif z == "left":
                         break
-
+                    elif z == "3":
+                        tpil.gui.toast([
+                            "Up/Down: Scroll",
+                            "Left: Exit"
+                            ])
 
                 a.exit()
-            
-            elif mnu == "continue" or mnu == "discard":
+
+            elif mnu == "Identify":
+                identTerm = tpil.gui.screenConsole()
+
+                reg = build_default_registry()
+
+                pulses = fsub.bitsToRawData(bits)
+                results = reg.recognize(pulses)
+
+                if results:
+                    for r in results:
+                        identTerm.addText(str(r))
+                else:
+                    identTerm.addText("No protocol matched.")
+
+                tpil.waitForKey()
+                identTerm.exit()
+
+            elif mnu in ("Continue", "Discard"):
                 transceiver.sleepMode()
                 return
 
-    def Set_XCVR_Power(tpil:tinyPillow):
-        if not checkForTransciever(tpil): return
+    # ── Power ──────────────────────────────────────────────────────
+
+    def XCVR_Power(tpil: tinyPillow):
+        if not checkForTransciever(tpil):
+            return
 
         powerStrings = []
+        for registerValue, dBm in transceiver.patable.items():
+            powerStrings.append("{} / {}".format(hex(registerValue), dBm))
 
-        for registerValue, dBm in transceiver.patable:
-            powerStrings.append(
-                "{} / {}".format(hex(registerValue), dBm)
-            )
-
-        registerValue = int(tpil.gui.menu(powerStrings).split(" ")[0], base=16)
-
+        choice = tpil.gui.menu(powerStrings)
+        registerValue = int(choice.split(" ")[0], base=16)
         transceiver.adjustOOKSensitivity(0, registerValue)
 
-    def XCVR_Replay_Data(tpil:tinyPillow):
+    # ── Replay ─────────────────────────────────────────────────────
+
+    def Replay_Signals(tpil: tinyPillow):
         global strfrq, freq
-        if not checkForTransciever(tpil): return
 
-        fle = tpil.gui.menu(os.listdir("./addons/subghz"))
+        if not checkForTransciever(tpil):
+            return
 
-        fsubData = fsub.flipperConv("./addons/subghz/"+fle)
-        print(".sub file frequency is at {}".format(fsubData["Frequency"]))
+        subdir = os.path.join(".", "addons", "subghz")
+        try:
+            files = os.listdir(subdir)
+        except FileNotFoundError:
+            a = tpil.gui.screenConsole()
+            a.addText("no subghz/ directory found")
+            tpil.waitForKey()
+            return
 
-        transceiver.currentFreq = float(fsubData["Frequency"])
-        transceiver.trs.set_base_frequency_hertz(transceiver.currentFreq)
+        fle = tpil.gui.menu(files)
+        fsubData = fsub.flipperConv(os.path.join(subdir, fle))
+
+        try:
+            subFreq = float(fsubData["Frequency"])
+        except (KeyError, ValueError):
+            a = tpil.gui.screenConsole()
+            a.addText("invalid or missing frequency in .sub file")
+            tpil.waitForKey()
+            return
+
+        transceiver.currentFreq = subFreq
+        transceiver.setFreq(subFreq, doCalc=False)
+        _syncFreqDisplay()
 
         bitData = fsubData.rawDataToBits()
 
-
         a = tpil.gui.screenConsole()
-
         a.addText("preparing..")
-        
+
         transceiver.setupRawTransmission()
 
-
-        ########### calculate bin file ############
         binfile = ccrf.fio.calcBinFile(bitData, "/tmp/CC1101_TX.bin")
+        slpval = 250
 
         while True:
-            print('waiting...')
-            a.text = scText("press dpad to play data\ndpad left to exit\nup, down to edit bit delay", "{}hz | TX".format(strfrq))
+            a.text = scText(
+                "Bit delay ({}ns)".format(slpval),
+                "{} MHz | TX".format(strfrq),
+            )
             a.forceUpdate()
 
             key = tpil.waitForKey(debounce=True)
 
             if key == 'press':
-                a.text = scText("transmitting..", "{}hz | TX".format(strfrq))
+                a.text = scText("transmitting..", "{} MHz | TX".format(strfrq))
                 a.forceUpdate()
 
-                time.sleep(0.25) # just for GPIO to\ finish writes
-
-                print("transmitting")
+                time.sleep(0.25)
 
                 repeats = 0
                 while True:
-                    print("on transmission repeat {}".format(repeats))
-                    transceiver.rawTransmitBin(binfile)
+                    print("transmission repeat {}".format(repeats))
+                    transceiver.rawTransmitBin(binfile, ns=slpval)
                     repeats += 1
 
-                    print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
-                    
+                    print("freq={:.2f} MHz".format(transceiver.getFreqMHz()))
+
                     if tpil.checkIfKey() == 'press':
                         continue
                     else:
@@ -303,28 +292,62 @@ class PWNsubGhz(BasePwnhyvePlugin):
                 break
 
             elif key == 'up':
-                slpval += 1
+                slpval += 100
             elif key == 'down':
-                slpval -= 1 if slpval != 0 else 0
+                slpval = max(100, slpval - 100)
 
-        a.quit()
+            elif key == "3":
+                tpil.gui.toast("L3: Transmit (repeat while held)\nUp: Increase bit delay\nDown: Decrease bit delay\nLeft: Exit")
+
+        a.exit()
         transceiver.sleepMode()
 
-        #transceiver.setFreq(beforefreq)
-        #freq = beforefreq
-        #strfrq = str(beforefreq)[:3]
-        #transceiver.revertTransceiver()
+    # ── Frequency ──────────────────────────────────────────────────
 
-    def Set_XCVR_Frequency(tpil:tinyPillow):
+    def XCVR_Frequency(tpil: tinyPillow):
         global freq, strfrq
 
-        if not checkForTransciever(tpil): return
+        if not checkForTransciever(tpil):
+            return
 
-        a = tpil.gui.setFloat("Frequency (300-950mhz)", _min=300.0, _max=950.0,
-                              start=str(int(transceiver.currentFreq/1e6))+".000"
-                              #    ^ round the float into an int       ^ then add THREE place values
-                              ).start()
+        startFreq = "{:.3f}".format(transceiver.currentFreq / 1e6)
+        a = tpil.gui.setFloat(
+            "Frequency (300-950 MHz)",
+            _min=300.0,
+            _max=950.0,
+            start=startFreq,
+        )
 
         transceiver.setFreq(a)
+        _syncFreqDisplay()
 
-        print(f"base_frequency={(transceiver.trs.get_base_frequency_hertz() / 1e6):.2f}MHz",)
+        print("freq={:.2f} MHz".format(transceiver.getFreqMHz()))
+
+
+# ── Helper: format hex data for scrolling view ─────────────────────
+
+def _formatHexView(hexs, maxPerLine=6):
+    lines = []
+    curline = []
+    prevVal = None
+    skipped = False
+
+    for h in hexs:
+        if h == prevVal:
+            if not skipped:
+                curline.append("...")
+                skipped = True
+            continue
+
+        skipped = False
+        curline.append(h)
+        prevVal = h
+
+        if len(curline) == maxPerLine:
+            lines.append(" ".join(curline))
+            curline = []
+
+    if curline:
+        lines.append(" ".join(curline))
+    lines.append("EOF.")
+    return lines

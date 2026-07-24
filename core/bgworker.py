@@ -1,7 +1,7 @@
 import threading
 import subprocess
 import time
-import core.remotecontrol.serve as WebUI
+import core.web.serve as WebUI
 from core.utils import *
 
 class WebUIWorker():

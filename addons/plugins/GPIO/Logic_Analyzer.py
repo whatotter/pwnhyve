@@ -2,7 +2,7 @@ import os
 from core.plugin import BasePwnhyvePlugin 
 from core.pil_simplify import tinyPillow
 import plugins.GPIO._pins as pinMGR
-from core.pio.fastio import FastIO
+from core.lib.pio.fastio import FastIO
 
 def calcHZ(ns):
     return 1/(ns/(1*10**9))

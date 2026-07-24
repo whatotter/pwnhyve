@@ -1,6 +1,6 @@
 import time
-import core.cc1101.ccrf as rf
-import core.cc1101.binary as binTranslate
+import core.lib.cc1101.ccrf as rf
+import core.lib.cc1101.binary as binTranslate
 
 a = rf.pCC1101()
 
@@ -16,7 +16,7 @@ def transtest(a:rf.pCC1101, bits):
 
     #print(bits)
 
-    a.rawTransmit2(bits, delayms=100)
+    a.rawTransmitBits(bits, delayms=100)
     #a.oldRawTransmit2(bits, delayms=100)
 
 def recvtest(a):

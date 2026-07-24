@@ -31,10 +31,14 @@ class PWNTestOne(BasePwnhyvePlugin):
         tpil.gui.enterText()
 
     def toast(tpil):
-        tpil.gui.toast("text", [4,2], [128-4, 64-8])
+        tpil.gui.toast("text")
         tpil.waitForKey()
 
-    def screenConsole(tpil):
+    def toast2(tpil):
+        tpil.gui.toast("a\nlong\nvery long\nslice\nof\ntext")
+        tpil.waitForKey()
+
+    def screenConsole():
         a = tpil.gui.screenConsole()
 
         a.text = "hello world!" + "\n" + "text and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it and a lot of it"
